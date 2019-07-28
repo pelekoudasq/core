@@ -3,16 +3,13 @@ from .algebra import make_cryptosys, validate_cryptosys, make_operations, make_h
 
 class CryptoController(object):
 
+
     def __init__(self, config, _type):
 
         self.config = config
-        self.type  = _type
-
-        self.cryptosys  = None
-        self.operations = None
-        self.hash_func  = None
-        self.generate_keypair = None
-        self.encrypt    = None
+        self.type = _type
+        
+        self.primitives = None
 
     def load_cryptosystem(self):
 
@@ -26,21 +23,26 @@ class CryptoController(object):
         except (WrongCryptoError, WeakCryptoError):
             raise
 
-        self.cryptosys  = cryptosys
-        self.operations = make_operations(self.cryptosys)
-        self.hash_func  = make_hash_func(self.cryptosys)
-        self.generate_keypair = make_generate_keypair(self.cryptosys)
-        self.encrypt    = make_encrypt(self.cryptosys)
+        self.primitives = {
+            "cryptosys": cryptosys,
+            "operations": make_operations(cryptosys),
+            "hash_func": make_hash_func(cryptosys),
+            "generate_keypair": make_generate_keypair(cryptosys),
+            "encrypt": make_encrypt(cryptosys),
+        }
 
     def reload_cryptosystem(self, config, _type):
         self.__init__(config, _type)
-        self.load_cryptosystem()
+        try:
+            self.load_cryptosystem()
+        except (WrongCryptoError, WeakCryptoError):
+            raise
 
     def export_primitives(self):
 
-        primitives = self.__dict__
+        primitives = self.primitives
 
-        if None in primitives.values():
+        if self.primitives is None:
             e = 'No Cryptosystem has been loaded'
             raise UnloadedCryptoError(e)
 

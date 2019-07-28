@@ -43,18 +43,23 @@ except ImportError:
     _divmod = divmod
     _mod = lambda x, y: x % y
     _pow = pow
-    _inv = lambda x, p: pow(x, p - 2, p)            # inverse mod an odd prime p
+    _inv = lambda x, p: pow(x, p - 2, p)            # x ^ -1 mod an odd prime p
 
 else:
-    _mul = lambda x, y: int(mul(x, y))
+    _mul = lambda x, y: int(mul(x, y))              # xy
 
     def _divmod(x, y):
         q, r = f_divmod(x, y)
-        return int(q), int(r)
+        return int(q), int(r)                       # x/y, x mod y
 
-    _mod = lambda x, y: int(f_mod(x, y))
-    _pow = lambda x, y, z: int(powmod(x, y, z))
-    _inv = lambda x, p: int(invert(x, p))           # inverse mod an odd prime p
+    _mod = lambda x, y: int(f_mod(x, y))            # x mod y
+    _pow = lambda x, y, z: int(powmod(x, y, z))     # x ^ y mod z
+    _inv = lambda x, p: int(invert(x, p))           # x ^ -1 mod an odd prime p
+
+# Checks if x is a ((p - 1)/q)-residue p, assuming
+# that g is a generator of these residues. Reduces
+# to Legendre symbol if q = (p - 1)/2
+isresidue = lambda x, q, p: _pow(x, q, p) == 1
 
 
 # ----------------------------------- Makers -----------------------------------
@@ -92,43 +97,43 @@ def make_cryptosys(config, _type):
 
     if _type is INTEGER:
 
-        modulus = config['modulus']         # p
-        root_order = config['root_order']   # r
-        element = config['element']         # g0
+        p  = config['modulus']
+        r  = config['root_order']
+        g0 = config['element']
 
-        if modulus <= 2 or not number.isPrime(modulus):
+        if p <= 2 or not number.isPrime(p):
             e = 'Provided modulus is not an odd prime'
             raise WrongCryptoError(e)
 
-        nr_elements = modulus - 1   # p - 1
+        nr_elements = p - 1
 
-        if element < 2 or element > nr_elements - 1:
+        if g0 < 2 or g0 > nr_elements - 1:
             e = 'Provided element does not belong to the multiplicative group'
 
-        order, remainder = _divmod(nr_elements, root_order)   # q = (p - 1)/r
+        q, s = _divmod(nr_elements, r)  # q = (p - 1)/r
 
-        if remainder != 0:
+        if s != 0:
             e = 'Provided order does not divide the multiplicative group\'s order'
             raise WrongCryptoError(e)
 
-        if not number.isPrime(order):
+        if not number.isPrime(q):
             e = 'Order of the requested group is not prime'
             raise WrongCryptoError(e)
 
-        generator = _pow(element, root_order, modulus)    # g = g0 ^ r
+        g = _pow(g0, r, p)  # g = g0 ^ r
 
-        if generator == 1:
-            # Algebraic fact: given an element 1 < x < p for prime p
+        if g == 1:
+            # Algebraic fact: given 1 < x < p for a smooth prime p
             # and 1 < r < p - 1 with r | p - 1, then x ^ (p - 1)/r
-            # generates the n-subgroup of Z^*_p if it is not 1
+            # generates the r-subgroup of Z^*_p if it is not 1
             e = 'Provided element cannot yield the generator of the requested subgroup'
             raise WrongCryptoError(e)
 
         cryptosys.update({
             'parameters': {
-                'modulus': modulus,
-                'order': order,
-                'generator': generator
+                'modulus': p,
+                'order': q,
+                'generator': g
             }
         })
 
@@ -175,7 +180,7 @@ def make_hash_func(cryptosys):
 
         p, g, q = extract_parameters(cryptosys)
 
-        # g ^ H( p | g | q | elements)
+        # g ^ H( p | g | q | elements) mod p
         def hash_func(*elements):
             digest = hash_numbers(p, g, q, *elements)
             readuced = _mod(bytes_to_int(digest), q)
@@ -199,10 +204,22 @@ def make_generate_keypair(cryptosys):
 
         p, g = extract_parameters(cryptosys)[:2]
 
-        # FIX: redesign it in the Schnorr context
-        def generate_keypair(private_key):
+        def generate_keypair(private_key=None, schnorr=False):
+
+            if private_key is None:
+                private_key = random_element(cryptosys)
+            else:
+                # TODO: add subgroup validation
+                pass
+
             public_key = _pow(g, private_key, p)
-            return (private_key, public_key)
+
+            if schnorr is False:
+                return (private_key, public_key)
+            else:
+                # TODO: add proof of knowledge
+                pass
+
 
     elif _type is ELLIPTIC:
         pass
@@ -247,6 +264,26 @@ def make_encrypt(cryptosys):
 
     return encrypt
 
+
+# def make_random_element(cryptosys):
+#     """
+#     """
+#
+#     _type = cryptosys["type"]
+#
+#     if _type is INTEGER:
+#
+#         p, q = extract_parameters(cryptosys)
+#
+#         def random_element():
+#             r = random_int(2, q)
+#             return _pow(g, r, p)
+#
+#     elif _type is ELLIPTIC:
+#         pass
+#
+#     return random_element
+
 # ---------------------------------- Helpers ----------------------------------
 
 
@@ -259,10 +296,33 @@ def extract_parameters(cryptosys):
     _type = cryptosys['type']
 
     if _type is INTEGER:
-        return parameters['modulus'], parameters['generator'], parameters['order']
+
+        p = parameters['modulus']
+        q = parameters['order']
+        g = parameters['generator']
+
+        return p, q, g
 
     elif _type is ELLIPTIC:
         pass
+
+def random_element(cryptosys):
+    """
+    """
+
+    _type = cryptosys['type']
+
+    if _type in INTEGER:
+
+        p, q, g = extract_parameters(cryptosys)
+
+        r = random_integer(2, q)
+
+        return _pow(g, r, p)
+
+    elif _type in ELLIPTIC:
+        pass
+
 
 
 def hash_numbers(*args):
