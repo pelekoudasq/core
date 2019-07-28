@@ -21,10 +21,10 @@ class CryptoController(object):
         except (WrongConfigKeysError, WrongCryptoError):
             raise
 
-        # try:
-        #     validate_cryptosys(cryptosys)
-        # except (WrongCryptoError, WeakCryptoError):
-        #     raise
+        try:
+            validate_cryptosys(cryptosys)
+        except (WrongCryptoError, WeakCryptoError):
+            raise
 
         self.cryptosys  = cryptosys
         self.operations = make_operations(self.cryptosys)
