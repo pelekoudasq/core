@@ -6,6 +6,7 @@ from .exceptions import (UnknownCryptoError, WrongConfigKeysError,
                         AlgebraicIncompatibilityError,
                         ImpossibleEncryptionError)
 from .cryptorandom import random_integer
+from .binutils import bytes_to_int
 
 MIN_MOD_BIT_SIZE = 2048
 MIN_GEN_BIT_SIZE = 2000
@@ -21,7 +22,7 @@ CONFIG_KEYS = {
 }
 
 PARAMETER_KEYS = {
-    INTEGER: {'modulus', 'order', 'generator'},
+    INTEGER: {'modulus', 'generator', 'order'},
     ELLIPTIC: set()
 }
 
@@ -30,7 +31,7 @@ OPERATIONS = {
     ELLIPTIC: set()
 }
 
-# Optimize common  operations over the whole ring of integers
+# Optimize common integer operations
 
 try:
     from gmpy2 import mul, f_divmod, f_mod, powmod, invert
@@ -132,8 +133,8 @@ def make_cryptosys(config, _type):
         cryptosys.update({
             'parameters': {
                 'modulus': p,
-                'order': q,
-                'generator': g
+                'generator': g,
+                'order': q
             }
         })
 
@@ -143,36 +144,7 @@ def make_cryptosys(config, _type):
     return cryptosys
 
 
-def make_operations(cryptosys):
-    """
-    Returns the algebraic operations specific to the provided cryptosystem,
-    assuming it is algebraically valid
-    """
-
-    _type = cryptosys['type']
-
-    if _type is INTEGER:
-
-        p = cryptosys['parameters']['modulus']
-
-        mult = lambda a, b: _mod(_mul(a, b), p)     # Z_p mulitplication a * b = a * b modp
-        inv  = lambda a: _inv(a, p)                 # inversion a ^ -1 in Z*_p
-        pow  = lambda a, b: _pow(a, b, p)           # Z_p raising to power a ^ b = a ** b  modp
-
-        return {
-            'mult': mult,
-            'inv': inv,
-            'pow': pow
-        }
-
-    elif _type is ELLIPTIC:
-        pass
-
-def make_hash_func(cryptosys):
-    """
-    Returns an algebraically flavored hash function specific to the provided
-    cryptosystem, assuming its agebraic validity
-    """
+def make_schnorr_proof(cryptosys):
 
     _type = cryptosys['type']
 
@@ -180,16 +152,75 @@ def make_hash_func(cryptosys):
 
         p, g, q = extract_parameters(cryptosys)
 
-        # g ^ H( p | g | q | elements) mod p
-        def hash_func(*elements):
-            digest = hash_numbers(p, g, q, *elements)
-            readuced = _mod(bytes_to_int(digest), q)
-            return _pow(g, reduced, p)
+        def schnorr_proof(secret, public, *extras):
+            """
+            Implementation of Schnorr protocol from the prover's side (non-interactive)
+
+            Returns proof-of-knowldge of the discrete logarithm x (`secret`) of the provided
+            element y (`public`). The rest arguments `*extras` are to be used in the
+            Fiat-Shamir heuristic
+            """
+
+            randomness = random_integer(2, q)       # r
+            commitment = _pow(g, randomness, p)     # g ^ r
+
+            challenge  = fiatshamir(
+                cryptosys,
+                p, g, q,
+                public,
+                commitment,
+                *extras)         # c = g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp
+
+            response = _mod(randomness + _mul(challenge, secret), q)   # s = r + c * x  modq
+
+            return commitment, challenge, response  # g ^ r, c, s
 
     elif _type is ELLIPTIC:
         pass
 
-    return hash_func
+    return schnorr_proof
+
+def make_schnorr_verify(cryptosys):
+
+    _type = cryptosys['type']
+
+    if _type is INTEGER:
+
+        p, g, q = extract_parameters(cryptosys)
+
+        def schnorr_verify(public, proof, *extras):
+            """
+            Implementation of Schnorr protocol from the verifier's side (non-interactive)
+
+            Validates the demonstrated proof-of-knowledge (`proof`) of the discrete logarithm
+            of the provided element y (`public`). The rest arguments `extras` are assumed to
+            have been used in the Fiat-Shamir heuristic
+            """
+
+            commitment, challenge, response = proof     # g ^ r, c, s
+
+            # Check correctness of chalenge:
+            # c == g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp ?
+
+            _challenge = fiatshamir(
+                cryptosys,
+                p, g, q,
+                public,
+                commitment,
+                *extras)
+
+            if _challenge != challenge:
+                return False
+
+            # Proceed to proof validation:
+            # g ^ s modp == (g ^ r) * (y ^ c) modp ?
+
+            return _pow(g, response, p) == _mod(_mul(commitment, _pow(public, challenge, p)), p)
+
+    elif _type is ELLIPTIC:
+        pass
+
+    return schnorr_verify
 
 
 def make_generate_keypair(cryptosys):
@@ -252,7 +283,7 @@ def make_encrypt(cryptosys):
                 raise ImpossibleEncryptionError(e)
 
             if _pow(element, q, p) != 1:
-                element = mod(-element, p)
+                element = _mod(-element, p)
 
             decryptor = _pow(g, randomness, p)
             cipher    = _mod(_mul(element, _pow(public_key, randomness, p)), p)
@@ -263,26 +294,6 @@ def make_encrypt(cryptosys):
         pass
 
     return encrypt
-
-
-# def make_random_element(cryptosys):
-#     """
-#     """
-#
-#     _type = cryptosys["type"]
-#
-#     if _type is INTEGER:
-#
-#         p, q = extract_parameters(cryptosys)
-#
-#         def random_element():
-#             r = random_int(2, q)
-#             return _pow(g, r, p)
-#
-#     elif _type is ELLIPTIC:
-#         pass
-#
-#     return random_element
 
 # ---------------------------------- Helpers ----------------------------------
 
@@ -298,13 +309,14 @@ def extract_parameters(cryptosys):
     if _type is INTEGER:
 
         p = parameters['modulus']
-        q = parameters['order']
         g = parameters['generator']
+        q = parameters['order']
 
-        return p, q, g
+        return p, g, q
 
     elif _type is ELLIPTIC:
         pass
+
 
 def random_element(cryptosys):
     """
@@ -314,15 +326,12 @@ def random_element(cryptosys):
 
     if _type in INTEGER:
 
-        p, q, g = extract_parameters(cryptosys)
-
+        p, g, q = extract_parameters(cryptosys)
         r = random_integer(2, q)
-
         return _pow(g, r, p)
 
     elif _type in ELLIPTIC:
         pass
-
 
 
 def hash_numbers(*args):
@@ -337,8 +346,29 @@ def hash_numbers(*args):
         update(bytes("%x" % number, 'utf-8'))
     return hasher.digest()
 
+
+def fiatshamir(cryptosys, *elements):
+    """
+    """
+
+    _type = cryptosys['type']
+
+    if _type is INTEGER:
+
+        p, g, q = extract_parameters(cryptosys)
+
+        digest = hash_numbers(p, g, q, *elements)
+        reduced = _mod(bytes_to_int(digest), q)
+        output = _pow(g, reduced, p)
+
+        return output   # g ^ ( H( p | g | q | elements)  modq )  modp
+
+    elif _type is ELLIPTIC:
+        pass
+
+
 def validate_cryptosys(cryptosys, min_mod_bit_size=MIN_MOD_BIT_SIZE,
-                       min_gen_bit_size=MIN_GEN_BIT_SIZE, check_3mod4=False):
+                       min_gen_bit_size=MIN_GEN_BIT_SIZE, check_3mod4=True):
     """
     Validates algebraic correctness and cryptographical strength of the provided
     cryptosystem. Returns `True` in case of validation, otherwise an appropriate
@@ -402,27 +432,27 @@ def validate_cryptosys(cryptosys, min_mod_bit_size=MIN_MOD_BIT_SIZE,
 #
 #     # return cryptosys
 #
-# def generate_keypair(cryptosys, private_key=None):
+# def make_operations(cryptosys):
+#     """
+#     Returns the algebraic operations specific to the provided cryptosystem,
+#     assuming it is algebraically valid
+#     """
 #
 #     _type = cryptosys['type']
 #
 #     if _type is INTEGER:
 #
-#         modulus = parameters['modulus']
-#         generator = cryptosys['generator']
-#         public_key = _pow(generator, private_key, modulus)
+#         p = cryptosys['parameters']['modulus']
+#
+#         mult = lambda a, b: _mod(_mul(a, b), p)     # Z_p mulitplication a * b = a * b modp
+#         inv  = lambda a: _inv(a, p)                 # inversion a ^ -1 in Z*_p
+#         pow  = lambda a, b: _pow(a, b, p)           # Z_p raising to power a ^ b = a ** b  modp
+#
+#         return {
+#             'mult': mult,
+#             'inv': inv,
+#             'pow': pow
+#         }
 #
 #     elif _type is ELLIPTIC:
 #         pass
-#
-#     else:
-#         e = 'Type of cryptosystem could not be recognized'
-#         raise UnknownCryptoError(e)
-#
-#     cryptosys.update({
-#         'private_key': private_key,
-#         'public_key': public_key
-#     })
-#
-# def export_primitives():
-#     pass
