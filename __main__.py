@@ -24,7 +24,7 @@ cryptosys = primitives['cryptosys']
 
 # Extract keygen functionality and generate key pair
 keygen = primitives['keygen']
-private_key, public_key = keygen(_4096_KEY)
+private_key, public_key =  keygen(_4096_KEY)
 
 # print('\n-- PUBLIC KEY --\n')
 # print(public_key)

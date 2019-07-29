@@ -4,6 +4,75 @@ from .algebra import (make_cryptosys, validate_cryptosys,
                       make_schnorr_proof, make_schnorr_verify,
                       make_keygen, make_encrypt)
 
+from abc import ABCMeta, abstractmethod
+
+
+class CryptoSystem(metaclass=ABCMeta):
+
+    @abstractmethod
+    def __init__(self, config):
+        """
+        """
+
+    @abstractmethod
+    def schnorr_proof(self, secret, public, *extras):
+        """
+        """
+
+    @abstractmethod
+    def schnorr_verify(self, proof, public, *extras):
+        """
+        """
+
+    @abstractmethod
+    def chaum_pedersen_proof():
+        """
+        """
+
+    @abstractmethod
+    def chaum_pedersen_verify():
+        """
+        """
+
+    @abstractmethod
+    def keygen(private_key=None, schnorr=False):
+        """
+        """
+
+    @abstractmethod
+    def validate_key(public_key, proof):
+        """
+        """
+        pass
+
+    @abstractmethod
+    def sign_element():
+        """
+        """
+        pass
+
+    @abstractmethod
+    def verify_element_signature():
+        """
+        """
+        pass
+
+    @abstractmethod
+    def sign_message():
+        """
+        """
+
+    @abstractmethod
+    def verify_message_signature():
+        """
+        """
+
+    @abstractmethod
+    def encrypt(element, public_key, randomness=None):
+        """
+        """
+
+
 
 class CryptoController(object):
 
@@ -15,7 +84,7 @@ class CryptoController(object):
         self.primitives = None
 
 
-    def load_cryptosystem(self):
+    def load(self):
 
         try:
             cryptosys = make_cryptosys(self.config, self.type)

@@ -263,6 +263,101 @@ def make_schnorr_verify(cryptosys):
     return schnorr_verify
 
 
+def make_chaum_pedersen_proof(cryptosys):
+
+    _type = cryptosys['type']
+
+    if _type is INTEGER:
+
+        p, g, q = extract_parameters(cryptosys)
+
+        def chaum_pedersen_proof(u, v, w, z):
+            """
+            Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
+
+            Returns zero-knowledge proof that the provided 3-ple is a DDH with respect to the
+            generator g of the cryptosystem's underlying group, i.e., of the form
+
+                            (g ^ x modp, g ^ z modp, g ^ (x * z) modp)
+
+            for some integers 0 <= x, z < q
+            """
+
+            randomness = random_integer(2, q)          # 1 < r < q
+
+            g_commitment = _prod(g, randomness, p)     # g ^ r
+            u_commitment = _prod(u, randomness, p)     # u ^ r
+
+            challenge = fiatshamir(
+                cryptosys,
+                p, g, q,
+                u, v, w,
+                g_commitment,
+                u_commitment)   # c = g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp
+
+            response = _mod(_add(randomness, _mul(challenge, z)), q)         # s = r + c * z  modq
+
+            return g_commitment, u_commitment, challenge, response           # g ^ r, u ^ r, c, s
+
+    elif _type is ELLIPTIC:
+        pass
+
+    return chaum_pedersen_proof
+
+
+def make_chaum_pedersen_verify(cryptosys):
+
+    _type = cryptosys['type']
+
+    if _type is INTEGER:
+
+        p, g, q = extract_parameters(cryptosys)
+
+        def chaum_pedersen_verify(u, v, w, proof):
+            """
+            Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
+
+            Validates the demonstrated zero-knowledge `proof` that the provided 3-ple (u, v, w) is
+            a DDH with respect to the generator g of the cryptosystem's underlying group, i.e.,
+            of the form
+                                    (u, v, g ^ (x * z) modp)
+
+            where u = g ^ x modp, v = g ^ z modp with 0 <= x, z < q
+            """
+
+            g_commitment, u_commitment, challenge, response = proof     # g ^ r, u ^ r, c, s
+
+            # Check correctness of challenge:
+            # c == g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp ?
+
+            _challenge = fiatshamir(
+                cryptosys,
+                p, g, q,
+                u, v, w,
+                g_commitment,
+                u_commitment)
+
+            if _challenge != challenge:
+                return False
+
+            # Verify prover's commitment to presumed randomness:
+            # g ^ s == g ^ r * v ^ c  modp ?
+
+            if _pow(g, response) != _mod(_mul(g_commitment, _pow(v, challenge, p)), p):
+                return False
+
+            # Verify that the provided u is of the form g ^ (k * z) for some k, and
+            # thus k = x due to verified prover's commitment to randomness r:
+            # u ^ s == u ^ r * w ^ c  modp ?
+
+            return _pow(u, response, p) == _mod(_mul(u_commitment, _pow(w, challenge, p)), p)
+
+    elif _type is ELLIPTIC:
+        pass
+
+    return chaum_pedersen_verify
+
+
 def make_keygen(cryptosys):
 
     _type = cryptosys['type']
@@ -276,9 +371,9 @@ def make_keygen(cryptosys):
 
             if private_key is None:
                 private_key = random_element(cryptosys)              # 1 < x < q
-            # elif not 1 < private_key < q:
-            #     e = 'Provided private key is not in the allowed range'
-            #     raise InvalidPrivateKeyError(e)
+            elif not 1 < private_key < q:
+                e = 'Provided private key is not in the allowed range'
+                raise InvalidPrivateKeyError(e)
 
             public_key = _pow(g, private_key, p)                    # y = g ^ x modp
 
