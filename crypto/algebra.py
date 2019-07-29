@@ -3,7 +3,7 @@ import Crypto.Util.number as number
 
 from .exceptions import (WrongConfigsError, WrongCryptoError, WeakCryptoError,
                         EncryptionNotPossible)
-from .cryptorandom import random_integer
+from .cryptorandom import random_INTEGER
 from .binutils import bytes_to_int
 
 MIN_MOD_BIT_SIZE = 2048
@@ -84,7 +84,7 @@ def make_cryptosys(config, _type):
 
     config_keys = set(config.keys())
     if config_keys != CONFIG_KEYS[_type]:
-        e = 'Provided config keys {} are not the required ones'.format(config_keys)
+        e = 'Provided config keys are not exactly the required ones'
         raise WrongConfigsError(e)
 
     if _type is INTEGER:
@@ -132,6 +132,7 @@ def make_cryptosys(config, _type):
         pass
 
     return cryptosys
+
 
 def validate_cryptosys(cryptosys, min_mod_bit_size=MIN_MOD_BIT_SIZE,
                        min_gen_bit_size=MIN_GEN_BIT_SIZE, check_3mod4=True):
@@ -198,7 +199,7 @@ def make_schnorr_proof(cryptosys):
             `*extras` are to be used in the Fiat-Shamir heuristic.
             """
 
-            randomness = random_integer(2, q)       # r
+            randomness = random_INTEGER(2, q)       # r
             commitment = _pow(g, randomness, p)     # g ^ r
 
             challenge  = fiatshamir(
@@ -216,6 +217,7 @@ def make_schnorr_proof(cryptosys):
         pass
 
     return schnorr_proof
+
 
 def make_schnorr_verify(cryptosys):
 
@@ -245,11 +247,14 @@ def make_schnorr_verify(cryptosys):
                 commitment,
                 *extras)
 
-            print()
-            print(challenge)
-            print()
-            print(_challenge)
-            print()
+            #
+            # DEBUG
+            #
+            # print()
+            # print(challenge)
+            # print()
+            # print(_challenge)
+            # print()
 
             if _challenge != challenge:
                 return False
@@ -257,11 +262,14 @@ def make_schnorr_verify(cryptosys):
             # Proceed to proof validation:
             # g ^ s modp == (g ^ r) * (y ^ c) modp ?
 
-            print()
-            print(_pow(g, response, p))
-            print()
-            print(_mod(_mul(commitment, _pow(public, challenge, p)), p))
-            print()
+            #
+            # DEBUG
+            #
+            # print()
+            # print(_pow(g, response, p))
+            # print()
+            # print(_mod(_mul(commitment, _pow(public, challenge, p)), p))
+            # print()
 
             return _pow(g, response, p) == _mod(_mul(commitment, _pow(public, challenge, p)), p)
 
@@ -278,8 +286,9 @@ def make_keygen(cryptosys):
     if _type is INTEGER:
 
         p, g = extract_parameters(cryptosys)[:2]
+        schnorr_proof = make_schnorr_proof(cryptosys)
 
-        def keygen(private_key=None, schnorr_proof=None):
+        def keygen(private_key=None, schnorr=False):
 
             if private_key is None:
                 private_key = random_element(cryptosys)
@@ -289,7 +298,7 @@ def make_keygen(cryptosys):
 
             public_key = _pow(g, private_key, p)
 
-            if schnorr_proof:
+            if schnorr is True:
 
                 proof = schnorr_proof(private_key, public_key)
                 return private_key, public_key, proof
@@ -302,6 +311,7 @@ def make_keygen(cryptosys):
         pass
 
     return keygen
+
 
 def make_encrypt(cryptosys):
     """
@@ -323,7 +333,7 @@ def make_encrypt(cryptosys):
                 raise EncryptionNotPossible(e)
 
             if randomness is None:
-                randomness = random_integer(1, q)
+                randomness = random_INTEGER(1, q)
             elif not 1 <= randomness <= q - 1:
                 e = 'Provided randomness exceeds order of group'
                 raise EncryptionNotPossible(e)
@@ -373,7 +383,7 @@ def random_element(cryptosys):
     if _type in INTEGER:
 
         p, g, q = extract_parameters(cryptosys)
-        r = random_integer(2, q)
+        r = random_INTEGER(2, q)
         return _pow(g, r, p)
 
     elif _type in ELLIPTIC:
@@ -416,7 +426,7 @@ def hash_numbers(*args):
 
 # ------------------------------------------------------------------------------
 
-# def make_ElGamal_crypto(modulus, element):
+# def make_INTEGER_crypto(modulus, element):
 #
 #     try:
 #         cryptosys = make_cryptosys({

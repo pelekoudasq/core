@@ -3,7 +3,7 @@ from .binutils import bytes_to_int
 
 _random_generator_file = Random.new()
 
-def random_integer(min, max):
+def random_INTEGER(min, max):
 
     range = max - min
     nr_bits = max.bit_length()
