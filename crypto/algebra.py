@@ -2,7 +2,7 @@ from hashlib import sha256
 import Crypto.Util.number as number
 
 from .exceptions import (WrongConfigsError, WrongCryptoError, WeakCryptoError,
-                        EncryptionNotPossible)
+                        InvalidPrivateKeyError, EncryptionNotPossible)
 from .cryptorandom import random_INTEGER
 from .binutils import bytes_to_int
 
@@ -275,10 +275,12 @@ def make_keygen(cryptosys):
         def keygen(private_key=None, schnorr=False):
 
             if private_key is None:
-                private_key = random_element(cryptosys)
-            else:
-                # TODO: add subgroup validation
-                pass
+
+                private_key = random_element(cryptosys)              # 1 < x < q
+
+            elif not 1 < private_key < q:
+                e = 'Provided private key is not in the allowed range'
+                raise InvalidPrivateKeyError(e)
 
             public_key = _pow(g, private_key, p)
 
@@ -317,7 +319,7 @@ def make_encrypt(cryptosys):
                 raise EncryptionNotPossible(e)
 
             if randomness is None:
-                randomness = random_INTEGER(1, q)
+                randomness = random_integer(1, q)
             elif not 1 <= randomness <= q - 1:
                 e = 'Provided randomness exceeds order of group'
                 raise EncryptionNotPossible(e)
@@ -410,19 +412,6 @@ def hash_numbers(*args):
 
 # ------------------------------------------------------------------------------
 
-# def make_INTEGER_crypto(modulus, element):
-#
-#     try:
-#         cryptosys = make_cryptosys({
-#             'modulus': modulus,
-#             'root_order': 2,
-#             'element': element
-#         }, _type=INTEGER)
-#
-#     except WrongCryptoError:
-#         raise
-#
-#     # return cryptosys
 #
 #
 # OPERATIONS = {

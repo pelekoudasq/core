@@ -10,7 +10,7 @@ from crypto.constants import (_2048_PRIME, _2048_ELEMENT, _2048_GENERATOR,
 from crypto.exceptions import (WrongConfigsError, WrongCryptoError)
 
 
-# Elementary INTEGER operations
+# Elementary integer operations
 
 
 _2_ples_with_zeros = [(m, n) for m in range(0, 5) for n in range(0, 5)]

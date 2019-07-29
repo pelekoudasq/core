@@ -32,3 +32,8 @@ class EncryptionNotPossible(BaseException):
     Raised when encryption under the provided conditions is not possible
     """
     pass
+
+class InvalidPrivateKeyError(BaseException):
+    """
+    """
+    pass
