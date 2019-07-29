@@ -3,7 +3,7 @@ import Crypto.Util.number as number
 
 from .exceptions import (WrongConfigsError, WrongCryptoError, WeakCryptoError,
                         InvalidPrivateKeyError, EncryptionNotPossible)
-from .cryptorandom import random_INTEGER
+from .cryptorandom import random_integer
 from .binutils import bytes_to_int
 
 MIN_MOD_BIT_SIZE = 2048
@@ -201,7 +201,7 @@ def make_schnorr_proof(cryptosys):
             `*extras` are to be used in the Fiat-Shamir heuristic.
             """
 
-            randomness = random_INTEGER(2, q)       # r
+            randomness = random_integer(2, q)       # r
             commitment = _pow(g, randomness, p)     # g ^ r
 
             challenge  = fiatshamir(
@@ -269,20 +269,18 @@ def make_keygen(cryptosys):
 
     if _type is INTEGER:
 
-        p, g = extract_parameters(cryptosys)[:2]
+        p, g, q = extract_parameters(cryptosys)
         schnorr_proof = make_schnorr_proof(cryptosys)
 
         def keygen(private_key=None, schnorr=False):
 
             if private_key is None:
-
                 private_key = random_element(cryptosys)              # 1 < x < q
+            # elif not 1 < private_key < q:
+            #     e = 'Provided private key is not in the allowed range'
+            #     raise InvalidPrivateKeyError(e)
 
-            elif not 1 < private_key < q:
-                e = 'Provided private key is not in the allowed range'
-                raise InvalidPrivateKeyError(e)
-
-            public_key = _pow(g, private_key, p)
+            public_key = _pow(g, private_key, p)                    # y = g ^ x modp
 
             if schnorr is True:
 
@@ -300,10 +298,6 @@ def make_keygen(cryptosys):
 
 
 def make_encrypt(cryptosys):
-    """
-    Returns the algebraic encryption function specific to the provided
-    cryptosystem, assuming its algebraic validity
-    """
 
     _type = cryptosys['type']
 
@@ -312,6 +306,8 @@ def make_encrypt(cryptosys):
         p, g, q = extract_parameters(cryptosys)
 
         def encrypt(element, public_key, randomness=None):
+            """
+            """
 
             element += 1
             if element >= q:
@@ -369,7 +365,7 @@ def random_element(cryptosys):
     if _type in INTEGER:
 
         p, g, q = extract_parameters(cryptosys)
-        r = random_INTEGER(2, q)
+        r = random_integer(2, q)
         return _pow(g, r, p)
 
     elif _type in ELLIPTIC:
