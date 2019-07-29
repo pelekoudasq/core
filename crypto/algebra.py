@@ -27,12 +27,13 @@ PARAMETER_KEYS = {
 # Optimize common integer operations
 
 try:
-    from gmpy2 import mul, f_divmod, f_mod, powmod, invert
+    from gmpy2 import add, mul, f_divmod, f_mod, powmod, invert
 
 except ImportError:
 
     print('WARNING: Could not import from gmpy2. Falling back to SLOW crypto.')
 
+    _add = lambda x, y: x + y
     _mul = lambda x, y: x * y
     _divmod = divmod
     _mod = lambda x, y: x % y
@@ -40,6 +41,7 @@ except ImportError:
     _inv = lambda x, p: pow(x, p - 2, p)            # x ^ -1 mod an odd prime p
 
 else:
+    _add = lambda x, y: int(add(x, y))              # x + y
     _mul = lambda x, y: int(mul(x, y))              # xy
 
     def _divmod(x, y):
@@ -207,9 +209,9 @@ def make_schnorr_proof(cryptosys):
                 p, g, q,
                 public,
                 commitment,
-                *extras)         # c = g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp
+                *extras)              # c = g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp
 
-            response = _mod(randomness + _mul(challenge, secret), q)   # s = r + c * x  modq
+            response = _mod(_add(randomness, _mul(challenge, secret)), q)   # s = r + c * x  modq
 
             return commitment, challenge, response  # g ^ r, c, s
 
@@ -247,29 +249,11 @@ def make_schnorr_verify(cryptosys):
                 commitment,
                 *extras)
 
-            #
-            # DEBUG
-            #
-            # print()
-            # print(challenge)
-            # print()
-            # print(_challenge)
-            # print()
-
             if _challenge != challenge:
                 return False
 
             # Proceed to proof validation:
             # g ^ s modp == (g ^ r) * (y ^ c) modp ?
-
-            #
-            # DEBUG
-            #
-            # print()
-            # print(_pow(g, response, p))
-            # print()
-            # print(_mod(_mul(commitment, _pow(public, challenge, p)), p))
-            # print()
 
             return _pow(g, response, p) == _mod(_mul(commitment, _pow(public, challenge, p)), p)
 
@@ -470,3 +454,20 @@ def hash_numbers(*args):
 #
 #     elif _type is ELLIPTIC:
 #         pass
+
+            #
+            # DEBUG
+            #
+            # print()
+            # print(challenge)
+            # print()
+            # print(_challenge)
+            # print()
+            #
+            # DEBUG
+            #
+            # print()
+            # print(_pow(g, response, p))
+            # print()
+            # print(_mod(_mul(commitment, _pow(public, challenge, p)), p))
+            # print()
