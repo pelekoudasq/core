@@ -1,10 +1,8 @@
 from hashlib import sha256
 import Crypto.Util.number as number
 
-from .exceptions import (UnknownCryptoError, WrongConfigKeysError,
-                        WrongCryptoError, WeakCryptoError,
-                        AlgebraicIncompatibilityError,
-                        ImpossibleEncryptionError)
+from .exceptions import (WrongConfigsError, WrongCryptoError, WeakCryptoError,
+                        EncryptionNotPossible)
 from .cryptorandom import random_integer
 from .binutils import bytes_to_int
 
@@ -23,11 +21,6 @@ CONFIG_KEYS = {
 
 PARAMETER_KEYS = {
     INTEGER: {'modulus', 'generator', 'order'},
-    ELLIPTIC: set()
-}
-
-OPERATIONS = {
-    INTEGER: {'mult', 'inv', 'pow'},
     ELLIPTIC: set()
 }
 
@@ -57,9 +50,8 @@ else:
     _pow = lambda x, y, z: int(powmod(x, y, z))     # x ^ y mod z
     _inv = lambda x, p: int(invert(x, p))           # x ^ -1 mod an odd prime p
 
-# Checks if x is a ((p - 1)/q)-residue p, assuming
-# that g is a generator of these residues. Reduces
-# to Legendre symbol if q = (p - 1)/2
+# Checks if x is a ((p - 1)/q)-residue p, assuming that g is a generator of
+# these residues. Reduces to Legendre symbol if q = (p - 1)/2
 isresidue = lambda x, q, p: _pow(x, q, p) == 1
 
 
@@ -79,22 +71,21 @@ def make_cryptosys(config, _type):
 
     where the "type" value is the provided `_type` (either INTEGER or ELLIPTIC)
     and the "parameters" value is a dictionary constructed in accordance with
-    the provided `config`. Appropriate exceptions get raised if the provided
-    configurations and type are not compatible
+    the provided `config`
     """
 
     cryptosys = dict()
 
     if _type not in CRYPTO_TYPES:
         e = 'Type %s of requested cryptosystem is not supported' % _type
-        raise UnknownCryptoError(e)
+        raise WrongConfigsError(e)
 
     cryptosys.update({'type': _type})
 
     config_keys = set(config.keys())
     if config_keys != CONFIG_KEYS[_type]:
-        e = 'Provided config keys {} do not exactly correspond to the required ones'.format(config_keys)
-        raise WrongConfigKeysError(e)
+        e = 'Provided config keys {} are not the required ones'.format(config_keys)
+        raise WrongConfigsError(e)
 
     if _type is INTEGER:
 
@@ -124,10 +115,9 @@ def make_cryptosys(config, _type):
         g = _pow(g0, r, p)  # g = g0 ^ r
 
         if g == 1:
-            # Algebraic fact: given 1 < x < p for a smooth prime p
-            # and 1 < r < p - 1 with r | p - 1, then x ^ (p - 1)/r
-            # generates the r-subgroup of Z^*_p if it is not 1
-            e = 'Provided element cannot yield the generator of the requested subgroup'
+            # Algebraic fact: given 1 < x < p for a smooth prime p and 1 < r < p - 1 with
+            # r | p - 1, then x ^ (p - 1)/r generates the r-subgroup of Z^*_p if it is != 1
+            e = 'Provided element cannot yield the requested subgroup\'s generator'
             raise WrongCryptoError(e)
 
         cryptosys.update({
@@ -143,6 +133,54 @@ def make_cryptosys(config, _type):
 
     return cryptosys
 
+def validate_cryptosys(cryptosys, min_mod_bit_size=MIN_MOD_BIT_SIZE,
+                       min_gen_bit_size=MIN_GEN_BIT_SIZE, check_3mod4=True):
+    """
+    Validates algebraic correctness and cryptographical strength of the provided
+    cryptosystem
+    """
+
+    e = None
+
+    _type = cryptosys['type']
+
+    if _type is INTEGER:
+
+        p, g, q = extract_parameters(cryptosys)
+
+        if p <= 2 or not number.isPrime(p):
+            e = 'Modulus is not an odd prime'
+            raise WrongCryptoError(e)
+
+        if check_3mod4 and _mod(p, 4) != 3:
+            e = 'Modulus is not 3 mod 4'
+            raise WrongCryptoError(e)
+
+        if not number.isPrime(q):
+            e = 'Order of subgroup is not prime'
+            raise WrongCryptoError(e)
+
+        if _mod(p - 1, q) != 0:
+            e = 'Order does not divide the multiplicative group\'s order'
+            raise WrongCryptoError(e)
+
+        if not 1 < g < p or _pow(g, q, p) != 1:
+            e = 'Generator is not valid'
+            raise WrongCryptoError(e)
+
+        if p.bit_length() < min_mod_bit_size:
+            e = 'Modulus is < %d bits long' % min_mod_bit_size
+            raise WeakCryptoError(e)
+
+        if g.bit_length() < min_gen_bit_size:
+            e = 'Generator is < %d bits long' % min_gen_bit_size
+            raise WeakCryptoError(e)
+
+    elif _type is ELLIPTIC:
+        pass
+
+    return not e
+
 
 def make_schnorr_proof(cryptosys):
 
@@ -156,9 +194,8 @@ def make_schnorr_proof(cryptosys):
             """
             Implementation of Schnorr protocol from the prover's side (non-interactive)
 
-            Returns proof-of-knowldge of the discrete logarithm x (`secret`) of the provided
-            element y (`public`). The rest arguments `*extras` are to be used in the
-            Fiat-Shamir heuristic
+            Returns proof-of-knowldge of the discrete logarithm x (`secret`) of y (`public`).
+            `*extras` are to be used in the Fiat-Shamir heuristic.
             """
 
             randomness = random_integer(2, q)       # r
@@ -188,13 +225,12 @@ def make_schnorr_verify(cryptosys):
 
         p, g, q = extract_parameters(cryptosys)
 
-        def schnorr_verify(public, proof, *extras):
+        def schnorr_verify(proof, public, *extras):
             """
             Implementation of Schnorr protocol from the verifier's side (non-interactive)
 
-            Validates the demonstrated proof-of-knowledge (`proof`) of the discrete logarithm
-            of the provided element y (`public`). The rest arguments `extras` are assumed to
-            have been used in the Fiat-Shamir heuristic
+            Validates the demonstrated proof-of-knowledge (`proof`) of the discrete logarithm of
+            y (`public`). `*extras` are assumed to have been used in the Fiat-Shamir heuristic
             """
 
             commitment, challenge, response = proof     # g ^ r, c, s
@@ -209,11 +245,23 @@ def make_schnorr_verify(cryptosys):
                 commitment,
                 *extras)
 
+            print()
+            print(challenge)
+            print()
+            print(_challenge)
+            print()
+
             if _challenge != challenge:
                 return False
 
             # Proceed to proof validation:
             # g ^ s modp == (g ^ r) * (y ^ c) modp ?
+
+            print()
+            print(_pow(g, response, p))
+            print()
+            print(_mod(_mul(commitment, _pow(public, challenge, p)), p))
+            print()
 
             return _pow(g, response, p) == _mod(_mul(commitment, _pow(public, challenge, p)), p)
 
@@ -223,11 +271,7 @@ def make_schnorr_verify(cryptosys):
     return schnorr_verify
 
 
-def make_generate_keypair(cryptosys):
-    """
-    Returns the algebraic keygen functionality specific to the provided
-    cryptosystem, assuming its algebraic validity
-    """
+def make_keygen(cryptosys):
 
     _type = cryptosys['type']
 
@@ -235,7 +279,7 @@ def make_generate_keypair(cryptosys):
 
         p, g = extract_parameters(cryptosys)[:2]
 
-        def generate_keypair(private_key=None, schnorr=False):
+        def keygen(private_key=None, schnorr_proof=None):
 
             if private_key is None:
                 private_key = random_element(cryptosys)
@@ -245,17 +289,19 @@ def make_generate_keypair(cryptosys):
 
             public_key = _pow(g, private_key, p)
 
-            if schnorr is False:
-                return (private_key, public_key)
+            if schnorr_proof:
+
+                proof = schnorr_proof(private_key, public_key)
+                return private_key, public_key, proof
+
             else:
-                # TODO: add proof of knowledge
-                pass
+                return private_key, public_key
 
 
     elif _type is ELLIPTIC:
         pass
 
-    return generate_keypair
+    return keygen
 
 def make_encrypt(cryptosys):
     """
@@ -274,13 +320,13 @@ def make_encrypt(cryptosys):
             element += 1
             if element >= q:
                 e = 'Element to encrypt exceeds possibilities'
-                raise ImpossibleEncryptionError(e)
+                raise EncryptionNotPossible(e)
 
             if randomness is None:
                 randomness = random_integer(1, q)
             elif not 1 <= randomness <= q - 1:
                 e = 'Provided randomness exceeds order of group'
-                raise ImpossibleEncryptionError(e)
+                raise EncryptionNotPossible(e)
 
             if _pow(element, q, p) != 1:
                 element = _mod(-element, p)
@@ -300,7 +346,7 @@ def make_encrypt(cryptosys):
 
 def extract_parameters(cryptosys):
     """
-    Extracts in a tuple the parameters of the provided cryptosystem
+    Returns a tuple with the parameters of the provided cryptosystem
     """
 
     parameters = cryptosys['parameters']
@@ -334,19 +380,6 @@ def random_element(cryptosys):
         pass
 
 
-def hash_numbers(*args):
-    """
-    Returns (bytes) the SHA256-digest of the concatenation
-    of the provided numbers' hexadecimal representations
-    """
-    hasher = sha256()
-    update = hasher.update
-    for number in args:
-        # update(("%x:" % number).encode())
-        update(bytes("%x" % number, 'utf-8'))
-    return hasher.digest()
-
-
 def fiatshamir(cryptosys, *elements):
     """
     """
@@ -367,54 +400,19 @@ def fiatshamir(cryptosys, *elements):
         pass
 
 
-def validate_cryptosys(cryptosys, min_mod_bit_size=MIN_MOD_BIT_SIZE,
-                       min_gen_bit_size=MIN_GEN_BIT_SIZE, check_3mod4=True):
+def hash_numbers(*args):
     """
-    Validates algebraic correctness and cryptographical strength of the provided
-    cryptosystem. Returns `True` in case of validation, otherwise an appropriate
-    exception gets raised
+    Returns (bytes) the SHA256-digest of the concatenation
+    of the provided numbers' hexadecimal representations
     """
 
-    e = None
+    hasher = sha256()
+    update = hasher.update
 
-    _type = cryptosys['type']
+    for number in args:
+        update(("%x:" % number).encode())
 
-    if _type is INTEGER:
-
-        p, g, q = extract_parameters(cryptosys)
-
-        if p <= 2 or not number.isPrime(p):
-            e = 'Modulus is not an odd prime'
-            raise WrongCryptoError(e)
-
-        if check_3mod4 and _mod(p, 4) != 3:
-            e = 'Modulus is not 3 mod 4'
-            raise WrongCryptoError(e)
-
-        if not number.isPrime(q):
-            e = 'Order of ciphers\'s group is not prime'
-            raise WrongCryptoError(e)
-
-        if _mod(p - 1, q) != 0:
-            e = 'Order does not divide the multiplicative group\'s order'
-            raise WrongCryptoError(e)
-
-        if not 1 < g < p or _pow(g, q, p) != 1:
-            e = 'Generator is not valid'
-            raise WrongCryptoError(e)
-
-        if p.bit_length() < min_mod_bit_size:
-            e = 'Modulus is < %d bits long' % min_mod_bit_size
-            raise WeakCryptoError(e)
-
-        if g.bit_length() < min_gen_bit_size:
-            e = 'Generator is < %d bits long' % min_gen_bit_size
-            raise WeakCryptoError(e)
-
-    elif _type is ELLIPTIC:
-        pass
-
-    return not e
+    return hasher.digest()  # H( arg1 | ... | arg2)
 
 # ------------------------------------------------------------------------------
 
@@ -431,6 +429,12 @@ def validate_cryptosys(cryptosys, min_mod_bit_size=MIN_MOD_BIT_SIZE,
 #         raise
 #
 #     # return cryptosys
+#
+#
+# OPERATIONS = {
+#     INTEGER: {'mult', 'inv', 'pow'},
+#     ELLIPTIC: set()
+# }
 #
 # def make_operations(cryptosys):
 #     """

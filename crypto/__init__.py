@@ -1,8 +1,8 @@
-from .exceptions import (WrongConfigKeysError, WrongCryptoError,
-                         WeakCryptoError, UnloadedCryptoError)
+from .exceptions import (WrongConfigsError, WrongCryptoError, WeakCryptoError,
+                         UnloadedCryptoError)
 from .algebra import (make_cryptosys, validate_cryptosys,
                       make_schnorr_proof, make_schnorr_verify,
-                      make_generate_keypair, make_encrypt)
+                      make_keygen, make_encrypt)
 
 
 class CryptoController(object):
@@ -31,14 +31,14 @@ class CryptoController(object):
 
         schnorr_proof = make_schnorr_proof(cryptosys)
         schnorr_verify = make_schnorr_verify(cryptosys)
-        generate_keypair = make_generate_keypair(cryptosys)
+        keygen = make_keygen(cryptosys)
         encrypt = make_encrypt(cryptosys)
 
         self.primitives = {
             "cryptosys": cryptosys,
             "schnorr_proof": schnorr_proof,
             "schnorr_verify": schnorr_verify,
-            "generate_keypair": generate_keypair,
+            "keygen": keygen,
             "encrypt": encrypt,
         }
 

@@ -27,8 +27,8 @@ primitives = cryptoController.export_primitives()
 
 # Extract keygen functionality and generate key pair
 
-generate_keypair = primitives['generate_keypair']
-private_key, public_key = generate_keypair(_2048_KEY)
+keygen = primitives['keygen']
+private_key, public_key = keygen(_2048_KEY)
 
 
 # Extract encryption function

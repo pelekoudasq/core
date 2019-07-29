@@ -1,11 +1,5 @@
-class UnknownCryptoError(BaseException):
-    """
-    Raised when the type of the cryptosystem under construction
-    cannot be recognized
-    """
-    pass
 
-class WrongConfigKeysError(BaseException):
+class WrongConfigsError(BaseException):
     """
     Raised when the provided config keys do not correspond to the
     provided type of the cryptosystem under construction
@@ -25,13 +19,6 @@ class WeakCryptoError(BaseException):
     """
     pass
 
-class AlgebraicIncompatibilityError(BaseException):
-    """
-    Raised when some subset provided arguments are not algebraically
-    compatible with the provided cryptosystem's type
-    """
-    pass
-
 class UnloadedCryptoError(BaseException):
     """
     Raised when the primitives of a cryptosystem are requested
@@ -40,8 +27,8 @@ class UnloadedCryptoError(BaseException):
     """
     pass
 
-class ImpossibleEncryptionError(BaseException):
+class EncryptionNotPossible(BaseException):
     """
-    Raised when encryption under the provided conditions is impossible
+    Raised when encryption under the provided conditions is not possible
     """
     pass
