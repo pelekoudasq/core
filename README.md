@@ -1,33 +1,34 @@
 ## Example
 
 ```python
-from crypto import ModPrimeCrypto, _2048_PRIME, _2048_ELEMENT, _2048_KEY
+from crypto import ModPrimeCrypto, _2048_PRIME, _2048_ELEMENT
 
-# Create cryptosystem (defaults to quadratic residues)
+# Make cryptosystem (defaults to quadratic residues)
 
 cryptosys = ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_ELEMENT)
 
 # Extract primitives
 
 keygen = cryptosys.keygen
-encrypt_element = cryptosys.encrypt_element
 schnorr_proof = cryptosys.schnorr_proof
 schnorr_verify = cryptosys.schnorr_verify
+sign_element = cryptosys.sign_element
+verify_element_signature = cryptosys.verify_element_signature
+encrypt_element = cryptosys.encrypt_element
 
-# Generate key pair
+# Generate key pair along with proof of knowledge
 
-private_key, public_key =  keygen()
-
-# Encrypt element
-
-message = 373784375
-decryptor, cipher = encrypt_element(message, public_key)
+private_key, public_key, proof = keygen(schnorr=True)
 
 # Prove and verify knowledge of private key
 
-extras = [0, 7, 11, 666]
-proof = schnorr_proof(private_key, public_key, *extras)
-valid = schnorr_verify(proof, public_key, *extras)
+valid = schnorr_verify(proof, public_key)
+
+# Sign element and verify signature
+
+element = 4458795732736487628958739
+signature = sign_element(element, private_key)
+verified = verify_element_signature(signature, public_key)
 ```
 
 ## Tests

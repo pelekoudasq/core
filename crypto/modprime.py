@@ -188,6 +188,41 @@ class ModPrimeCrypto(ElGamalCrypto):
             return private_key, public_key
 
 
+    def sign_element(self, element, private_key):
+        """
+        """
+
+        p, q, g = self.params
+
+        while 1:
+            w = 2 * random_integer(3, q) - 1
+            r = pow(g, w, p)
+            u = p - 1
+            w = inv(w, u)
+            s = mod(mul(w, mod(add(element, - mul(r, private_key)), u)), u)
+            if s!= 0:
+                break
+
+        return element, r, s
+
+
+    def verify_element_signature(self, signature, public_key):
+        """
+        """
+
+        p, q, g = self.params
+
+        e, r, s = signature
+
+        # if not 0 < r < p:
+        #     return False
+
+        x0 = mod(mul(pow(public_key, r, p), pow(r, s, p)), p)
+        x1 = pow(g, e, p)
+
+        return x0 == x1
+
+
     def encrypt_element(self, element, public_key, randomness=None):
         """
         """
@@ -211,7 +246,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         decryptor = pow(g, randomness, p)
         cipher    = mod(mul(element, pow(public_key, randomness, p)), p)
 
-        return decryptor, cipher
+        return decryptor, cipher    # g ^ r modp, m * y ^ r modp
 
 
 # --------------------------------- Internals ---------------------------------

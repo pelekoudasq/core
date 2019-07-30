@@ -37,12 +37,23 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         """
 
     @abstractmethod
+    def sign_element(self, element, private_key):
+        """
+        """
+
+    @abstractmethod
+    def verify_element_signature(self, signature, public_key):
+        """
+        """
+
+    @abstractmethod
     def encrypt_element(self, element, public_key, randomness=None):
         """
         """
         pass
 
 # --------------------------------- Internals ---------------------------------
+
 
     @property
     @abstractmethod

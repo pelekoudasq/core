@@ -63,7 +63,9 @@ _4096_SYSTEM = ModPrimeCrypto(modulus=_4096_PRIME, element=_4096_ELEMENT)
 @pytest.mark.parametrize('cls, system, _bool', _cls_system__bool)
 def test_validate_system(cls, system, _bool):
 
-    assert cls.validate_system(system) is _bool
+    validated = cls.validate_system(system)
+
+    assert validated is _bool
 
 
 _system_secret_public_extras__bool = [
@@ -163,3 +165,22 @@ def test_random_keygen(system):
     valid = system.schnorr_verify(proof, public_key)
 
     assert valid
+
+
+_system_element_key = [
+    (
+        _2048_SYSTEM, 445879584794873958739, _2048_KEY, _2048_PUBLIC
+    ),
+    (
+        _4096_SYSTEM, 373784384794875232978, _4096_KEY, _4096_PUBLIC
+    ),
+]
+
+@pytest.mark.parametrize(
+    'system, element, private_key, public_key', _system_element_key)
+def test_element_signature(system, element, private_key, public_key):
+
+    signature = system.sign_element(element, private_key)
+    verified = system.verify_element_signature(signature, public_key)
+
+    assert verified
