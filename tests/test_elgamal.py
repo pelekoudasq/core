@@ -56,6 +56,10 @@ _cls_system__bool = [
     ),
 ]
 
+
+_2048_SYSTEM = ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_ELEMENT)
+_4096_SYSTEM = ModPrimeCrypto(modulus=_4096_PRIME, element=_4096_ELEMENT)
+
 @pytest.mark.parametrize('cls, system, _bool', _cls_system__bool)
 def test_validate_system(cls, system, _bool):
 
@@ -64,7 +68,7 @@ def test_validate_system(cls, system, _bool):
 
 _system_secret_public_extras__bool = [
     (
-        ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_ELEMENT),
+        _2048_SYSTEM,
         _2048_KEY,
         _2048_PUBLIC,
         [0, 7, 11, 666],
@@ -72,7 +76,7 @@ _system_secret_public_extras__bool = [
         True
     ),
     (
-        ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_ELEMENT),
+        _2048_SYSTEM,
         12345,                                                 # Wrong logarithm
         _2048_PUBLIC,
         [0, 7, 11, 666],
@@ -80,7 +84,7 @@ _system_secret_public_extras__bool = [
         False
     ),
     (
-        ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_ELEMENT),
+        _2048_SYSTEM,
         _2048_KEY,
         _2048_PUBLIC,
         [0, 7, 11, 666],
@@ -88,7 +92,7 @@ _system_secret_public_extras__bool = [
         False
     ),
     (
-        ModPrimeCrypto(modulus=_4096_PRIME, element=_4096_ELEMENT),
+        _4096_SYSTEM,
         _4096_KEY,
         _4096_PUBLIC,
         [0, 7, 11, 666],
@@ -96,7 +100,7 @@ _system_secret_public_extras__bool = [
         True
     ),
     (
-        ModPrimeCrypto(modulus=_4096_PRIME, element=_4096_ELEMENT),
+        _4096_SYSTEM,
         12345,                                                 # Wrong logarithm
         _4096_PUBLIC,
         [0, 7, 11, 666],
@@ -104,7 +108,7 @@ _system_secret_public_extras__bool = [
         False
     ),
     (
-        ModPrimeCrypto(modulus=_4096_PRIME, element=_4096_ELEMENT),
+        _4096_SYSTEM,
         _2048_KEY,
         _2048_PUBLIC,
         [0, 7, 11, 666],
@@ -127,12 +131,12 @@ def test_schnorr_protocol(system, secret, public, extras_1, extras_2, _bool):
 
 _system_secret_public = [
     (
-        ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_ELEMENT),
+        _2048_SYSTEM,
         _2048_KEY,
         _2048_PUBLIC
     ),
     (
-        ModPrimeCrypto(modulus=_4096_PRIME, element=_4096_ELEMENT),
+        _4096_SYSTEM,
         _4096_KEY,
         _4096_PUBLIC
     )
@@ -148,8 +152,8 @@ def test_non_random_keygen(system, secret, public):
 
 
 _system = [
-    ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_ELEMENT),
-    ModPrimeCrypto(modulus=_4096_PRIME, element=_4096_ELEMENT)
+    _2048_SYSTEM,
+    _4096_SYSTEM
 ]
 
 @pytest.mark.parametrize('system', _system)
