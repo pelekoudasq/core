@@ -31,7 +31,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         self.__q = system['order']
         self.__g = system['generator']
 
-        self.__system = system
 
     @property
     def system(self):
@@ -48,13 +47,12 @@ class ModPrimeCrypto(ElGamalCrypto):
         `*extras` are to be used in the Fiat-Shamir heuristic.
         """
 
-        p, q, g = self.__slots__
+        p, q, g = self.params()
 
         randomness = random_integer(2, q)       # r
         commitment = _pow(g, randomness, p)     # g ^ r
 
         challenge  = self.fiatshamir(
-            cryptosys,
             p, g, q,
             public,
             commitment,
@@ -73,7 +71,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         y (`public`). `*extras` are assumed to have been used in the Fiat-Shamir heuristic
         """
 
-        p, q, g = self.__slots__
+        p, q, g = self.params()
 
         commitment, challenge, response = proof     # g ^ r, c, s
 
@@ -81,7 +79,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         # c == g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp ?
 
         _challenge = self.fiatshamir(
-            cryptosys,
             p, g, q,
             public,
             commitment,
@@ -107,7 +104,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         for some integers 0 <= x, z < q
         """
 
-        p, q, g = self.__slots__
+        p, q, g = self.params()
 
         randomness = random_integer(2, q)          # 1 < r < q
 
@@ -138,7 +135,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         where u = g ^ x modp, v = g ^ z modp with 0 <= x, z < q
         """
 
-        p, q, g = self.__slots__
+        p, q, g = self.params()
 
         g_commitment, u_commitment, challenge, response = proof     # g ^ r, u ^ r, c, s
 
@@ -172,13 +169,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         """
 
-        p, q, g = self.__slots__
+        p, q, g = self.params()
 
         if private_key is None:
-            private_key = random_element(cryptosys)              # 1 < x < q
+            private_key = self.random_element()                 # 1 < x < q
         elif not 1 < private_key < q:
             e = 'Provided private key is not in the allowed range'
-            raise InvalidPrivateKeyError(e)
+            raise InvalidKeyError(e)
 
         public_key = _pow(g, private_key, p)                    # y = g ^ x modp
 
@@ -194,6 +191,8 @@ class ModPrimeCrypto(ElGamalCrypto):
     def encrypt_element(self, element, public_key, randomness=None):
         """
         """
+
+        p, q, g = self.params()
 
         element += 1
         if element >= q:
@@ -217,6 +216,16 @@ class ModPrimeCrypto(ElGamalCrypto):
 
 # --------------------------------- Internals ---------------------------------
 
+    def params(self):
+        """
+        """
+        modulus = self.__p
+        order = self.__q
+        generator = self.__g
+
+        return modulus, order, generator
+
+
     def random_element(self):
         """
         Returns a group element g ^ r modp, where 1 < r < q random
@@ -227,7 +236,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         """
 
-        p, q, g = self.__slots__
+        p, q, g = self.params()
 
         digest = hash_nums(p, g, q, *elements)
         reduced = _mod(bytes_to_int(digest), q)
@@ -280,7 +289,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         """
 
-        p, q, g = ModPrimeCrypto.extract_parameters(system)
+        p, q, g = ModPrimeCrypto.extract_params(system)
 
         if check_3mod4 and _mod(p, 4) != 3:
             e = 'Modulus is not 3 mod 4'

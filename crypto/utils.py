@@ -1,16 +1,19 @@
+from hashlib import sha256
+from Crypto import Random
+
+_random_generator_file = Random.new()
 
 # Returns the integer represented in LSB by the provided string's UTF-8 encoding
 bytes_to_int = lambda _bytes: int.from_bytes(_bytes, byteorder='little')
 
-from hashlib import sha256
-# Returns (bytes) the SHA256-digest of the concatenation
-# of the provided numbers' hexadecimal representation
+# Returns the SHA256-digest of the concatenation of the provided numbers' hexadecimal representation
 hash_nums = lambda *nums: sha256((''.join('%x:' % _ for _ in nums)).encode()).digest()
 
-from Crypto import Random
-_random_generator_file = Random.new()
-
 def random_integer(min, max):
+    """
+    min: inclusive lower bound
+    max: exclusive upper bound
+    """
 
     range = max - min
     nr_bits = max.bit_length()

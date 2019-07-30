@@ -33,7 +33,7 @@ from crypto.modprime import ModPrimeCrypto
 #     with pytest.raises(WrongConfigsError):
 #         make_cryptosys(config, _type)
 #
-# _configs_and_parameters = [
+# _configs_and_params = [
 #     (
 #         _2048_PRIME,
 #         2,
@@ -50,7 +50,7 @@ from crypto.modprime import ModPrimeCrypto
 #     )
 # ]
 #
-# @pytest.mark.parametrize('modulus, root_order, element, generator, order', _configs_and_parameters)
+# @pytest.mark.parametrize('modulus, root_order, element, generator, order', _configs_and_params)
 # def test_make_cryptosys(modulus, root_order, element, generator, order):
 #
 #     cryptosys = make_cryptosys(config={
@@ -60,7 +60,7 @@ from crypto.modprime import ModPrimeCrypto
 #     }, _type='integer')
 #
 #     assert cryptosys == {
-#         'parameters': {
+#         'params': {
 #             'modulus': modulus,
 #             'generator': generator,
 #             'order': order
@@ -72,7 +72,7 @@ from crypto.modprime import ModPrimeCrypto
 # _cryptosys_secret_public_extras__bool = [
 #     (
 #         {
-#             'parameters': {
+#             'params': {
 #                 'modulus': _2048_PRIME,
 #                 'generator': _2048_GENERATOR,
 #                 'order': _2048_ORDER
@@ -87,7 +87,7 @@ from crypto.modprime import ModPrimeCrypto
 #     ),
 #     (
 #         {
-#             'parameters': {
+#             'params': {
 #                 'modulus': _2048_PRIME,
 #                 'generator': _2048_GENERATOR,
 #                 'order': _2048_ORDER,
@@ -102,7 +102,7 @@ from crypto.modprime import ModPrimeCrypto
 #     ),
 #     (
 #         {
-#             'parameters': {
+#             'params': {
 #                 'modulus': _2048_PRIME,
 #                 'generator': _2048_GENERATOR,
 #                 'order': _2048_ORDER,
@@ -117,7 +117,7 @@ from crypto.modprime import ModPrimeCrypto
 #     ),
 #     (
 #         {
-#             'parameters': {
+#             'params': {
 #                 'modulus': _4096_PRIME,
 #                 'generator': _4096_GENERATOR,
 #                 'order': _4096_ORDER

@@ -16,24 +16,20 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         """
         """
 
-
     @abstractmethod
     def schnorr_verify(self, proof, public, *extras):
         """
         """
-
 
     @abstractmethod
     def chaum_pedersen_proof(u, v, w, z):
         """
         """
 
-
     @abstractmethod
     def chaum_pedersen_verify(u, v, w, proof):
         """
         """
-
 
     @abstractmethod
     def keygen(private_key=None, schnorr=False):
@@ -49,11 +45,15 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
 # --------------------------------- Internals ---------------------------------
 
     @abstractmethod
+    def params(self):
+        """
+        """
+
+    @abstractmethod
     def random_element(self):
         """
         """
 
-        
     @abstractmethod
     def fiatshamir(self, *elements):
         """
@@ -69,6 +69,6 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
 
     @staticmethod
     @abstractmethod
-    def validate_system(system):
+    def validate_system(system, *options):
         """
         """

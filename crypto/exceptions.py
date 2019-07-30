@@ -16,7 +16,7 @@ class EncryptionNotPossible(BaseException):
     """
     pass
 
-class InvalidPrivateKeyError(BaseException):
+class InvalidKeyError(BaseException):
     """
     Raised when the provided private key is not valid in the current context
     """
