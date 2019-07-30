@@ -1,62 +1,16 @@
-from .exceptions import (WrongConfigsError, WrongCryptoError, WeakCryptoError,
-                         UnloadedCryptoError)
-from .algebra_save import (make_cryptosys, validate_cryptosys,
-                      make_schnorr_proof, make_schnorr_verify,
-                      make_keygen, make_encrypt)
+from .constants import (_2048_PRIME, _2048_ELEMENT, _2048_ORDER, _2048_GENERATOR,
+                        _2048_KEY, _4096_PRIME, _4096_ELEMENT, _4096_ORDER,
+                        _4096_GENERATOR, _4096_KEY)
+from .modprime import ModPrimeCrypto
 
+__all__ = (
 
-class CryptoController(object):
+    # cryptosystems
+    
+    'ModPrimeCrypto',
 
-    def __init__(self, config, _type):
+    # constants
 
-        self.config = config
-        self.type = _type
-
-        self.primitives = None
-
-
-    def load(self):
-
-        try:
-            cryptosys = make_cryptosys(self.config, self.type)
-        except (WrongConfigKeysError, WrongCryptoError):
-            raise
-
-        try:
-            validate_cryptosys(cryptosys)
-        except (WrongCryptoError, WeakCryptoError):
-            raise
-
-        # Make primitives
-
-        schnorr_proof = make_schnorr_proof(cryptosys)
-        schnorr_verify = make_schnorr_verify(cryptosys)
-        keygen = make_keygen(cryptosys)
-        encrypt = make_encrypt(cryptosys)
-
-        self.primitives = {
-            "cryptosys": cryptosys,
-            "schnorr_proof": schnorr_proof,
-            "schnorr_verify": schnorr_verify,
-            "keygen": keygen,
-            "encrypt": encrypt,
-        }
-
-
-    def reload_cryptosystem(self, config, _type):
-        self.__init__(config, _type)
-        try:
-            self.load_cryptosystem()
-        except (WrongCryptoError, WeakCryptoError):
-            raise
-
-
-    def export_primitives(self):
-
-        primitives = self.primitives
-
-        if self.primitives is None:
-            e = 'No Cryptosystem has been loaded'
-            raise UnloadedCryptoError(e)
-
-        return primitives
+    '_2048_PRIME', '_2048_ELEMENT', '_2048_ORDER', '_2048_GENERATOR', '_2048_KEY',
+    '_4096_PRIME', '_4096_ELEMENT', '_4096_ORDER', '_4096_GENERATOR', '_4096_KEY'
+)

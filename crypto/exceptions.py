@@ -1,11 +1,3 @@
-
-class WrongConfigsError(BaseException):
-    """
-    Raised when the provided config keys do not correspond to the
-    provided type of the cryptosystem under construction
-    """
-    pass
-
 class WrongCryptoError(BaseException):
     """
     Raised when no cryptosystem exists for the provided configs
@@ -14,26 +6,18 @@ class WrongCryptoError(BaseException):
 
 class WeakCryptoError(BaseException):
     """
-    Raised when the cryptosystem determined by the provided parameters
-    does not meet the required security standards
-    """
-    pass
-
-class UnloadedCryptoError(BaseException):
-    """
-    Raised when the primitives of a cryptosystem are requested
-    without having loaded (algebraically constructed and
-    cryptographically validated) the cryptosystem
+    Raised when the requested cryptosystem does not meet the security standards
     """
     pass
 
 class EncryptionNotPossible(BaseException):
     """
-    Raised when encryption under the provided conditions is not possible
+    Raised when encryption of an element is not possible in the current context
     """
     pass
 
 class InvalidPrivateKeyError(BaseException):
     """
+    Raised when the provided private key is not valid in the current context
     """
     pass

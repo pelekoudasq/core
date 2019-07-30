@@ -17,6 +17,7 @@ except ImportError:
     _inv = Crypto.Util.number.inverse               # x ^ -1 mod p
 
 else:
+
     _add = lambda x, y: int(add(x, y))              # x + y
     _mul = lambda x, y: int(mul(x, y))              # xy
 
@@ -28,8 +29,7 @@ else:
     _pow = lambda x, y, z: int(powmod(x, y, z))     # x ^ y mod z
     _inv = lambda x, p: int(invert(x, p))           # x ^ -1 mod p
 
+
 # Checks if x is a ((p - 1)/q)-residue p, assuming that g is a generator of
 # these residues. Reduces to Legendre symbol if q = (p - 1)/2
 isresidue = lambda x, q, p: _pow(x, q, p) == 1
-
-# ---------------------------------- Helpers ----------------------------------
