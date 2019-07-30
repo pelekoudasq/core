@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 
 
 class ElGamalCrypto(object, metaclass=ABCMeta):
@@ -44,6 +44,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
 
 # --------------------------------- Internals ---------------------------------
 
+    @property
     @abstractmethod
     def params(self):
         """

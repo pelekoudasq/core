@@ -47,7 +47,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         `*extras` are to be used in the Fiat-Shamir heuristic.
         """
 
-        p, q, g = self.params()
+        p, q, g = self.params
 
         randomness = random_integer(2, q)       # r
         commitment = pow(g, randomness, p)     # g ^ r
@@ -71,7 +71,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         y (`public`). `*extras` are assumed to have been used in the Fiat-Shamir heuristic
         """
 
-        p, q, g = self.params()
+        p, q, g = self.params
 
         commitment, challenge, response = proof     # g ^ r, c, s
 
@@ -104,7 +104,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         for some integers 0 <= x, z < q
         """
 
-        p, q, g = self.params()
+        p, q, g = self.params
 
         randomness = random_integer(2, q)          # 1 < r < q
 
@@ -134,7 +134,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         where u = g ^ x modp, v = g ^ z modp with 0 <= x, z < q
         """
 
-        p, q, g = self.params()
+        p, q, g = self.params
 
         g_commitment, u_commitment, challenge, response = proof     # g ^ r, u ^ r, c, s
 
@@ -167,7 +167,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         """
 
-        p, q, g = self.params()
+        p, q, g = self.params
 
         if private_key is None:
 
@@ -192,7 +192,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         """
 
-        p, q, g = self.params()
+        p, q, g = self.params
 
         element += 1
         if element >= q:
@@ -216,6 +216,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
 # --------------------------------- Internals ---------------------------------
 
+    @property
     def params(self):
         """
         """
@@ -232,11 +233,12 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         return pow(self.__g, random_integer(2, self.__q), self.__p)
 
+
     def fiatshamir(self, *elements):
         """
         """
 
-        p, q, g = self.params()
+        p, q, g = self.params
 
         digest = hash_nums(p, g, q, *elements)
         reduced = mod(bytes_to_int(digest), q)

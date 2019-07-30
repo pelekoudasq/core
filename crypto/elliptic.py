@@ -58,6 +58,7 @@ class EllipticCrypto(ElGamalCrypto):
 
 # --------------------------------- Internals ---------------------------------
 
+    @property
     def params(self):
         """
         """

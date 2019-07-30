@@ -32,6 +32,6 @@ else:
     inv = lambda x, p: int(invert(x, p))           # x ^ -1 mod p
 
 
-# Checks if x is a ((p - 1)/q)-residue p, assuming that g is a generator of
+# Checks if x is a ((p - 1)/q)-residue modp, assuming that g is a generator of
 # these residues. Reduces to Legendre symbol if q = (p - 1)/2
 isresidue = lambda x, q, p: pow(x, q, p) == 1
