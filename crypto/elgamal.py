@@ -47,6 +47,16 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         """
 
     @abstractmethod
+    def sign_text_message(self, message, private_key):
+        """
+        """
+
+    @abstractmethod
+    def verify_text_signature(self, signed_message, public_key):
+        """
+        """
+
+    @abstractmethod
     def encrypt_element(self, element, public_key, randomness=None):
         """
         """
@@ -60,6 +70,12 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
     def params(self):
         """
         """
+
+    @abstractmethod
+    def algebraize(self, text_message):
+        """
+        """
+        pass
 
     @abstractmethod
     def random_element(self):

@@ -59,7 +59,20 @@ class EllipticCrypto(ElGamalCrypto):
     def verify_element_signature(self, signature, public_key):
         """
         """
+        pass
 
+
+    def sign_text_message(self, message, private_key):
+        """
+        """
+        pass
+
+
+    def verify_text_signature(self, signed_message, public_key):
+        """
+        """
+        pass
+        
 
     def encrypt_element(self, element, public_key, randomness=None):
         """
@@ -74,6 +87,13 @@ class EllipticCrypto(ElGamalCrypto):
         """
         """
         pass
+
+
+    def algebraize(self, text_message):
+        """
+        """
+        pass
+
 
     def random_element(self):
         """

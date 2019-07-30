@@ -6,8 +6,11 @@ _random_generator_file = Random.new()
 # Returns the integer represented in LSB by the provided string's UTF-8 encoding
 bytes_to_int = lambda _bytes: int.from_bytes(_bytes, byteorder='little')
 
-# Returns the SHA256-digest of the concatenation of the provided numbers' hexadecimal representation
+# Returns the SHA256-digest of the concatenation of the provided numbers' hexadecimal representations
 hash_nums = lambda *nums: sha256((''.join('%x:' % _ for _ in nums)).encode()).digest()
+
+# Returns the SHA256-digest of the concatenation of the provided strings separated by '\x00'
+hash_texts = lambda *args: sha256(('\x00'.join(args)).encode()).digest()
 
 def random_integer(min, max):
     """
@@ -27,7 +30,7 @@ def random_integer(min, max):
         num -= max
     return num + min
 
-# def hash_nums2(*args):
+# def hash_nums(*args):
 #     """
 #     Returns (bytes) the SHA256-digest of the concatenation
 #     of the provided numbers' hexadecimal representations
@@ -36,7 +39,16 @@ def random_integer(min, max):
 #     hasher = sha256()
 #     update = hasher.update
 #
-#     for number in args:
-#         update(("%x:" % number).encode())
+#     for arg in args:
+#         update(("%x:" % arg).encode())
+#
+#     return hasher.digest()  # H( arg1 | ... | arg2)
+#
+#
+# def hash_texts2(*args):
+#     """
+#     """
+#     hasher = sha256()
+#     hasher.update(('\x00'.join(args)).encode())
 #
 #     return hasher.digest()  # H( arg1 | ... | arg2)

@@ -27,8 +27,16 @@ valid = schnorr_verify(proof, public_key)
 # Sign element and verify signature
 
 element = 4458795732736487628958739
+
 signature = sign_element(element, private_key)
 verified = verify_element_signature(signature, public_key)
+
+# Sign text and verify signature
+
+message = 'SOS'
+
+signed_message = sign_text_message(message, private_key)
+verified = verify_text_signature(signed_message, public_key)
 ```
 
 ## Tests

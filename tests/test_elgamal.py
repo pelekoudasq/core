@@ -133,14 +133,10 @@ def test_schnorr_protocol(system, secret, public, extras_1, extras_2, _bool):
 
 _system_secret_public = [
     (
-        _2048_SYSTEM,
-        _2048_KEY,
-        _2048_PUBLIC
+        _2048_SYSTEM, _2048_KEY, _2048_PUBLIC
     ),
     (
-        _4096_SYSTEM,
-        _4096_KEY,
-        _4096_PUBLIC
+        _4096_SYSTEM, _4096_KEY, _4096_PUBLIC
     )
 ]
 
@@ -182,5 +178,24 @@ def test_element_signature(system, element, private_key, public_key):
 
     signature = system.sign_element(element, private_key)
     verified = system.verify_element_signature(signature, public_key)
+
+    assert verified
+
+
+_system_element_key = [
+    (
+        _2048_SYSTEM, 'kjkdfgkjdhfkgjhdkfjd', _2048_KEY, _2048_PUBLIC
+    ),
+    (
+        _4096_SYSTEM, 'kdjfghkhelshfijaoiuv', _4096_KEY, _4096_PUBLIC
+    ),
+]
+
+@pytest.mark.parametrize(
+    'system, message, private_key, public_key', _system_element_key)
+def test_text_message_signature(system, message, private_key, public_key):
+
+    signed_message = system.sign_text_message(message, private_key)
+    verified = system.verify_text_signature(signed_message, public_key)
 
     assert verified

@@ -4,7 +4,7 @@ from Crypto.Util.number import isPrime
 from .elgamal import ElGamalCrypto
 from .exceptions import WrongCryptoError, WeakCryptoError
 from .algebra import add, mul, divmod, mod, pow, inv
-from .utils import bytes_to_int, hash_nums, random_integer
+from .utils import bytes_to_int, hash_nums, hash_texts, random_integer
 
 
 class ModPrimeCrypto(ElGamalCrypto):
@@ -203,7 +203,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             if s!= 0:
                 break
 
-        return element, r, s
+        return {'e': element, 'r': r, 's': s}
 
 
     def verify_element_signature(self, signature, public_key):
@@ -212,7 +212,9 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         p, q, g = self.params
 
-        e, r, s = signature
+        e = signature['e']
+        r = signature['r']
+        s = signature['s']
 
         # if not 0 < r < p:
         #     return False
@@ -221,6 +223,34 @@ class ModPrimeCrypto(ElGamalCrypto):
         x1 = pow(g, e, p)
 
         return x0 == x1
+
+
+    def sign_text_message(self, message, private_key):
+        """
+        """
+
+        element = self.algebraize(message)
+
+        signature = self.sign_element(element, private_key)
+
+        signed_message = {'message': message, 'signature': signature}
+
+        return signed_message
+
+
+    def verify_text_signature(self, signed_message, public_key):
+        """
+        """
+
+        message = signed_message['message']
+        signature = signed_message['signature']
+
+        element = self.algebraize(message)
+
+        if element != signature['e']:
+            return False
+
+        return self.verify_element_signature(signature, public_key)
 
 
     def encrypt_element(self, element, public_key, randomness=None):
@@ -267,6 +297,20 @@ class ModPrimeCrypto(ElGamalCrypto):
         Returns a group element g ^ r modp, where 1 < r < q random
         """
         return pow(self.__g, random_integer(2, self.__q), self.__p)
+
+
+    def algebraize(self, *texts):
+        """
+        """
+
+        p, q, g = self.params
+
+        hashed_params = hash_nums(p, q, g).hex()
+        hashed_texts = hash_texts(hashed_params, *texts)
+
+        exp = mod(bytes_to_int(hashed_texts), q)
+
+        return pow(g, exp, p)
 
 
     def fiatshamir(self, *elements):

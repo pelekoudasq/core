@@ -15,6 +15,8 @@ schnorr_proof = cryptosys.schnorr_proof
 schnorr_verify = cryptosys.schnorr_verify
 sign_element = cryptosys.sign_element
 verify_element_signature = cryptosys.verify_element_signature
+sign_text_message = cryptosys.sign_text_message
+verify_text_signature = cryptosys.verify_text_signature
 encrypt_element = cryptosys.encrypt_element
 
 # Generate key pair along with proof of knowledge
@@ -37,6 +39,13 @@ signature = sign_element(element, private_key)
 verified = verify_element_signature(signature, public_key)
 print(verified)
 
+# Sign text and verify signature
+
+message = 'SOS'
+
+signed_message = sign_text_message(message, private_key)
+verified = verify_text_signature(signed_message, public_key)
+print(verified)
 
 # Encrypt element
 
