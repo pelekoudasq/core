@@ -3,7 +3,7 @@ from Crypto.Util.number import isPrime
 
 from .elgamal import ElGamalCrypto
 from .exceptions import WrongCryptoError, WeakCryptoError
-from .algebra import _add, _mul, _divmod, _mod, _pow, _inv
+from .algebra import add, mul, divmod, mod, pow, inv
 from .utils import bytes_to_int, hash_nums, random_integer
 
 
@@ -50,7 +50,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         p, q, g = self.params()
 
         randomness = random_integer(2, q)       # r
-        commitment = _pow(g, randomness, p)     # g ^ r
+        commitment = pow(g, randomness, p)     # g ^ r
 
         challenge  = self.fiatshamir(
             p, g, q,
@@ -58,7 +58,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             commitment,
             *extras)              # c = g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp
 
-        response = _mod(_add(randomness, _mul(challenge, secret)), q)   # s = r + c * x  modq
+        response = mod(add(randomness, mul(challenge, secret)), q)   # s = r + c * x  modq
 
         return commitment, challenge, response  # g ^ r, c, s
 
@@ -89,7 +89,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # Proceed to proof validation: g ^ s modp == (g ^ r) * (y ^ c) modp ?
 
-        return _pow(g, response, p) == _mod(_mul(commitment, _pow(public, challenge, p)), p)
+        return pow(g, response, p) == mod(mul(commitment, pow(public, challenge, p)), p)
 
 
     def chaum_pedersen_proof(self, u, v, w, z):
@@ -117,7 +117,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             g_commitment,
             u_commitment)   # c = g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp
 
-        response = _mod(_add(randomness, _mul(challenge, z)), q)         # s = r + c * z  modq
+        response = mod(add(randomness, mul(challenge, z)), q)         # s = r + c * z  modq
 
         return g_commitment, u_commitment, challenge, response           # g ^ r, u ^ r, c, s
 
@@ -153,14 +153,14 @@ class ModPrimeCrypto(ElGamalCrypto):
         # Verify prover's commitment to presumed randomness:
         # g ^ s == g ^ r * v ^ c  modp ?
 
-        if _pow(g, response) != _mod(_mul(g_commitment, _pow(v, challenge, p)), p):
+        if pow(g, response) != mod(mul(g_commitment, pow(v, challenge, p)), p):
             return False
 
         # Verify that the provided u is of the form g ^ (k * z) for some k, and
         # thus k = x due to verified prover's commitment to randomness r:
         # u ^ s == u ^ r * w ^ c  modp ?
 
-        return _pow(u, response, p) == _mod(_mul(u_commitment, _pow(w, challenge, p)), p)
+        return pow(u, response, p) == mod(mul(u_commitment, pow(w, challenge, p)), p)
 
 
     def keygen(self, private_key=None, schnorr=False):
@@ -177,7 +177,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             e = 'Provided private key exceeds the allowed range'
             raise InvalidKeyError(e)
 
-        public_key = _pow(g, private_key, p)                    # y = g ^ x modp
+        public_key = pow(g, private_key, p)                    # y = g ^ x modp
 
         if schnorr is True:
 
@@ -205,11 +205,11 @@ class ModPrimeCrypto(ElGamalCrypto):
             e = 'Provided randomness exceeds order of group'
             raise EncryptionNotPossible(e)
 
-        if _pow(element, q, p) != 1:
-            element = _mod(-element, p)
+        if pow(element, q, p) != 1:
+            element = mod(-element, p)
 
-        decryptor = _pow(g, randomness, p)
-        cipher    = _mod(_mul(element, _pow(public_key, randomness, p)), p)
+        decryptor = pow(g, randomness, p)
+        cipher    = mod(mul(element, pow(public_key, randomness, p)), p)
 
         return decryptor, cipher
 
@@ -230,7 +230,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         Returns a group element g ^ r modp, where 1 < r < q random
         """
-        return _pow(self.__g, random_integer(2, self.__q), self.__p)
+        return pow(self.__g, random_integer(2, self.__q), self.__p)
 
     def fiatshamir(self, *elements):
         """
@@ -239,8 +239,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         p, q, g = self.params()
 
         digest = hash_nums(p, g, q, *elements)
-        reduced = _mod(bytes_to_int(digest), q)
-        output = _pow(g, reduced, p)
+        reduced = mod(bytes_to_int(digest), q)
+        output = pow(g, reduced, p)
 
         return output   # g ^ ( H( p | g | q | elements)  modq )  modp
 
@@ -263,7 +263,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         if g0 < 2 or g0 > nr_elements - 1:
             e = 'Provided element does not belong to the multiplicative group'
 
-        q, s = _divmod(nr_elements, r)  # q = (p - 1)/r
+        q, s = divmod(nr_elements, r)  # q = (p - 1)/r
 
         if s != 0:
             e = 'Provided order does not divide the multiplicative group\'s order'
@@ -273,7 +273,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             e = 'Order of the requested group is not prime'
             raise WrongCryptoError(e)
 
-        g = _pow(g0, r, p)  # g = g0 ^ r  modp
+        g = pow(g0, r, p)  # g = g0 ^ r  modp
 
         if g == 1:
             # Algebraic fact: given 1 < x < p for a smooth prime p and 1 < r < p - 1 with
@@ -291,11 +291,11 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         p, q, g = list(system.values())
 
-        if check_3mod4 and _mod(p, 4) != 3:
+        if check_3mod4 and mod(p, 4) != 3:
             e = 'Modulus is not 3 mod 4'
             raise WrongCryptoError(e)
 
-        if _mod(p - 1, q) != 0:
+        if mod(p - 1, q) != 0:
             e = 'Order of subgroup does not divide the multiplicative group\'s order'
             raise WrongCryptoError(e)
 
@@ -303,7 +303,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             e = 'Order of subgroup is not prime'
             raise WrongCryptoError(e)
 
-        if not 1 < g < p or _pow(g, q, p) != 1:
+        if not 1 < g < p or pow(g, q, p) != 1:
             e = 'Generator is not valid'
             raise WrongCryptoError(e)
 

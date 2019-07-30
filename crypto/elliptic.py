@@ -3,7 +3,7 @@ from Crypto.Util.number import isPrime
 
 from .elgamal import ElGamalCrypto
 from .exceptions import WrongCryptoError, WeakCryptoError
-from .algebra import _add, _mul, _divmod, _mod, _pow, _inv
+from .algebra import add, mul, divmod, mod, pow, inv
 from .utils import bytes_to_int, hash_nums, random_integer
 
 

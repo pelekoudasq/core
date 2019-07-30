@@ -1,7 +1,7 @@
 import pytest
 from math import floor
 
-from crypto.algebra import (_add, _mul, _divmod, _mod, _pow, _inv, isresidue)
+from crypto.algebra import (add, mul, divmod, mod, pow, inv, isresidue)
 from crypto.constants import (_2048_PRIME, _2048_ELEMENT, _2048_GENERATOR,
                               _2048_ORDER, _2048_KEY, _2048_PUBLIC,
                               _4096_PRIME, _4096_ELEMENT, _4096_GENERATOR,
@@ -15,30 +15,30 @@ from crypto.exceptions import (WrongCryptoError)
 _2_ples_with_zeros = [(m, n) for m in range(0, 5) for n in range(0, 5)]
 
 @pytest.mark.parametrize('m, n', _2_ples_with_zeros)
-def test__add(m, n):
-    assert _add(m, n) == m + n
+def test_add(m, n):
+    assert add(m, n) == m + n
 
 @pytest.mark.parametrize('m, n', _2_ples_with_zeros)
-def test__mul(m, n):
-    assert _mul(m, n) == m * n
+def test_mul(m, n):
+    assert mul(m, n) == m * n
 
 
 _2_ples_without_zeroes = [(m, n) for m in range(0, 5) for n in range(1, 5)]
 
 @pytest.mark.parametrize('m, n', _2_ples_without_zeroes)
 def test__divmod(m, n):
-    assert _divmod(m, n) == (floor(m / n), m % n)
+    assert divmod(m, n) == (floor(m / n), m % n)
 
 @pytest.mark.parametrize('m, n', _2_ples_without_zeroes)
 def test__mod(m, n):
-    assert _mod(m, n) == m % n
+    assert mod(m, n) == m % n
 
 
 _3_ples = [(m, n, r) for m in range(0, 5) for n in range(0, 5) for r in range(1, m ** n)]
 
 @pytest.mark.parametrize('m, n, r', _3_ples)
-def test__pow(m, n, r):
-    assert _pow(m, n, r) == m ** n % r
+def test_pow(m, n, r):
+    assert pow(m, n, r) == m ** n % r
 
 
 modular_inverses = [
@@ -52,7 +52,7 @@ modular_inverses = [
 
 @pytest.mark.parametrize('x, y, r', modular_inverses)
 def test__inv(x, y, r):
-    assert _inv(x, r) == y
+    assert inv(x, r) == y
 
 
 # Test powering inside Z^*_p for large p's
@@ -61,11 +61,11 @@ prime_and_element = [(_2048_PRIME, _2048_ELEMENT), (_4096_PRIME, _4096_ELEMENT)]
 
 @pytest.mark.parametrize('p, a', prime_and_element)
 def test_multiplicative_group_order(p, a):
-    assert _pow(a, p - 1, p) == 1
+    assert pow(a, p - 1, p) == 1
 
 @pytest.mark.parametrize('p, a', prime_and_element)
 def test_multiplicative_subgroup_order(p, a):
-    assert _pow(_pow(a, 2, p) , _divmod(p - 1, 2)[0], p) == 1
+    assert pow(pow(a, 2, p) , divmod(p - 1, 2)[0], p) == 1
 
 
 # Test modular residues
