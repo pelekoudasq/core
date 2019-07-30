@@ -3,7 +3,7 @@
 ```python
 from crypto import ModPrimeCrypto, _2048_PRIME, _2048_ELEMENT, _2048_KEY
 
-# Create cryptosystem
+# Create cryptosystem (defaults to quadratic residues)
 
 cryptosys = ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_ELEMENT)
 

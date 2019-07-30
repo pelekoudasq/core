@@ -112,7 +112,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         u_commitment = _prod(u, randomness, p)     # u ^ r
 
         challenge = self.fiatshamir(
-            cryptosys,
             p, g, q,
             u, v, w,
             g_commitment,
@@ -143,7 +142,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         # c == g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp ?
 
         _challenge = self.fiatshamir(
-            cryptosys,
             p, g, q,
             u, v, w,
             g_commitment,
@@ -172,9 +170,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         p, q, g = self.params()
 
         if private_key is None:
+
             private_key = self.random_element()                 # 1 < x < q
+
         elif not 1 < private_key < q:
-            e = 'Provided private key is not in the allowed range'
+            e = 'Provided private key exceeds the allowed range'
             raise InvalidKeyError(e)
 
         public_key = _pow(g, private_key, p)                    # y = g ^ x modp
@@ -285,7 +285,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
 
     @classmethod
-    def validate_system(cls, system, check_3mod4):
+    def validate_system(cls, system, check_3mod4=True):
         """
         """
 
@@ -314,3 +314,5 @@ class ModPrimeCrypto(ElGamalCrypto):
         if g.bit_length() < cls.MIN_GEN_SIZE:
             e = 'Generator is < %d bits long' % cls.MIN_GEN_SIZE
             raise WeakCryptoError(e)
+
+        return True

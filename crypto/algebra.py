@@ -3,7 +3,7 @@ import Crypto
 # Optimize common integer operations
 
 try:
-    from gmpy2 import add, mul, f_divmod, f_mod, powmod, invert
+    from gmpy2 import _add, mul, f_divmod, f_mod, powmod, invert
 
 except ImportError:
 
@@ -18,7 +18,7 @@ except ImportError:
 
 else:
 
-    _add = lambda x, y: int(add(x, y))              # x + y
+    _add = lambda x, y: int(_add(x, y))              # x + y
     _mul = lambda x, y: int(mul(x, y))              # xy
 
     def _divmod(x, y):
