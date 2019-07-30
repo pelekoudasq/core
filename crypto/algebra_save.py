@@ -3,8 +3,8 @@ import Crypto.Util.number as number
 
 from .exceptions import (WrongConfigsError, WrongCryptoError, WeakCryptoError,
                         InvalidPrivateKeyError, EncryptionNotPossible)
-from .cryptorandom import random_integer
-from .binutils import bytes_to_int
+from .utils import random_integer
+from .utils import bytes_to_int
 
 MIN_MOD_BIT_SIZE = 2048
 MIN_GEN_BIT_SIZE = 2000
@@ -477,7 +477,7 @@ def fiatshamir(cryptosys, *elements):
 
         p, g, q = extract_parameters(cryptosys)
 
-        digest = hash_numbers(p, g, q, *elements)
+        digest = hash_nums(p, g, q, *elements)
         reduced = _mod(bytes_to_int(digest), q)
         output = _pow(g, reduced, p)
 
@@ -487,7 +487,7 @@ def fiatshamir(cryptosys, *elements):
         pass
 
 
-def hash_numbers(*args):
+def hash_nums(*args):
     """
     Returns (bytes) the SHA256-digest of the concatenation
     of the provided numbers' hexadecimal representations

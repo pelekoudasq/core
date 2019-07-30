@@ -1,9 +1,9 @@
 from .exceptions import (WrongConfigsError, WrongCryptoError, WeakCryptoError,
                          UnloadedCryptoError)
-from .algebra import (make_cryptosys, validate_cryptosys,
+from .algebra_save import (make_cryptosys, validate_cryptosys,
                       make_schnorr_proof, make_schnorr_verify,
                       make_keygen, make_encrypt)
-                      
+
 
 class CryptoController(object):
 
