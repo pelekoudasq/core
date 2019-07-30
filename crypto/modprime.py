@@ -22,10 +22,10 @@ class ModPrimeCrypto(ElGamalCrypto):
         except WrongCryptoError:
             raise
 
-        # try:
-        #     ModPrimeCrypto.validate_system(system, check_3mod4=check_3mod4)
-        # except (WrongCryptoError, WeakCryptoError):
-        #     raise
+        try:
+            ModPrimeCrypto.validate_system(system, check_3mod4=check_3mod4)
+        except (WrongCryptoError, WeakCryptoError):
+            raise
 
         self.__p = system['modulus']
         self.__q = system['order']
@@ -284,12 +284,12 @@ class ModPrimeCrypto(ElGamalCrypto):
         return {'modulus': p, 'order': q, 'generator': g}
 
 
-    @staticmethod
-    def validate_system(system, check_3mod4):
+    @classmethod
+    def validate_system(cls, system, check_3mod4):
         """
         """
 
-        p, q, g = ModPrimeCrypto.extract_params(system)
+        p, q, g = list(system.values())
 
         if check_3mod4 and _mod(p, 4) != 3:
             e = 'Modulus is not 3 mod 4'
@@ -307,10 +307,10 @@ class ModPrimeCrypto(ElGamalCrypto):
             e = 'Generator is not valid'
             raise WrongCryptoError(e)
 
-        if p.bit_length() < MIN_MOD_SIZE:
-            e = 'Modulus is < %d bits long' % MIN_MOD_SIZE
+        if p.bit_length() < cls.MIN_MOD_SIZE:
+            e = 'Modulus is < %d bits long' % cls.MIN_MOD_SIZE
             raise WeakCryptoError(e)
 
-        if g.bit_length() < MIN_GEN_SIZE:
-            e = 'Generator is < %d bits long' % MIN_GEN_SIZE
+        if g.bit_length() < cls.MIN_GEN_SIZE:
+            e = 'Generator is < %d bits long' % cls.MIN_GEN_SIZE
             raise WeakCryptoError(e)

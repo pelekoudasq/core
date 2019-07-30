@@ -67,8 +67,8 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         """
         """
 
-    @staticmethod
+    @classmethod
     @abstractmethod
-    def validate_system(system, *options):
+    def validate_system(cls, system, *options):
         """
         """

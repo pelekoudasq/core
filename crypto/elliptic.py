@@ -84,8 +84,8 @@ class EllipticCrypto(ElGamalCrypto):
         pass
 
 
-    @staticmethod
-    def validate_system(system, *options):
+    @classmethod
+    def validate_system(cls, system, *options):
         """
         """
         pass
