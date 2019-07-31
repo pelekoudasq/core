@@ -10,7 +10,7 @@ from .utils import bytes_to_int, hash_nums, random_integer
 class EllipticCrypto(ElGamalCrypto):
 
 
-    def __init__(self, *config):
+    def __init__(self, config, *opts):
         pass
 
     @property
@@ -32,13 +32,13 @@ class EllipticCrypto(ElGamalCrypto):
         pass
 
 
-    def chaum_pedersen_proof(self, u, v, w, z):
+    def chaum_pedersen_proof(self, ddh, z):
         """
         """
         pass
 
 
-    def chaum_pedersen_verify(self, u, v, w, proof):
+    def chaum_pedersen_verify(self, ddh, proof):
         """
         """
         pass
@@ -72,7 +72,7 @@ class EllipticCrypto(ElGamalCrypto):
         """
         """
         pass
-        
+
 
     def encrypt_element(self, element, public_key, randomness=None):
         """

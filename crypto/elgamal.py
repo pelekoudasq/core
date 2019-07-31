@@ -1,11 +1,35 @@
 from abc import ABCMeta, abstractmethod
+from .exceptions import WrongCryptoError, WeakCryptoError
 
 
 class ElGamalCrypto(object, metaclass=ABCMeta):
 
+    def __init__(self, cls, config, *opts):
+        try:
+            system = cls.generate_system(config)
+        except WrongCryptoError:
+            raise
+
+        # self.__system = system
+
+        try:
+            cls.validate_system(system, *opts)
+        except (WrongCryptoError, WeakCryptoError):
+            raise
+
+        # self.set_params(system)
+        self.set_params(system)
+        # print(system)
+
+
     @property
     @abstractmethod
     def system():
+        """
+        """
+
+    @abstractmethod
+    def set_params(self, system):
         """
         """
 
@@ -22,17 +46,17 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def chaum_pedersen_proof(u, v, w, z):
+    def chaum_pedersen_proof(self, ddh, z):
         """
         """
 
     @abstractmethod
-    def chaum_pedersen_verify(u, v, w, proof):
+    def chaum_pedersen_verify(self, ddh, proof):
         """
         """
 
     @abstractmethod
-    def keygen(private_key=None, schnorr=False):
+    def keygen(self, private_key=None, schnorr=False):
         """
         """
 

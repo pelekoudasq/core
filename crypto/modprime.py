@@ -16,17 +16,48 @@ class ModPrimeCrypto(ElGamalCrypto):
 
 
     def __init__(self, modulus, element, root_order=2, check_3mod4=True):
+    # def __init__(self, config, check_3mod4=True):
 
-        try:
-            system = ModPrimeCrypto.generate_system(modulus, element, root_order)
-        except WrongCryptoError:
-            raise
+        config = {
+            'modulus': modulus,
+            'element': element,
+            'root_order': root_order
+        }
 
-        try:
-            ModPrimeCrypto.validate_system(system, check_3mod4=check_3mod4)
-        except (WrongCryptoError, WeakCryptoError):
-            raise
+        opts = [check_3mod4]
 
+        # try:
+        #     modulus = config['modulus']
+        #     element = config['element']
+        #     root_order = config['root_order']
+        # except KeyError:
+        #     raise
+
+        super().__init__(self.__class__, config, *opts)
+
+        # modulus = config['modulus']
+        # element = config['order']
+        # root_order = config['root_order']
+
+        # super().__init__(modulus, element, root_order, check_3mod4)
+
+        # try:
+        #     system = ModPrimeCrypto.generate_system(modulus, element, root_order)
+        # except WrongCryptoError:
+        #     raise
+        #
+        # self.__system = system
+        #
+        # try:
+        #     ModPrimeCrypto.validate_system(system, check_3mod4=check_3mod4)
+        # except (WrongCryptoError, WeakCryptoError):
+        #     raise
+
+        # self.__p = self.__system['modulus']
+        # self.__q = self.__system['order']
+        # self.__g = self.__system['generator']
+
+    def set_params(self, system):
         self.__p = system['modulus']
         self.__q = system['order']
         self.__g = system['generator']
@@ -35,6 +66,38 @@ class ModPrimeCrypto(ElGamalCrypto):
     @property
     def system(self):
         return {'modulus': self.__p, 'order': self.__q, 'generator': self.__g}
+
+    # Algebraic operations
+
+    def mul(self, x, z):
+        """
+        Group multiplication: (x, z) ---> x * z modp
+        """
+        return mod(mul(x, z), self.__p)
+
+    def inv(self, x):
+        """
+        Returns inverse group element: x ---> x ^ -1 modp
+        """
+        return inv(x, self.__p)
+
+    def pow(self, x, z):
+        """
+        Group powering: (x, z) ---> x ^ z modp
+        """
+        return pow(x, z, self.__p)
+
+    def gen(self, z):
+        """
+        Group-element generation: z ---> g ^ z mod p
+        """
+        return pow(self.__g, z, self.__p)
+
+    def add(self, a, b):
+        """
+        Exponent addition: (a, b) ---> (a + b) modp
+        """
+        return mod(add(a, b), self.__q)
 
 
 # --------------------------------- Interface ---------------------------------
@@ -50,7 +113,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         p, q, g = self.params
 
         randomness = random_integer(2, q)       # r
-        commitment = pow(g, randomness, p)     # g ^ r
+        commitment = self.gen(randomness)# pow(g, randomness, p)     # g ^ r
 
         challenge  = self.fiatshamir(
             p, g, q,
@@ -58,9 +121,11 @@ class ModPrimeCrypto(ElGamalCrypto):
             commitment,
             *extras)              # c = g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp
 
-        response = mod(add(randomness, mul(challenge, secret)), q)   # s = r + c * x  modq
+        response = self.add(randomness, mul(challenge, secret))# mod(add(randomness, mul(challenge, secret)), q)   # s = r + c * x  modq
 
-        return commitment, challenge, response  # g ^ r, c, s
+        return {'commitment': commitment, 'challenge': challenge, 'response': response}
+
+         # commitment, challenge, response  # g ^ r, c, s
 
 
     def schnorr_verify(self, proof, public, *extras):
@@ -73,7 +138,11 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         p, q, g = self.params
 
-        commitment, challenge, response = proof     # g ^ r, c, s
+        commitment = proof['commitment']    # g ^ r
+        challenge = proof['challenge']      # c
+        response = proof['response']        # s
+
+        # commitment, challenge, response = proof     # g ^ r, c, s
 
         # Check correctness of chalenge:
         # c == g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp ?
@@ -89,15 +158,16 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # Proceed to proof validation: g ^ s modp == (g ^ r) * (y ^ c) modp ?
 
-        return pow(g, response, p) == mod(mul(commitment, pow(public, challenge, p)), p)
+        return self.gen(response) == self.mul(commitment, self.pow(public, challenge))
+        # return pow(g, response, p) == mod(mul(commitment, pow(public, challenge, p)), p)
 
 
-    def chaum_pedersen_proof(self, u, v, w, z):
+    def chaum_pedersen_proof(self, ddh, z):
         """
         Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
 
-        Returns zero-knowledge proof that the provided 3-ple is a DDH with respect to the
-        generator g of the cryptosystem's underlying group, i.e., of the form
+        Returns zero-knowledge proof that the provided 3-ple `ddh` is a DDH with respect
+        to the generator g of the cryptosystem's underlying group, i.e., of the form
 
                         (g ^ x modp, g ^ z modp, g ^ (x * z) modp)
 
@@ -106,10 +176,12 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         p, q, g = self.params
 
+        u, v, w = ddh
+
         randomness = random_integer(2, q)          # 1 < r < q
 
-        g_commitment = _prod(g, randomness, p)     # g ^ r
-        u_commitment = _prod(u, randomness, p)     # u ^ r
+        g_commitment = self.gen(randomness)     # g ^ r
+        u_commitment = self.pow(u, randomness)     # u ^ r
 
         challenge = self.fiatshamir(
             p, g, q,
@@ -117,18 +189,24 @@ class ModPrimeCrypto(ElGamalCrypto):
             g_commitment,
             u_commitment)   # c = g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp
 
-        response = mod(add(randomness, mul(challenge, z)), q)         # s = r + c * z  modq
+        response = self.add(randomness, mod(mul(challenge, z), self.__q))
+        # response = self.add(randomness, self.mul(challenge, z))         # s = r + c * z  modq
 
-        return g_commitment, u_commitment, challenge, response           # g ^ r, u ^ r, c, s
+        return {
+            'base_commitment': g_commitment,        # g ^ r
+            'message_commitment': u_commitment,     # u ^ r
+            'challenge': challenge,                 # c
+            'response': response                    # s
+        }
 
 
-    def chaum_pedersen_verify(self, u, v, w, proof):
+    def chaum_pedersen_verify(self, ddh, proof):
         """
         Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
 
-        Validates the demonstrated zero-knowledge `proof` that the provided 3-ple (u, v, w) is
-        a DDH with respect to the generator g of the cryptosystem's underlying group, i.e.,
-        of the form
+        Validates the demonstrated zero-knowledge `proof` that the provided 3-ple `ddh` is a
+        DDH with respect to the generator g of the cryptosystem's underlying group, i.e., of
+        the form
                                 (u, v, g ^ (x * z) modp)
 
         where u = g ^ x modp, v = g ^ z modp with 0 <= x, z < q
@@ -136,7 +214,14 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         p, q, g = self.params
 
-        g_commitment, u_commitment, challenge, response = proof     # g ^ r, u ^ r, c, s
+        u, v, w = ddh
+
+        g_commitment = proof['base_commitment']         # g ^ r
+        u_commitment = proof['message_commitment']      # u ^ r
+        challenge = proof['challenge']                  # c
+        response = proof['response']                    # s
+
+        # g_commitment, u_commitment, challenge, response = proof     # g ^ r, u ^ r, c, s
 
         # Check correctness of challenge:
         # c == g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp ?
@@ -153,14 +238,14 @@ class ModPrimeCrypto(ElGamalCrypto):
         # Verify prover's commitment to presumed randomness:
         # g ^ s == g ^ r * v ^ c  modp ?
 
-        if pow(g, response) != mod(mul(g_commitment, pow(v, challenge, p)), p):
+        if self.gen(response) != self.mul(g_commitment, self.pow(v, challenge)):
             return False
 
         # Verify that the provided u is of the form g ^ (k * z) for some k, and
         # thus k = x due to verified prover's commitment to randomness r:
         # u ^ s == u ^ r * w ^ c  modp ?
 
-        return pow(u, response, p) == mod(mul(u_commitment, pow(w, challenge, p)), p)
+        return self.pow(u, response) == self.mul(u_commitment, self.pow(w, challenge))
 
 
     def keygen(self, private_key=None, schnorr=False):
@@ -177,7 +262,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             e = 'Provided private key exceeds the allowed range'
             raise InvalidKeyError(e)
 
-        public_key = pow(g, private_key, p)                    # y = g ^ x modp
+        public_key = self.gen(private_key)                    # y = g ^ x modp
 
         if schnorr is True:
 
@@ -196,7 +281,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         while 1:
             w = 2 * random_integer(3, q) - 1
-            r = pow(g, w, p)
+            r = self.gen(w)# pow(g, w, p)
             u = p - 1
             w = inv(w, u)
             s = mod(mul(w, mod(add(element, - mul(r, private_key)), u)), u)
@@ -219,8 +304,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         # if not 0 < r < p:
         #     return False
 
-        x0 = mod(mul(pow(public_key, r, p), pow(r, s, p)), p)
-        x1 = pow(g, e, p)
+        x0 = self.mul(self.pow(public_key, r), self.pow(r, s))
+        x1 = self.gen(e)
 
         return x0 == x1
 
@@ -266,15 +351,15 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         if randomness is None:
             randomness = random_integer(1, q)
-        elif not 1 <= randomness <= q - 1:
+        elif not 0 < randomness < q:
             e = 'Provided randomness exceeds order of group'
             raise EncryptionNotPossible(e)
 
-        if pow(element, q, p) != 1:
-            element = mod(-element, p)
+        if self.pow(element, q) != 1:
+            element = mod(- element, p)
 
-        decryptor = pow(g, randomness, p)
-        cipher    = mod(mul(element, pow(public_key, randomness, p)), p)
+        decryptor = self.pow(g, randomness)
+        cipher    = self.mul(element, self.pow(public_key, randomness))
 
         return decryptor, cipher    # g ^ r modp, m * y ^ r modp
 
@@ -296,7 +381,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         Returns a group element g ^ r modp, where 1 < r < q random
         """
-        return pow(self.__g, random_integer(2, self.__q), self.__p)
+        r = random_integer(2, self.__q)
+        return self.gen(r)
 
 
     def algebraize(self, *texts):
@@ -310,7 +396,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         exp = mod(bytes_to_int(hashed_texts), q)
 
-        return pow(g, exp, p)
+        return self.gen(exp)
 
 
     def fiatshamir(self, *elements):
@@ -321,7 +407,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         digest = hash_nums(p, g, q, *elements)
         reduced = mod(bytes_to_int(digest), q)
-        output = pow(g, reduced, p)
+        output = self.gen(reduced)
 
         return output   # g ^ ( H( p | g | q | elements)  modq )  modp
 
@@ -329,9 +415,14 @@ class ModPrimeCrypto(ElGamalCrypto):
 # ------------------------------- Static methods -------------------------------
 
     @staticmethod
-    def generate_system(modulus, element, root_order):
+    # def generate_system(modulus, element, root_order):
+    def generate_system(config):
         """
         """
+
+        modulus = config['modulus']
+        element = config['element']
+        root_order = config['root_order']
 
         p, g0, r  = modulus, element, root_order
 

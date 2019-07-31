@@ -1,39 +1,53 @@
 import pytest
 
 from crypto.constants import (_2048_PRIME, _2048_ELEMENT, _2048_GENERATOR,
-                              _2048_ORDER, _2048_KEY, _2048_PUBLIC,
+                              _2048_ORDER, _2048_KEY, _2048_PUBLIC, _2048_DDH,
                               _4096_PRIME, _4096_ELEMENT, _4096_GENERATOR,
-                              _4096_ORDER, _4096_KEY, _4096_PUBLIC)
+                              _4096_ORDER, _4096_KEY, _4096_PUBLIC, _4096_DDH)
 from crypto.exceptions import WrongCryptoError, WeakCryptoError
 from crypto.modprime import ModPrimeCrypto
 
-_configs_and_params = [
+_2048_SYSTEM = ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_ELEMENT)
+_4096_SYSTEM = ModPrimeCrypto(modulus=_4096_PRIME, element=_4096_ELEMENT)
+
+
+
+_cls_config_order_generator = [
     (
-        _2048_PRIME,
-        2,
-        _2048_ELEMENT,
+        ModPrimeCrypto,
+        {
+            'modulus': _2048_PRIME,
+            'element': _2048_ELEMENT,
+            'root_order': 2
+        },
         _2048_ORDER,
         _2048_GENERATOR
     ),
     (
-        _4096_PRIME,
-        2,
-        _4096_ELEMENT,
+        ModPrimeCrypto,
+        {
+            'modulus': _4096_PRIME,
+            'element': _4096_ELEMENT,
+            'root_order': 2
+        },
         _4096_ORDER,
         _4096_GENERATOR
     )
 ]
 
-@pytest.mark.parametrize('modulus, root_order, element, order, generator', _configs_and_params)
-def test_generate_system(modulus, root_order, element, order, generator):
+@pytest.mark.parametrize(
+    'cls, config, order, generator', _cls_config_order_generator)
+def test_generate_system(cls, config, order, generator):
 
-    system = ModPrimeCrypto.generate_system(modulus, element, root_order)
+    system = cls.generate_system(config)
 
     assert system == {
-        'modulus': modulus,
+        'modulus': config['modulus'],
         'order': order,
         'generator': generator
     }
+
+
 
 _cls_system__bool = [
     (
@@ -56,16 +70,13 @@ _cls_system__bool = [
     ),
 ]
 
-
-_2048_SYSTEM = ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_ELEMENT)
-_4096_SYSTEM = ModPrimeCrypto(modulus=_4096_PRIME, element=_4096_ELEMENT)
-
 @pytest.mark.parametrize('cls, system, _bool', _cls_system__bool)
 def test_validate_system(cls, system, _bool):
 
     validated = cls.validate_system(system)
 
     assert validated is _bool
+
 
 
 _system_secret_public_extras__bool = [
@@ -121,14 +132,34 @@ _system_secret_public_extras__bool = [
 
 @pytest.mark.parametrize(
     'system, secret, public, extras_1, extras_2, _bool',
-    _system_secret_public_extras__bool
-)
+    _system_secret_public_extras__bool)
 def test_schnorr_protocol(system, secret, public, extras_1, extras_2, _bool):
 
     proof = system.schnorr_proof(secret, public, *extras_1)
     valid = system.schnorr_verify(proof, public, *extras_2)
 
     assert valid is _bool
+
+
+
+_system_ddh_z__bool = [
+    (
+        _2048_SYSTEM, _2048_DDH['ddh'], _2048_DDH['log'], True
+    ),
+    (
+        _4096_SYSTEM, _4096_DDH['ddh'], _4096_DDH['log'], True
+    )
+]
+
+@pytest.mark.parametrize('system, ddh, z, _bool', _system_ddh_z__bool)
+def test_chaum_pedersen_protocol(system, ddh, z, _bool):
+
+    proof = system.chaum_pedersen_proof(ddh, z)
+
+    valid = system.chaum_pedersen_verify(ddh, proof)
+
+    assert valid is _bool
+
 
 
 _system_secret_public = [
@@ -149,6 +180,7 @@ def test_non_random_keygen(system, secret, public):
     assert private_key == secret and public_key == public and valid
 
 
+
 _system = [
     _2048_SYSTEM,
     _4096_SYSTEM
@@ -161,6 +193,7 @@ def test_random_keygen(system):
     valid = system.schnorr_verify(proof, public_key)
 
     assert valid
+
 
 
 _system_element_key = [
@@ -180,6 +213,7 @@ def test_element_signature(system, element, private_key, public_key):
     verified = system.verify_element_signature(signature, public_key)
 
     assert verified
+
 
 
 _system_element_key = [
