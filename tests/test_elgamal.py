@@ -74,7 +74,6 @@ _cls_system__bool = [
 def test_validate_system(cls, system, _bool):
 
     validated = cls.validate_system(system)
-
     assert validated is _bool
 
 
@@ -155,7 +154,6 @@ _system_ddh_z__bool = [
 def test_chaum_pedersen_protocol(system, ddh, z, _bool):
 
     proof = system.chaum_pedersen_proof(ddh, z)
-
     valid = system.chaum_pedersen_verify(ddh, proof)
 
     assert valid is _bool
@@ -198,10 +196,10 @@ def test_random_keygen(system):
 
 _system_element_key = [
     (
-        _2048_SYSTEM, 445879584794873958739, _2048_KEY, _2048_PUBLIC
+        _2048_SYSTEM, 4458795847948730958739, _2048_KEY, _2048_PUBLIC
     ),
     (
-        _4096_SYSTEM, 373784384794875232978, _4096_KEY, _4096_PUBLIC
+        _4096_SYSTEM, 3737843847948750232978, _4096_KEY, _4096_PUBLIC
     ),
 ]
 

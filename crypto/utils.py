@@ -4,12 +4,12 @@ from Crypto import Random
 _random_generator_file = Random.new()
 
 # Returns the integer represented in LSB by the provided string's UTF-8 encoding
-bytes_to_int = lambda _bytes: int.from_bytes(_bytes, byteorder='little')
+int_from_bytes = lambda _bytes: int.from_bytes(_bytes, byteorder='little')
 
 # Returns the SHA256-digest of the concatenation of the provided numbers' hexadecimal representations
 hash_nums = lambda *nums: sha256((''.join('%x:' % _ for _ in nums)).encode()).digest()
 
-# Returns the SHA256-digest of the concatenation of the provided strings separated by '\x00'
+# Returns the SHA256-digest of the concatenation of the provided strings
 hash_texts = lambda *args: sha256(('\x00'.join(args)).encode()).digest()
 
 def random_integer(min, max):
@@ -22,7 +22,7 @@ def random_integer(min, max):
     nr_bits = max.bit_length()
     nr_bytes = int((nr_bits - 1) / 8) + 1
     random_bytes = _random_generator_file.read(nr_bytes)
-    num = bytes_to_int(random_bytes)
+    num = int_from_bytes(random_bytes)
     shift = num.bit_length() - nr_bits
     if shift > 0:
         num >>= shift

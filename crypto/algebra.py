@@ -19,13 +19,13 @@ except ImportError:
 else:
 
     _add = add
-    add = lambda x, y: int(_add(x, y))              # x + y
+    add = lambda x, y: int(_add(x, y))             # x + y
     _mul = mul
-    mul = lambda x, y: int(_mul(x, y))              # xy
+    mul = lambda x, y: int(_mul(x, y))             # xy
 
     def divmod(x, y):
         q, r = f_divmod(x, y)
-        return int(q), int(r)                       # x/y, x mod y
+        return int(q), int(r)                      # x/y, x mod y
 
     mod = lambda x, y: int(f_mod(x, y))            # x mod y
     pow = lambda x, y, z: int(powmod(x, y, z))     # x ^ y mod z

@@ -8,11 +8,12 @@ from crypto.constants import (_2048_PRIME, _2048_ELEMENT, _2048_GENERATOR,
                               _4096_ORDER, _4096_KEY, _4096_PUBLIC)
 from crypto.exceptions import (WrongCryptoError)
 
+MAX = 4
+
 
 # Elementary integer operations
 
-
-_2_ples_with_zeros = [(m, n) for m in range(0, 5) for n in range(0, 5)]
+_2_ples_with_zeros = [(m, n) for m in range(0, MAX) for n in range(0, MAX)]
 
 @pytest.mark.parametrize('m, n', _2_ples_with_zeros)
 def test_add(m, n):
@@ -23,7 +24,8 @@ def test_mul(m, n):
     assert mul(m, n) == m * n
 
 
-_2_ples_without_zeroes = [(m, n) for m in range(0, 5) for n in range(1, 5)]
+
+_2_ples_without_zeroes = [(m, n) for m in range(0, MAX) for n in range(1, MAX)]
 
 @pytest.mark.parametrize('m, n', _2_ples_without_zeroes)
 def test__divmod(m, n):
@@ -34,12 +36,16 @@ def test__mod(m, n):
     assert mod(m, n) == m % n
 
 
-_3_ples = [(m, n, r) for m in range(0, 5) for n in range(0, 5) for r in range(1, m ** n)]
+
+_3_ples = [(m, n, r) for m in range(0, MAX) for n in range(0, MAX) for r in range(1, m ** n)]
 
 @pytest.mark.parametrize('m, n, r', _3_ples)
 def test_pow(m, n, r):
     assert pow(m, n, r) == m ** n % r
 
+
+
+# Test inversion oinside Z*_n
 
 modular_inverses = [
     (1, 1, 2),
@@ -55,6 +61,7 @@ def test__inv(x, y, r):
     assert inv(x, r) == y
 
 
+
 # Test powering inside Z^*_p for large p's
 
 prime_and_element = [(_2048_PRIME, _2048_ELEMENT), (_4096_PRIME, _4096_ELEMENT)]
@@ -66,6 +73,7 @@ def test_multiplicative_group_order(p, a):
 @pytest.mark.parametrize('p, a', prime_and_element)
 def test_multiplicative_subgroup_order(p, a):
     assert pow(pow(a, 2, p) , divmod(p - 1, 2)[0], p) == 1
+
 
 
 # Test modular residues

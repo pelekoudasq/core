@@ -4,7 +4,7 @@ from Crypto.Util.number import isPrime
 from .elgamal import ElGamalCrypto
 from .exceptions import WrongCryptoError, WeakCryptoError
 from .algebra import add, mul, divmod, mod, pow, inv
-from .utils import bytes_to_int, hash_nums, random_integer
+from .utils import int_from_bytes, hash_nums, random_integer
 
 
 class EllipticCrypto(ElGamalCrypto):
@@ -89,19 +89,19 @@ class EllipticCrypto(ElGamalCrypto):
         pass
 
 
-    def algebraize(self, text_message):
+    def _algebraize(self, text_message):
         """
         """
         pass
 
 
-    def random_element(self):
+    def _random_element(self):
         """
         """
         pass
 
 
-    def fiatshamir(self, *elements):
+    def _fiatshamir(self, *elements):
         """
         """
         pass

@@ -8,12 +8,6 @@ DDH = _4096_DDH # _2048_DDH
 
 cryptosys = ModPrimeCrypto(modulus=p, element=g0) # Defaults to quadratic residues
 
-# cryptosys = ModPrimeCrypto(config={
-#     'modulus': p,
-#     'element': g0,
-#     'root_order': 2
-# })
-
 import json
 print('\n-- CRYPTOSYSTEM --\n%s' % json.dumps(cryptosys.system, indent=4, sort_keys=True))
 

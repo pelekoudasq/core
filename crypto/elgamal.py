@@ -4,36 +4,46 @@ from .exceptions import WrongCryptoError, WeakCryptoError
 
 class ElGamalCrypto(object, metaclass=ABCMeta):
 
+    @abstractmethod
     def __init__(self, cls, config, *opts):
         try:
             system = cls.generate_system(config)
         except WrongCryptoError:
             raise
 
-        # self.__system = system
-
         try:
             cls.validate_system(system, *opts)
         except (WrongCryptoError, WeakCryptoError):
             raise
 
-        # self.set_params(system)
-        self.set_params(system)
-        # print(system)
+        self._set_params(system)
 
+
+    @abstractmethod
+    def _set_params(self, system):
+        """
+        """
+
+    @staticmethod
+    @abstractmethod
+    def generate_system(*config):
+        """
+        """
+
+    @classmethod
+    @abstractmethod
+    def validate_system(cls, system, *options):
+        """
+        """
+
+
+# --------------------------------- Interface ---------------------------------
 
     @property
     @abstractmethod
     def system():
         """
         """
-
-    @abstractmethod
-    def set_params(self, system):
-        """
-        """
-
-# --------------------------------- Interface ---------------------------------
 
     @abstractmethod
     def schnorr_proof(self, secret, public, *extras):
@@ -88,39 +98,31 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
 
 # --------------------------------- Internals ---------------------------------
 
-
     @property
     @abstractmethod
-    def params(self):
+    def _params(self):
+        """
+        """
+
+    # TODO: Include algebraic (group) operations?
+
+    @abstractmethod
+    def _random_exponent(self):
         """
         """
 
     @abstractmethod
-    def algebraize(self, text_message):
+    def _random_element(self):
+        """
+        """
+
+    @abstractmethod
+    def _algebraize(self, text_message):
         """
         """
         pass
 
     @abstractmethod
-    def random_element(self):
-        """
-        """
-
-    @abstractmethod
-    def fiatshamir(self, *elements):
-        """
-        """
-
-# ------------------------------- Static methods -------------------------------
-
-    @staticmethod
-    @abstractmethod
-    def generate_system(*config):
-        """
-        """
-
-    @classmethod
-    @abstractmethod
-    def validate_system(cls, system, *options):
+    def _fiatshamir(self, *elements):
         """
         """
