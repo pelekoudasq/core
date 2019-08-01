@@ -1,12 +1,12 @@
-from crypto import ModPrimeCrypto, _2048_PRIME, _2048_ELEMENT, _2048_KEY, _2048_DDH,\
-                                   _4096_PRIME, _4096_ELEMENT, _4096_KEY, _4096_DDH
-
+from crypto import ModPrimeCrypto, _2048_PRIME, _2048_PRIMITIVE, _2048_KEY, _2048_DDH,\
+                                   _4096_PRIME, _4096_PRIMITIVE, _4096_KEY, _4096_DDH,\
+                                   ModPrimeElement
 
 p   = _4096_PRIME # _2048_PRIME
-g0  = _4096_ELEMENT # _2048_ELEMENT
+g0  = _4096_PRIMITIVE # _2048_PRIMITIVE
 DDH = _4096_DDH # _2048_DDH
 
-cryptosys = ModPrimeCrypto(modulus=p, element=g0) # Defaults to quadratic residues
+cryptosys = ModPrimeCrypto(modulus=p, primitive=g0) # Defaults to quadratic residues
 
 import json
 print('\n-- CRYPTOSYSTEM --\n%s' % json.dumps(cryptosys.system, indent=4, sort_keys=True))
@@ -33,11 +33,11 @@ encrypt_element = cryptosys.encrypt_element
 
 private_key, public_key, proof = keygen(schnorr=True)
 
-print('\n-- PUBLIC KEY --\n%d' % public_key)
+print('\n-- PUBLIC KEY --\n%d' % public_key.value)
 
 # Verify knowledge of private key
 
-valid = schnorr_verify(proof, public_key)
+valid = schnorr_verify(proof, public_key.value) # -----> Make function!!
 
 print('\n * Key validation: %s' % str(valid))
 
@@ -53,7 +53,7 @@ print('\n * DDH proof validation: %s' % str(valid))
 
 # Sign element and verify signature
 
-element = 4458795732736487628958739
+element = ModPrimeElement(4458795732736487628958739, cryptosys.group.modulus)
 
 signature = sign_element(element, private_key)
 verified = verify_element_signature(signature, public_key)
@@ -71,7 +71,8 @@ print('\n * Signed text validation: %s' % str(valid))
 
 # Encrypt element
 
-message = 3737843752384299791729921
+message = ModPrimeElement(4458795732736487628958739, cryptosys.group.modulus)
+# public_key = ModPrimeElement(public_key, cryptosys.group.modulus)
 decryptor, cipher = encrypt_element(message, public_key)
 
 print('\n-- CIPHER --\n')

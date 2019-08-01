@@ -3,7 +3,7 @@ from Crypto.Util.number import isPrime
 
 from .elgamal import ElGamalCrypto
 from .exceptions import WrongCryptoError, WeakCryptoError
-from .algebra import add, mul, divmod, mod, pow, inv
+from .operations import add, mul, divmod, mod, pow, inv
 from .utils import int_from_bytes, hash_nums, random_integer
 
 
@@ -89,7 +89,7 @@ class EllipticCrypto(ElGamalCrypto):
         pass
 
 
-    def _algebraize(self, text_message):
+    def _operationsize(self, text_message):
         """
         """
         pass

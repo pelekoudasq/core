@@ -19,11 +19,6 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         self._set_params(system)
 
 
-    @abstractmethod
-    def _set_params(self, system):
-        """
-        """
-
     @staticmethod
     @abstractmethod
     def generate_system(*config):
@@ -95,34 +90,3 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         """
         """
         pass
-
-# --------------------------------- Internals ---------------------------------
-
-    @property
-    @abstractmethod
-    def _params(self):
-        """
-        """
-
-    # TODO: Include algebraic (group) operations?
-
-    @abstractmethod
-    def _random_exponent(self):
-        """
-        """
-
-    @abstractmethod
-    def _random_element(self):
-        """
-        """
-
-    @abstractmethod
-    def _algebraize(self, text_message):
-        """
-        """
-        pass
-
-    @abstractmethod
-    def _fiatshamir(self, *elements):
-        """
-        """

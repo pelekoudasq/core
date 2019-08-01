@@ -1,11 +1,11 @@
 ## Example
 
-```python
-from crypto import ModPrimeCrypto, _2048_PRIME, _2048_ELEMENT, _2048_DDH
+<!-- ```python
+from crypto import ModPrimeCrypto, _2048_PRIME, _2048_PRIMITIVE, _2048_DDH
 
 # Make cryptosystem (defaults to quadratic residues)
 
-cryptosys = ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_ELEMENT)
+cryptosys = ModPrimeCrypto(modulus=_2048_PRIME, element=_2048_PRIMITIVE)
 
 # Extract primitives
 
@@ -54,7 +54,7 @@ message = 'SOS'
 
 signed_message = sign_text_message(message, private_key)
 verified = verify_text_signature(signed_message, public_key)
-```
+``` -->
 
 ## Tests
 

@@ -1,3 +1,8 @@
+class AlgebraError(BaseException):
+    """
+    """
+    pass
+
 class WrongCryptoError(BaseException):
     """
     Raised when no cryptosystem exists for the provided configs
