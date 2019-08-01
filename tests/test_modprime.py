@@ -203,6 +203,15 @@ def test_random_keygen(system):
     assert valid
 
 
+# ------------------------------- Key validation -------------------------------
+
+@pytest.mark.parametrize('system', _system)
+def test_validate_key(system):
+
+    public_key, proof = system.keygen(schnorr=True)[1:]
+    valid = system.validate_key(public_key.value, proof)
+
+
 # --------------------------- Test element signature ---------------------------
 
 _system_element_key = [
@@ -229,6 +238,7 @@ def test_element_signature(system, element, private_key, public_key):
 
 
 # ------------------------ Test text-message signature ------------------------
+
 
 _system_element_key = [
     (

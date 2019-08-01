@@ -5,8 +5,8 @@ from gmpy2 import mpz
 _random_generator_file = Random.new()
 
 # Returns the integer represented in LSB by the provided string's UTF-8 encoding
-# int_from_bytes = lambda _bytes: mpz(int.from_bytes(_bytes, byteorder='little'))
 int_from_bytes = lambda _bytes: int.from_bytes(_bytes, byteorder='little')
+# int_from_bytes = lambda _bytes: mpz(int.from_bytes(_bytes, byteorder='little'))
 
 # Returns the SHA256-digest of the concatenation of the provided numbers' hexadecimal representations
 # Works exactly the same with mpz

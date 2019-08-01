@@ -1,3 +1,8 @@
+"""
+ElGamal cryptosystem over the group of r-residues mod p, p > 2 prime.
+Defaults to r = 2, yielding the group of quadratic residues mod p
+"""
+
 import Crypto
 from Crypto.Util.number import isPrime
 from gmpy2 import mpz, powmod, invert, mul, add, f_mod
@@ -20,11 +25,11 @@ class ModPrimeElement(GroupElement):
 
     def __init__(self, value, modulus):
         """
-        :type value: int
-        :type modulus: int
+        :type value: mpz
+        :type modulus: mpz
         """
-        self.__value = mpz(value)
-        self.__modulus = mpz(modulus)
+        self.__value = value
+        self.__modulus = modulus
 
     @property
     def value(self):
@@ -48,28 +53,34 @@ class ModPrimeElement(GroupElement):
         return self.__value.bit_length()
 
     def __repr__(self):
+        """
+        :rtype: str
+        """
         return str(self.__value)
 
     def __hash__(self):
+        """
+        :rtype: int
+        """
         return hash(repr(self))
 
     def __eq__(self, other):
         """
-        :type other: ModPrimeElement or int or mpz
+        :type other: ModPrimeElement or mpz
         """
-        if type(other) in INTEGER_TYPES:
-            return self.__value == other
-        elif isinstance(other, self.__class__):
+        if isinstance(other, self.__class__):
             return self.__value == other.value
         else:
-            raise NotImplementedError
-        return self.__value == other.value
+            # Assumes mpz
+            return self.value == other
+        if isinstance(other, mpz):
+            return self.__value == other
 
     def __mul__(self, other):
         """
         :type other: ModPrimeElement
         """
-        result = self.__value * other.value % self.__modulus    # mpz
+        result = self.__value * other.value % self.__modulus
         return self.__class__(value=result, modulus=self.__modulus)
 
     def __pow__(self, exp):
@@ -77,7 +88,8 @@ class ModPrimeElement(GroupElement):
         :type exp: mpz
         :rtype: ModPrimeElement
         """
-        # Use powmod instead of Python builtin ** to avoid overflow in mpz type
+        # # result = self.__value ** exp % self.__modulus
+        # Use powmod instead in order to avoid overflow in mpz type
         result = powmod(self.__value, exp, self.__modulus)
         return self.__class__(value=result, modulus=self.__modulus)
 
@@ -86,11 +98,11 @@ class ModPrimeElement(GroupElement):
         :rtype: ModPrimeElement
         """
         result = invert(self.__value, self.__modulus)
-        return ModPrimeElement(value=result, modulus=self.__modulus)
+        return self.__class__(value=result, modulus=self.__modulus)
 
     def contained_in(self, group):
         """
-        :type: algebra.Group
+        :type: ModPrimeSubgroup
         :rtype: bool
         """
         if isinstance(group, ModPrimeSubgroup) and group.modulus == self.__modulus:
@@ -115,11 +127,11 @@ class ModPrimeSubgroup(Group):
 
     def __init__(self, modulus, root_order=2):
         """
-        :type modulus: int
-        :type root_order: int
+        :type modulus: mpz
+        :type root_order: mpz
         """
-        modulus = mpz(modulus)
-        root_order = mpz(root_order)
+        modulus = modulus
+        root_order = root_order
 
         if modulus <= 2 or not isPrime(modulus):
             e = 'Provided modulus is not an odd prime'
@@ -136,12 +148,18 @@ class ModPrimeSubgroup(Group):
             raise AlgebraError(e)
 
         self.__modulus = modulus
-        self.__order = mpz(order)
+        self.__order = order
 
     def __repr__(self):
+        """
+        :rtype: str
+        """
         return '%s (%d, %d)' % (self.__class__, self.__modulus, self.__order)
 
     def __hash__(self):
+        """
+        :rtype: str
+        """
         return hash(repr(self))
 
     @property
@@ -160,7 +178,7 @@ class ModPrimeSubgroup(Group):
 
     def contains(self, element):
         """
-        :type element: algebra.GroupElement
+        :type element: modPrimeElement
         :rtype: bool
         """
         if isinstance(element, ModPrimeElement) and element.modulus == self.__modulus:
@@ -183,12 +201,12 @@ class ModPrimeSubgroup(Group):
         try:
             return self.__generator
         except AttributeError:
-            e = 'No generator has been yet specified for this group'
+            e = 'No generator has yet been specified for this group'
             raise AlgebraError(e)
 
     def generate(self, exponent):
         """
-        :type exponent: int
+        :type exponent: mpz
         :rtype: ModPrimeElement
         """
         return self.__generator ** exponent
@@ -199,7 +217,8 @@ class ModPrimeSubgroup(Group):
 
         :rtype: mpz
         """
-        return random_integer(2, self.__order)
+        exponent = random_integer(2, self.__order)
+        return mpz(exponent)
 
     def random_element(self):
         """
@@ -272,8 +291,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         (i.e., g0 ^ (p - 1) = 1 and g0 ^ k != 1 for all 0 < k < p - 1)
 
         :type modulus: int
-        :type primitive: int or mpz
-        :type root_order: int or mpz
+        :type primitive: int
+        :type root_order: int
         :type check_3mod4: bool
         :type prime_order: bool
         :type min_mod_size: int
@@ -282,9 +301,9 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # Type conversion
 
-        modulus = mpz(modulus)                              # p
-        primitive = ModPrimeElement(primitive, modulus)     # g0
-        root_order = mpz(root_order)                        # r
+        modulus = mpz(modulus)                                   # p
+        primitive = ModPrimeElement(mpz(primitive), modulus)     # g0
+        root_order = mpz(root_order)                             # r
 
         # Resolve group
 
@@ -333,7 +352,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
 
 
-# --------------------------------- Interface ---------------------------------
+# --------------------------------- Externals ---------------------------------
 
     @property
     def system(self):
@@ -356,6 +375,101 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         return self.__group
 
+
+    def keygen(self, private_key=None, schnorr=False):
+        """
+        :type private_key: mpz or int
+        :type schnorr: bool
+        :rtype: (mpz, ModPrimeElement[, {
+            'commitment': ModPrimeElement
+            'challenge': mpz
+            'response': mpz
+        }])
+        """
+
+        __group = self.__group
+
+        if private_key is None:
+
+            private_key = __group.random_exponent()             # 1 < x < q
+
+        elif not 1 < private_key < __group.order:
+            e = 'Provided private key exceeds the allowed range'
+            raise InvalidKeyError(e)
+
+        public_key = __group.generate(private_key)              # y = g ^ x modp
+
+        if schnorr is True:
+
+            proof = self.schnorr_proof(private_key, public_key)
+            return private_key, public_key, proof
+
+        else:
+            return private_key, public_key
+
+
+    def validate_key(self, public_key, proof):
+        """
+        :type public_key: ModPrimeElement
+        :type proof: {
+            'commitment': ModPrimeElement
+            'challenge': mpz
+            'response': mpz
+        }
+        :rtype: bool
+        """
+        return self.schnorr_verify(proof=proof, public=public_key)
+
+
+    def sign_text_message(self, message, private_key):
+        """
+        :type message: str
+        :type private_key: mpz
+        :rtype: {
+            'message': str,
+            'signature': {
+                'e': ModPrimeElement
+                'r': ModPrimeElement
+                's': mpz (exponent)
+            }
+        }
+        """
+
+        element = self.__group.algebraize(message)
+        signature = self.sign_element(element, private_key)
+        signed_message = {
+            'message': message, 'signature': signature
+        }
+
+        return signed_message
+
+
+    def verify_text_signature(self, signed_message, public_key):
+        """
+        :type signed_message: {
+            'message': str,
+            'signature': {
+                'e': ModPrimeElement
+                'r': ModPrimeElement
+                's': mpz (exponent)
+            }
+        }
+        :type public_key: ModPrimeElement
+        :rtype: bool
+        """
+
+        message = signed_message['message']
+        signature = signed_message['signature']
+
+        element = self.__group.algebraize(message)
+
+        if element != signature['e']:
+            return False
+
+        return self.verify_element_signature(signature, public_key)
+
+
+# --------------------------------- Internals ---------------------------------
 
     def schnorr_proof(self, secret, public, *extras):
         """
@@ -532,38 +646,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         return u ** response == u_commitment * (w ** challenge)
 
 
-    def keygen(self, private_key=None, schnorr=False):
-        """
-        :type private_key: mpz or int
-        :type schnorr: bool
-        :rtype: (mpz, ModPrimeElement[, {
-            'commitment': ModPrimeElement
-            'challenge': mpz
-            'response': mpz
-        }])
-        """
-
-        __group = self.__group
-
-        if private_key is None:
-
-            private_key = __group.random_exponent()             # 1 < x < q
-
-        elif not 1 < private_key < __group.order:
-            e = 'Provided private key exceeds the allowed range'
-            raise InvalidKeyError(e)
-
-        public_key = __group.generate(private_key)              # y = g ^ x modp
-
-        if schnorr is True:
-
-            proof = self.schnorr_proof(private_key, public_key)
-            return private_key, public_key, proof
-
-        else:
-            return private_key, public_key
-
-
     def sign_element(self, element, private_key):
         """
         :type element: ModPrimeElement
@@ -621,54 +703,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         return __group.generate(e.value) == (public_key ** r.value) * (r ** s)
 
 
-    def sign_text_message(self, message, private_key):
-        """
-        :type message: str
-        :type private_key: mpz
-        :rtype: {
-            'message': str,
-            'signature': {
-                'e': ModPrimeElement
-                'r': ModPrimeElement
-                's': mpz (exponent)
-            }
-        }
-        """
-
-        element = self.__group.algebraize(message)
-        signature = self.sign_element(element, private_key)
-        signed_message = {
-            'message': message, 'signature': signature
-        }
-
-        return signed_message
-
-
-    def verify_text_signature(self, signed_message, public_key):
-        """
-        :type signed_message: {
-            'message': str,
-            'signature': {
-                'e': ModPrimeElement
-                'r': ModPrimeElement
-                's': mpz (exponent)
-            }
-        }
-        :type public_key: ModPrimeElement
-        :rtype: bool
-        """
-
-        message = signed_message['message']
-        signature = signed_message['signature']
-
-        element = self.__group.algebraize(message)
-
-        if element != signature['e']:
-            return False
-
-        return self.verify_element_signature(signature, public_key)
-
-
     def encrypt_element(self, element, public_key, randomness=None):
         """
         :element: ModPrimeElement
@@ -705,6 +739,8 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # Cipher: g ^ r modp, m * y ^ r modp
         return decryptor, ciphertxt
+
+
 
 
 # ------------------------------- Construction -------------------------------
