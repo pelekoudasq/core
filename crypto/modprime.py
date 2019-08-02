@@ -12,8 +12,6 @@ from .algebra import Group, GroupElement
 from .exceptions import AlgebraError, WrongCryptoError, WeakCryptoError
 from .utils import int_from_bytes, hash_nums, hash_texts, random_integer
 
-INTEGER_TYPES = (int, mpz)
-
 
 
 class ModPrimeElement(GroupElement):
@@ -71,10 +69,7 @@ class ModPrimeElement(GroupElement):
         if isinstance(other, self.__class__):
             return self.__value == other.value
         else:
-            # Assumes mpz
             return self.value == other
-        if isinstance(other, mpz):
-            return self.__value == other
 
     def __mul__(self, other):
         """
@@ -88,8 +83,8 @@ class ModPrimeElement(GroupElement):
         :type exp: mpz
         :rtype: ModPrimeElement
         """
-        # # result = self.__value ** exp % self.__modulus
-        # Use powmod instead in order to avoid overflow in mpz type
+        # # result = self.__value ** exp % self.__modulus ---> "...outrageous exponent"
+        # Use gmpy2.powmod instead in order to avoid overflow in mpz type
         result = powmod(self.__value, exp, self.__modulus)
         return self.__class__(value=result, modulus=self.__modulus)
 
@@ -280,6 +275,8 @@ class ModPrimeCrypto(ElGamalCrypto):
     MIN_MOD_SIZE = 2048
     MIN_GEN_SIZE = 2000
 
+    __Element = ModPrimeElement
+
     __slots__ = ('__group')
 
 
@@ -376,63 +373,98 @@ class ModPrimeCrypto(ElGamalCrypto):
         return self.__group
 
 
-    def keygen(self, private_key=None, schnorr=False):
+    def keygen(self, private_key=None, schnorr=True):
         """
-        :type private_key: mpz or int
+        Generates a keypair of the form
+
+        {
+            'private': mpz,
+            'public': {
+                'value': ModPrimeElement,
+                'proof': {
+                    'commitment': ModPrimeElement
+                    'challenge': mpz
+                    'response': mpz
+                }
+            }
+        }
+
+        :type private_key: mpz
         :type schnorr: bool
-        :rtype: (mpz, ModPrimeElement[, {
-            'commitment': ModPrimeElement
-            'challenge': mpz
-            'response': mpz
-        }])
+        :rtype: dict
         """
 
         __group = self.__group
 
-        if private_key is None:
+        key = dict()
 
+        if private_key is None:
             private_key = __group.random_exponent()             # 1 < x < q
 
         elif not 1 < private_key < __group.order:
             e = 'Provided private key exceeds the allowed range'
             raise InvalidKeyError(e)
 
+        key.update({'private': private_key})
+
         public_key = __group.generate(private_key)              # y = g ^ x modp
+        public = dict({'value': public_key})
 
         if schnorr is True:
-
             proof = self.schnorr_proof(private_key, public_key)
-            return private_key, public_key, proof
+            public.update({'proof': proof})
 
-        else:
-            return private_key, public_key
+        key.update({'public': public})
+        return key
 
 
-    def validate_key(self, public_key, proof):
+    def validate_key(self, public_key):
         """
-        :type public_key: ModPrimeElement
-        :type proof: {
-            'commitment': ModPrimeElement
-            'challenge': mpz
-            'response': mpz
+        Accepts a dictionary of the form
+
+        {
+            'value': ModPrimeElement,
+            'proof': {
+                'commitment': ModPrimeElement,
+                'challenge': mpz,
+                'response': mpz
+            }
         }
+
+        :type public_key: dict
         :rtype: bool
         """
+
+        try:
+            proof = public_key['proof']
+        except KeyError:
+            # No proof has been provided together with the public key
+            return False
+
+        public_key = public_key['value']
+
+        if not public_key.contained_in(self.__group):
+            return False
+
         return self.schnorr_verify(proof=proof, public=public_key)
 
 
     def sign_text_message(self, message, private_key):
         """
-        :type message: str
-        :type private_key: mpz
-        :rtype: {
+        Returned signed message is of the form
+
+        {
             'message': str,
             'signature': {
                 'e': ModPrimeElement
                 'r': ModPrimeElement
-                's': mpz (exponent)
+                's': mpz
             }
         }
+
+        :type message: str
+        :type private_key: mpz
+        :rtype: dict
         """
 
         element = self.__group.algebraize(message)
@@ -446,14 +478,18 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def verify_text_signature(self, signed_message, public_key):
         """
+        Provided signed message is of the form
+
         :type signed_message: {
             'message': str,
             'signature': {
                 'e': ModPrimeElement
                 'r': ModPrimeElement
-                's': mpz (exponent)
+                's': mpz
             }
         }
+
+        :type signed_message: dict
         :type public_key: ModPrimeElement
         :rtype: bool
         """
@@ -476,17 +512,18 @@ class ModPrimeCrypto(ElGamalCrypto):
         Implementation of Schnorr protocol from the prover's side (non-interactive)
 
         Returns proof-of-knowldge of the discrete logarithm x (`secret`) of y (`public`).
-        `*extras` are to be used in the Fiat-Shamir heuristic.
+        `*extras` are to be used in the Fiat-Shamir heuristic. The proof has the form
 
-        secret: mpz or int
-        public: mpz or int
-        extras: mpz or int
-
-        Returns {
+        {
             'commitment': ModPrimeElement
             'challenge': mpz
             'response': mpz
         }
+
+        :type secret: mpz
+        :type public: modPrimeElement
+        :type *extras: mpz or int or ModPrimeElement
+        :rtype: dict
         """
 
         __group = self.__group
@@ -515,17 +552,19 @@ class ModPrimeCrypto(ElGamalCrypto):
         Validates the demonstrated proof-of-knowledge (`proof`) of the discrete logarithm of
         y (`public`). `*extras` are assumed to have been used in the Fiat-Shamir heuristic
 
-        proof: {
+        Provided proof has the form
+
+        {
             'commitment': ModPrimeElement
             'challenge': mpz
             'response': mpz
         }
-        public: mpz or int
-        extras: mpz or int or ModPrimeElement
+
+        :type proof: dict
+        :type public: modPrimeElement
+        :type *extras: mpz or int or ModPrimeElement
         """
         __group = self.__group
-
-        public = ModPrimeElement(value=public, modulus=__group.modulus)
 
         commitment = proof['commitment']    # g ^ r
         challenge = proof['challenge']      # c
@@ -533,7 +572,6 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # Check correctness of chalenge:
         # c == g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp ?
-
         _challenge = __group.fiatshamir(
             public,
             commitment,
@@ -542,8 +580,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         if _challenge != challenge:
             return False
 
-        # Proceed to proof validation: g ^ s modp == (g ^ r) * (y ^ c) modp ?
-
+        # g ^ s modp == (g ^ r) * (y ^ c) modp ?
         return __group.generate(response) == commitment * (public ** challenge)
 
 
@@ -558,18 +595,27 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         for some integers 0 <= x, z < q
 
-        :type ddh: list[int, int, int]
-        :type z: int
-        :rtype: dict[ModPrimeElement, ModPrimeElement, mpz, mpz]
+        The provided `ddh` is of the form
+
+                    [ModPrimeElement, ModPrimeElement, ModPrimeElement]
+
+        and the returned proof of the form
+
+        {
+            'base_commitment': ModPrimeElement
+            'message_commitment': ModPrimeElement
+            'challenge': mpz
+            'response': mpz
+        }
+
+        :type ddh: list
+        :type z: mpz
+        :rtype: dict
         """
 
         __group = self.__group
 
         u, v, w = ddh
-
-        # Change
-        u = ModPrimeElement(value=u, modulus=__group.modulus)
-        #
 
         randomness = __group.random_exponent()          # 1 < r < q
 
@@ -602,20 +648,27 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         where u = g ^ x modp, v = g ^ z modp with 0 <= x, z < q
 
-        :type ddh: list[int, int, int]
-        :type proof: dict[ModPrimeElement, ModPrimeElement, mpz, mpz]
+        The provided `ddh` is of the form
+
+                    [ModPrimeElement, ModPrimeElement, ModPrimeElement]
+
+        and the provided `proof` of the form
+
+        {
+            'base_commitment': ModPrimeElement
+            'message_commitment': ModPrimeElement
+            'challenge': mpz
+            'response': mpz
+        }
+
+        :type ddh: list
+        :type proof: dict
         :rtype: bool
         """
 
         __group = self.__group
 
         u, v, w = ddh
-
-        # # Might change
-        u = ModPrimeElement(value=u, modulus=__group.modulus)
-        v = ModPrimeElement(value=v, modulus=__group.modulus)
-        w = ModPrimeElement(value=w, modulus=__group.modulus)
-        # #
 
         g_commitment = proof['base_commitment']         # g ^ r
         u_commitment = proof['message_commitment']      # u ^ r
@@ -624,7 +677,6 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # Check correctness of challenge:
         # c == g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp ?
-
         _challenge = __group.fiatshamir(
             u, v, w,
             g_commitment,
@@ -635,56 +687,58 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # Verify prover's commitment to presumed randomness:
         # g ^ s == g ^ r * v ^ c  modp ?
-
         if __group.generate(response) != g_commitment * (v ** challenge):
             return False
 
-        # Verify that the provided u is of the form g ^ (k * z) for some k, and
-        # thus k = x due to verified prover's commitment to randomness r:
+        # Verify that the provided u is of the form g ^ (k * z) for some k (and
+        # thus k = x due to prover's commitment to randomness r):
         # u ^ s == u ^ r * w ^ c  modp ?
-
         return u ** response == u_commitment * (w ** challenge)
 
 
     def sign_element(self, element, private_key):
         """
-        :type element: ModPrimeElement
-        :private_key: mpz
-        :retype: {
-            'e': ModPrimeElement
-            'r': mpz (groupElement)
-            's': mpz (exponent)
+        Returned signed element is of the form
+
+        {
+            'e': ModPrimeElement,
+            'r': ModPrimeElement,
+            's': mpz
         }
+
+        :type element: ModPrimeElement
+        :type private_key: mpz
+        :rtype: dict
         """
 
         __group = self.__group
+        __p = __group.modulus
 
-        #
-        __element = element.value
-        #
-
-        u = __group.modulus - 1
-        w = 2 * random_integer(3, __group.modulus) - 1
-        v = invert(w, u)
+        elem_value = element.value
 
         while 1:
-            r = __group.generate(w).value
-            s = f_mod(mul(v, f_mod(add(__element, - mul(r, private_key)), u)), u)
+            u = __p - 1
+            w = 2 * random_integer(3, __p) - 1
+            v = invert(w, u)
+            r = __group.generate(w)
+            s = f_mod(mul(v, f_mod(add(elem_value, - mul(r.value, private_key)), u)), u)
             if s!= 0:
                 break
-
-        r = ModPrimeElement(value=r, modulus=__group.modulus)
 
         return {'e': element, 'r': r, 's': s}
 
 
     def verify_element_signature(self, signature, public_key):
         """
-        :type signature: {
+        Privided signature is of the form
+
+        {
             'e': ModPrimeElement
             'r': ModPrimeElement
-            's': mpz (exponent)
+            's': mpz
         }
+
+        :type signature: dict
         :type public_key: ModPrimeElement
         :rtype: bool
         """
@@ -705,9 +759,9 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def encrypt_element(self, element, public_key, randomness=None):
         """
-        :element: ModPrimeElement
-        :public_key: ModPrimeElement
-        :randomness: mpz
+        :type element: ModPrimeElement
+        :type public_key: ModPrimeElement
+        :type randomness: mpz
         """
 
         __group = self.__group
@@ -735,9 +789,8 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         decryptor = __group.generate(randomness)
         ciphertxt = element * (public_key ** randomness)
-        # ciphertxt = self._mul(element, self._pow(public_key, randomness))
 
-        # Cipher: g ^ r modp, m * y ^ r modp
+        # g ^ r modp, m * y ^ r modp
         return decryptor, ciphertxt
 
 

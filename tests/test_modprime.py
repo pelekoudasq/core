@@ -144,6 +144,9 @@ _system_secret_public_extras__bool = [
     _system_secret_public_extras__bool)
 def test_schnorr_protocol(system, secret, public, extras_1, extras_2, _bool):
 
+    secret = mpz(secret)
+    public = ModPrimeElement(public, system.group.modulus)
+
     proof = system.schnorr_proof(secret, public, *extras_1)
     valid = system.schnorr_verify(proof, public, *extras_2)
 
@@ -163,6 +166,8 @@ _system_ddh_z__bool = [
 
 @pytest.mark.parametrize('system, ddh, z, _bool', _system_ddh_z__bool)
 def test_chaum_pedersen_protocol(system, ddh, z, _bool):
+
+    ddh = [ModPrimeElement(_, system.group.modulus) for _ in ddh]
 
     proof = system.chaum_pedersen_proof(ddh, z)
     valid = system.chaum_pedersen_verify(ddh, proof)
@@ -184,10 +189,14 @@ _system_secret_public = [
 @pytest.mark.parametrize('system, secret, public', _system_secret_public)
 def test_non_random_keygen(system, secret, public):
 
-    private_key, public_key, proof = system.keygen(private_key=secret, schnorr=True)
-    valid = system.schnorr_verify(proof, public_key.value)
+    key = system.keygen(private_key=secret)
+    public_key = key['public']
+    proof = public_key['proof']
+    public_key = public_key['value']
 
-    assert private_key == secret and public_key == public and valid
+    valid = system.schnorr_verify(proof, public_key)
+
+    assert secret == key['private'] and public_key.value == public and valid
 
 _system = [
     _2048_SYSTEM,
@@ -197,8 +206,12 @@ _system = [
 @pytest.mark.parametrize('system', _system)
 def test_random_keygen(system):
 
-    public_key, proof = system.keygen(schnorr=True)[1:]
-    valid = system.schnorr_verify(proof, public_key.value)
+    key = system.keygen()
+    public_key = key['public']
+    proof = public_key['proof']
+    public_key = public_key['value']
+
+    valid = system.schnorr_verify(proof, public_key)
 
     assert valid
 
@@ -208,8 +221,9 @@ def test_random_keygen(system):
 @pytest.mark.parametrize('system', _system)
 def test_validate_key(system):
 
-    public_key, proof = system.keygen(schnorr=True)[1:]
-    valid = system.validate_key(public_key.value, proof)
+    key = system.keygen()
+    public_key = key['public']
+    valid = system.validate_key(public_key)
 
 
 # --------------------------- Test element signature ---------------------------
@@ -260,3 +274,6 @@ def test_text_message_signature(system, message, private_key, public_key):
     verified = system.verify_text_signature(signed_message, public_key)
 
     assert verified
+
+
+# --------------------- Test element ecnryption/decryption ---------------------
