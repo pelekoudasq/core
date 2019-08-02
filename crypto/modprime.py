@@ -418,6 +418,36 @@ class ModPrimeCrypto(ElGamalCrypto):
         return key
 
 
+    def get_as_element(self, public_key):
+        """
+        Assumes a dictionary of the form
+
+        {
+            'value: ModPrimeElement,
+            'proof: ...
+        }
+
+        :type public_key: dict
+        :rtype: ModPrimeElement
+        """
+        return public_key['value']
+
+    def get_as_integer(self, public_key):
+        """
+        Returns the numerical value of the provided public key, assuming a
+        dictionary of the form
+
+        {
+            'value: ModPrimeElement,
+            'proof: ...
+        }
+
+        :type public_key: dict
+        :rtype: int
+        """
+        return int(public_key['value'].value)
+
+
     def validate_key(self, public_key):
         """
         Accepts a dictionary of the form
@@ -489,8 +519,16 @@ class ModPrimeCrypto(ElGamalCrypto):
             }
         }
 
+        and provided public key is assumed to come along with proof-of knowledge
+        in the form
+
+        {
+            'value': ModPrimeElement,
+            'proof': ...
+        }
+
         :type signed_message: dict
-        :type public_key: ModPrimeElement
+        :type public_key: dict
         :rtype: bool
         """
 
@@ -502,7 +540,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         if element != signature['e']:
             return False
 
-        return self.verify_element_signature(signature, public_key)
+        return self.verify_element_signature(signature, public_key['value'])
 
 
 # --------------------------------- Internals ---------------------------------

@@ -268,7 +268,13 @@ _system_element_key = [
 def test_text_message_signature(system, message, private_key, public_key):
 
     private_key = mpz(private_key)
-    public_key = ModPrimeElement(value=public_key, modulus=system.group.modulus)
+    public_key = {
+        'value': ModPrimeElement(value=public_key, modulus=system.group.modulus),
+        'proof': {
+            'whatever': '... attached proof plays no role here...'
+            # ...
+        }
+    }
 
     signed_message = system.sign_text_message(message, private_key)
     verified = system.verify_text_signature(signed_message, public_key)

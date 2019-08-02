@@ -22,8 +22,7 @@ public_key = key['public']              # Contains also proof-of-knowledge
 
 # Access numerical value of pubic key
 
-public_key_value = public_key['value'].value
-print('\n-- PUBLIC KEY --\n%d' % public_key_value)
+print('\n-- PUBLIC KEY --\n%d' % cryptosys.get_as_integer(public_key))
 
 # Verify knowledge of corresponding private key
 
@@ -35,17 +34,20 @@ print('\n * Key validation: %s' % str(key_validated))
 message = 'SOS'
 
 signed_message = cryptosys.sign_text_message(message, private_key)
-verified = cryptosys.verify_text_signature(signed_message, public_key['value'])
+verified = cryptosys.verify_text_signature(signed_message, public_key)
 
 print('\n * Text-message signature validation: %s' % str(verified))
 
 
 # ------------------------------- Internal usage -------------------------------
 
+from gmpy2 import mpz
+modulus = cryptosys.group.modulus
+
 # Prove and verify knowledge of DDH
 
-ddh = [ModPrimeElement(_, cryptosys.group.modulus) for _ in DDH['ddh']]
-log = DDH['log']
+ddh = [ModPrimeElement(_, modulus) for _ in DDH['ddh']]
+log = mpz(DDH['log'])
 
 proof = cryptosys.chaum_pedersen_proof(ddh, log)
 valid = cryptosys.chaum_pedersen_verify(ddh, proof)
@@ -54,7 +56,7 @@ print('\n * DDH proof validation: %s' % str(valid))
 
 # Sign element and verify signature
 
-element = ModPrimeElement(4450087957327360487628958739, cryptosys.group.modulus)
+element = ModPrimeElement(4450087957327360487628958739, modulus)
 
 signature = cryptosys.sign_element(element, private_key)
 verified = cryptosys.verify_element_signature(signature, public_key['value'])
@@ -63,7 +65,7 @@ print('\n * Signed element validation: %s' % str(verified))
 
 # Encrypt element
 
-message = ModPrimeElement(4450087957327360487628958739, cryptosys.group.modulus)
+message = ModPrimeElement(4450087957327360487628958739, modulus)
 decryptor, cipher = cryptosys.encrypt_element(message, public_key['value'])
 
 print('\n-- CIPHER --\n')
