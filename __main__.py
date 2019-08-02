@@ -11,69 +11,60 @@ cryptosys = ModPrimeCrypto(modulus=p, primitive=g0) # Defaults to quadratic resi
 import json
 print('\n-- CRYPTOSYSTEM --\n%s' % json.dumps(cryptosys.system, indent=4, sort_keys=True))
 
-# Extract primitives
 
-keygen = cryptosys.keygen
+# ------------------------------- External usage -------------------------------
 
-schnorr_proof = cryptosys.schnorr_proof                  # DL proof-of-knowledge
-schnorr_verify = cryptosys.schnorr_verify
+# Generate key-pair along with proof-of-knowledge
 
-chaum_pedersen_proof = cryptosys.chaum_pedersen_proof    # DDH proof-of-knowledge
-chaum_pedersen_verify = cryptosys.chaum_pedersen_verify
+key = cryptosys.keygen()
+private_key = key['private']            # Access numerical value of private key
+public_key = key['public']              # Contains also proof-of-knowledge
 
-sign_element = cryptosys.sign_element
-verify_element_signature = cryptosys.verify_element_signature
+# Access numerical value of pubic key
 
-sign_text_message = cryptosys.sign_text_message
-verify_text_signature = cryptosys.verify_text_signature
+public_key_value = public_key['value'].value
+print('\n-- PUBLIC KEY --\n%d' % public_key_value)
 
-encrypt_element = cryptosys.encrypt_element
+# Verify knowledge of corresponding private key
 
-# Generate key pair along with proof of knowledge
+key_validated = cryptosys.validate_key(public_key)
+print('\n * Key validation: %s' % str(key_validated))
 
-private_key, public_key, proof = keygen(schnorr=True)
+# Sign text-message and verify signature
 
-print('\n-- PUBLIC KEY --\n%d' % public_key.value)
+message = 'SOS'
 
-# Verify knowledge of private key
+signed_message = cryptosys.sign_text_message(message, private_key)
+verified = cryptosys.verify_text_signature(signed_message, public_key['value'])
 
-valid = schnorr_verify(proof, public_key.value) # -----> Make function!!
+print('\n * Text-message signature validation: %s' % str(verified))
 
-print('\n * Key validation: %s' % str(valid))
+
+# ------------------------------- Internal usage -------------------------------
 
 # Prove and verify knowledge of DDH
 
-ddh = DDH['ddh']
+ddh = [ModPrimeElement(_, cryptosys.group.modulus) for _ in DDH['ddh']]
 log = DDH['log']
 
-proof = chaum_pedersen_proof(ddh, log)
-valid = chaum_pedersen_verify(ddh, proof)
+proof = cryptosys.chaum_pedersen_proof(ddh, log)
+valid = cryptosys.chaum_pedersen_verify(ddh, proof)
 
 print('\n * DDH proof validation: %s' % str(valid))
 
 # Sign element and verify signature
 
-element = ModPrimeElement(4458795732736487628958739, cryptosys.group.modulus)
+element = ModPrimeElement(4450087957327360487628958739, cryptosys.group.modulus)
 
-signature = sign_element(element, private_key)
-verified = verify_element_signature(signature, public_key)
+signature = cryptosys.sign_element(element, private_key)
+verified = cryptosys.verify_element_signature(signature, public_key['value'])
 
-print('\n * Signed element validation: %s' % str(valid))
-
-# Sign text and verify signature
-
-message = 'SOS'
-
-signed_message = sign_text_message(message, private_key)
-verified = verify_text_signature(signed_message, public_key)
-
-print('\n * Signed text validation: %s' % str(valid))
+print('\n * Signed element validation: %s' % str(verified))
 
 # Encrypt element
 
-message = ModPrimeElement(4458795732736487628958739, cryptosys.group.modulus)
-# public_key = ModPrimeElement(public_key, cryptosys.group.modulus)
-decryptor, cipher = encrypt_element(message, public_key)
+message = ModPrimeElement(4450087957327360487628958739, cryptosys.group.modulus)
+decryptor, cipher = cryptosys.encrypt_element(message, public_key['value'])
 
 print('\n-- CIPHER --\n')
 print('Decryptor\n')
