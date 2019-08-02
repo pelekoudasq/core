@@ -9,7 +9,7 @@ int_from_bytes = lambda _bytes: int.from_bytes(_bytes, byteorder='little')
 # int_from_bytes = lambda _bytes: mpz(int.from_bytes(_bytes, byteorder='little'))
 
 # Returns the SHA256-digest of the concatenation of the provided numbers' hexadecimal representations
-# Works exactly the same with mpz
+# Note: Works exactly the same with mpz arguments
 hash_nums = lambda *nums: sha256((''.join('%x:' % _ for _ in nums)).encode()).digest()
 
 # Returns the SHA256-digest of the concatenation of the provided strings

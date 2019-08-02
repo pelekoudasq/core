@@ -1,8 +1,3 @@
-"""
-ElGamal cryptosystem over the group of r-residues mod p, p > 2 prime.
-Defaults to r = 2, yielding the group of quadratic residues mod p
-"""
-
 import Crypto
 from Crypto.Util.number import isPrime
 from gmpy2 import mpz, powmod, invert, mul, add, f_mod
@@ -11,7 +6,6 @@ from .elgamal import ElGamalCrypto
 from .algebra import Group, GroupElement
 from .exceptions import AlgebraError, WrongCryptoError, WeakCryptoError
 from .utils import int_from_bytes, hash_nums, hash_texts, random_integer
-
 
 
 class ModPrimeElement(GroupElement):
@@ -23,6 +17,8 @@ class ModPrimeElement(GroupElement):
 
     def __init__(self, value, modulus):
         """
+        Element of the multiplicative group Z*_p = Z_p - {0}, p > 2 prime
+
         :type value: mpz
         :type modulus: mpz
         """
@@ -105,7 +101,6 @@ class ModPrimeElement(GroupElement):
             # a mod p element x is contained in C iff x ^ q = 1
             return self ** group.order == 1
         return False
-
 
 
 class ModPrimeSubgroup(Group):
@@ -269,8 +264,11 @@ class ModPrimeSubgroup(Group):
         return self.generate(exp)
 
 
-
 class ModPrimeCrypto(ElGamalCrypto):
+    """
+    ElGamal cryptosystem over the group of r-residues mod p, p > 2 prime.
+    Defaults to r = 2, yielding the group of quadratic residues mod p
+    """
 
     MIN_MOD_SIZE = 2048
     MIN_GEN_SIZE = 2000
@@ -296,6 +294,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type min_mod_size: int
         :type min_gen_size: int
         """
+
+        # super().__init__(self.__class__, config, *opts)
 
         # Type conversion
 
@@ -343,11 +343,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         if self.__group.generator.bit_length < MIN_GEN_SIZE:
             e = 'Generator is < %d bits long' % MIN_GEN_SIZE
             raise WeakCryptoError(e)
-
-        # ------------------------------------
-
-        # super().__init__(self.__class__, config, *opts)
-
 
 
 # --------------------------------- Externals ---------------------------------
@@ -419,26 +414,12 @@ class ModPrimeCrypto(ElGamalCrypto):
         public = dict({'value': public_key})
 
         if schnorr is True:
-            proof = self.schnorr_proof(private_key, public_key)
+            proof = self._schnorr_proof(private_key, public_key)
             public.update({'proof': proof})
 
         key.update({'public': public})
         return key
 
-
-    def get_as_element(self, public_key):
-        """
-        Assumes a dictionary of the form
-
-        {
-            'value: ModPrimeElement,
-            'proof: ...
-        }
-
-        :type public_key: dict
-        :rtype: ModPrimeElement
-        """
-        return public_key['value']
 
     def get_as_integer(self, public_key):
         """
@@ -484,7 +465,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         if not public_key.contained_in(self.__group):
             return False
 
-        return self.schnorr_verify(proof=proof, public=public_key)
+        return self._schnorr_verify(proof=proof, public=public_key)
 
 
     def sign_text_message(self, message, private_key):
@@ -506,7 +487,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
 
         element = self.__group.algebraize(message)
-        signature = self.sign_element(element, private_key)
+        signature = self._sign_element(element, private_key)
         signed_message = {
             'message': message, 'signature': signature
         }
@@ -548,12 +529,26 @@ class ModPrimeCrypto(ElGamalCrypto):
         if element != signature['e']:
             return False
 
-        return self.verify_element_signature(signature, public_key['value'])
+        return self._verify_element_signature(signature, public_key['value'])
 
 
 # --------------------------------- Internals ---------------------------------
 
-    def schnorr_proof(self, secret, public, *extras):
+    def _get_as_element(self, public_key):
+        """
+        Assumes a dictionary of the form
+
+        {
+            'value: ModPrimeElement,
+            'proof: ...
+        }
+
+        :type public_key: dict
+        :rtype: ModPrimeElement
+        """
+        return public_key['value']
+
+    def _schnorr_proof(self, secret, public, *extras):
         """
         Implementation of Schnorr protocol from the prover's side (non-interactive)
 
@@ -591,7 +586,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         }
 
 
-    def schnorr_verify(self, proof, public, *extras):
+    def _schnorr_verify(self, proof, public, *extras):
         """
         Implementation of Schnorr protocol from the verifier's side (non-interactive)
 
@@ -630,7 +625,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return __group.generate(response) == commitment * (public ** challenge)
 
 
-    def chaum_pedersen_proof(self, ddh, z):
+    def _chaum_pedersen_proof(self, ddh, z):
         """
         Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
 
@@ -683,7 +678,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         }
 
 
-    def chaum_pedersen_verify(self, ddh, proof):
+    def _chaum_pedersen_verify(self, ddh, proof):
         """
         Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
 
@@ -742,7 +737,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return u ** response == u_commitment * (w ** challenge)
 
 
-    def sign_element(self, element, private_key):
+    def _sign_element(self, element, private_key):
         """
         Returned signed element is of the form
 
@@ -774,7 +769,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return {'e': element, 'r': r, 's': s}
 
 
-    def verify_element_signature(self, signature, public_key):
+    def _verify_element_signature(self, signature, public_key):
         """
         Privided signature is of the form
 
@@ -803,7 +798,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return __group.generate(e.value) == (public_key ** r.value) * (r ** s)
 
 
-    def encrypt_element(self, element, public_key, randomness=None):
+    def _encrypt_element(self, element, public_key, randomness=None):
         """
         :type element: ModPrimeElement
         :type public_key: ModPrimeElement
@@ -815,10 +810,10 @@ class ModPrimeCrypto(ElGamalCrypto):
         p = __group.modulus
         q = __group.order
 
-        __element = element.value
+        element_value = element.value
 
-        __element += 1
-        if __element >= q:
+        element_value += 1
+        if element_value >= q:
             e = 'Element to encrypt exceeds possibilities'
             raise EncryptionNotPossible(e)
 
@@ -828,10 +823,10 @@ class ModPrimeCrypto(ElGamalCrypto):
             e = 'Provided randomness exceeds order of group'
             raise EncryptionNotPossible(e)
 
-        if powmod(__element, q, p) != 1:
-            __element = mod(- __element, p)
+        if powmod(element_value, q, p) != 1:
+            element_value = mod(- element_value, p)
 
-        element = ModPrimeElement(value=__element, modulus=p)
+        element = ModPrimeElement(value=element_value, modulus=p)
 
         decryptor = __group.generate(randomness)
         ciphertxt = element * (public_key ** randomness)
@@ -839,21 +834,18 @@ class ModPrimeCrypto(ElGamalCrypto):
         # g ^ r modp, m * y ^ r modp
         return decryptor, ciphertxt
 
-
-
-
-# ------------------------------- Construction -------------------------------
-
-
-    @staticmethod
-    def generate_system(config):
-        """
-        """
-        pass
-
-
-    @classmethod
-    def validate_system(cls, system, check_3mod4=True):
-        """
-        """
-        pass
+# # ------------------------------- Construction -------------------------------
+#
+#
+#     @staticmethod
+#     def generate_system(config):
+#         """
+#         """
+#         pass
+#
+#
+#     @classmethod
+#     def validate_system(cls, system, check_3mod4=True):
+#         """
+#         """
+#         pass

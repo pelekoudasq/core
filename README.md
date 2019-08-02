@@ -56,20 +56,20 @@ modulus = cryptosys.group.modulus
 ddh = [ModPrimeElement(_, modulus) for _ in _2048_DDH['ddh']]
 log = mpz(_2048_DDH['log'])
 
-proof = cryptosys.chaum_pedersen_proof(ddh, log)
-valid = cryptosys.chaum_pedersen_verify(ddh, proof)
+proof = cryptosys._chaum_pedersen_proof(ddh, log)
+valid = cryptosys._chaum_pedersen_verify(ddh, proof)
 
 # Sign algebraic element and verify signature
 
 element = ModPrimeElement(4450087957327360487628958739, modulus)
 
-signature = cryptosys.sign_element(element, private_key)
-verified = cryptosys.verify_element_signature(signature, public_key['value'])
+signature = cryptosys._sign_element(element, private_key)
+verified = cryptosys._verify_element_signature(signature, public_key['value'])
 
 # Encrypt algebraic element
 
 message = ModPrimeElement(4450087957327360487628958739, modulus)
-decryptor, cipher = cryptosys.encrypt_element(message, public_key['value'])
+decryptor, cipher = cryptosys._encrypt_element(message, public_key['value'])
 ```
 
 ## Tests

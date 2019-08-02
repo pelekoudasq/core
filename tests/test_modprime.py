@@ -147,8 +147,8 @@ def test_schnorr_protocol(system, secret, public, extras_1, extras_2, _bool):
     secret = mpz(secret)
     public = ModPrimeElement(public, system.group.modulus)
 
-    proof = system.schnorr_proof(secret, public, *extras_1)
-    valid = system.schnorr_verify(proof, public, *extras_2)
+    proof = system._schnorr_proof(secret, public, *extras_1)
+    valid = system._schnorr_verify(proof, public, *extras_2)
 
     assert valid is _bool
 
@@ -169,8 +169,8 @@ def test_chaum_pedersen_protocol(system, ddh, z, _bool):
 
     ddh = [ModPrimeElement(_, system.group.modulus) for _ in ddh]
 
-    proof = system.chaum_pedersen_proof(ddh, z)
-    valid = system.chaum_pedersen_verify(ddh, proof)
+    proof = system._chaum_pedersen_proof(ddh, z)
+    valid = system._chaum_pedersen_verify(ddh, proof)
 
     assert valid is _bool
 
@@ -194,7 +194,7 @@ def test_non_random_keygen(system, secret, public):
     proof = public_key['proof']
     public_key = public_key['value']
 
-    valid = system.schnorr_verify(proof, public_key)
+    valid = system._schnorr_verify(proof, public_key)
 
     assert secret == key['private'] and public_key.value == public and valid
 
@@ -211,7 +211,7 @@ def test_random_keygen(system):
     proof = public_key['proof']
     public_key = public_key['value']
 
-    valid = system.schnorr_verify(proof, public_key)
+    valid = system._schnorr_verify(proof, public_key)
 
     assert valid
 
@@ -245,8 +245,8 @@ def test_element_signature(system, element, private_key, public_key):
     private_key = mpz(private_key)
     public_key = ModPrimeElement(value=public_key, modulus=system.group.modulus)
 
-    signature = system.sign_element(element, private_key)
-    verified = system.verify_element_signature(signature, public_key)
+    signature = system._sign_element(element, private_key)
+    verified = system._verify_element_signature(signature, public_key)
 
     assert verified
 
