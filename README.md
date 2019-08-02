@@ -3,13 +3,20 @@
 ```python
 from crypto import ModPrimeCrypto, ModPrimeElement, _2048_PRIME, _2048_PRIMITIVE, _2048_DDH
 
-# mod p ElGanal cryptosystem, defaults to quadratic residues
+
+# ----------------------------- External interface -----------------------------
+
+# No need to take care of provided arguments' types; common Python
+# types like int and str may safely be provided at this level
+
+# Generate mod p ElGamal cryptosystem, defaults to quadratic residues
+
 cryptosys = ModPrimeCrypto(modulus=_2048_PRIME, primitive=_2048_PRIMITIVE)
 
+group = cryptosys.group                 # Access ElGamal cryptosystem's underlying group
+system = cryptosys.system               # Access algebraic parameters (modulus, order, generator)
 
-# ------------------------------- External usage -------------------------------
-
-# Generate key-pair along with proof-of-knowledge
+# Generate key-pair along with proof-of-knowledge (Schnorr)
 
 key = cryptosys.keygen()
 private_key = key['private']            # Access numerical value of private key
@@ -31,10 +38,18 @@ signed_message = cryptosys.sign_text_message(message, private_key)
 verified = cryptosys.verify_text_signature(signed_message, public_key)
 
 
-# ------------------------------- Internal usage -------------------------------
+# ----------------------------- Internal interface -----------------------------
+
+# Take care of provided arguments' types at this level; mpz or ModPrimeElement
+# have to be provided instead of common Python types like int or str
+#
+# Note: secrets (private keys, elements under encryption etc.) are usually
+# involved in algebraic operations as exponents and are thus of type mpz;
+# publics (public keys, encrypted messages etc.) belong by construction
+# to the underlying ElGamal group and are always of type ModPrimeElement
 
 from gmpy2 import mpz
-modulus = gryptosys.group.modulus
+modulus = cryptosys.group.modulus
 
 # Prove and verify knowledge of DDH
 
@@ -44,14 +59,14 @@ log = mpz(_2048_DDH['log'])
 proof = cryptosys.chaum_pedersen_proof(ddh, log)
 valid = cryptosys.chaum_pedersen_verify(ddh, proof)
 
-# Sign element and verify signature
+# Sign algebraic element and verify signature
 
 element = ModPrimeElement(4450087957327360487628958739, modulus)
 
 signature = cryptosys.sign_element(element, private_key)
 verified = cryptosys.verify_element_signature(signature, public_key['value'])
 
-# Encrypt element
+# Encrypt algebraic element
 
 message = ModPrimeElement(4450087957327360487628958739, modulus)
 decryptor, cipher = cryptosys.encrypt_element(message, public_key['value'])

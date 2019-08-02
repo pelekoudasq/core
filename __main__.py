@@ -6,13 +6,15 @@ p   = _4096_PRIME # _2048_PRIME
 g0  = _4096_PRIMITIVE # _2048_PRIMITIVE
 DDH = _4096_DDH # _2048_DDH
 
+
+# ------------------------------- External usage -------------------------------
+
 cryptosys = ModPrimeCrypto(modulus=p, primitive=g0) # Defaults to quadratic residues
 
 import json
 print('\n-- CRYPTOSYSTEM --\n%s' % json.dumps(cryptosys.system, indent=4, sort_keys=True))
 
-
-# ------------------------------- External usage -------------------------------
+group = cryptosys.group                 # Access ElGamal cryptosystem underlying group
 
 # Generate key-pair along with proof-of-knowledge
 
@@ -42,7 +44,7 @@ print('\n * Text-message signature validation: %s' % str(verified))
 # ------------------------------- Internal usage -------------------------------
 
 from gmpy2 import mpz
-modulus = cryptosys.group.modulus
+modulus = group.modulus
 
 # Prove and verify knowledge of DDH
 
@@ -54,7 +56,7 @@ valid = cryptosys.chaum_pedersen_verify(ddh, proof)
 
 print('\n * DDH proof validation: %s' % str(valid))
 
-# Sign element and verify signature
+# Sign algebraic element and verify signature
 
 element = ModPrimeElement(4450087957327360487628958739, modulus)
 
@@ -63,7 +65,7 @@ verified = cryptosys.verify_element_signature(signature, public_key['value'])
 
 print('\n * Signed element validation: %s' % str(verified))
 
-# Encrypt element
+# Encrypt algebraic element
 
 message = ModPrimeElement(4450087957327360487628958739, modulus)
 decryptor, cipher = cryptosys.encrypt_element(message, public_key['value'])

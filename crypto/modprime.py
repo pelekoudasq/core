@@ -275,7 +275,8 @@ class ModPrimeCrypto(ElGamalCrypto):
     MIN_MOD_SIZE = 2048
     MIN_GEN_SIZE = 2000
 
-    __Element = ModPrimeElement
+    GroupElement = ModPrimeElement
+    Group = ModPrimeSubgroup
 
     __slots__ = ('__group')
 
@@ -358,11 +359,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         __group = self.__group
 
-        return {
-            'modulus': int(__group.modulus),
-            'order': int(__group.order),
-            'generator': int(__group.generator.value)
-        }
+        p = int(__group.modulus)
+        q = int(__group.order)
+        g = int(__group.generator.value)
+
+        return {'modulus': p, 'order': q, 'generator': g}
 
 
     @property
@@ -371,6 +372,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: ModPrimeSubgroup
         """
         return self.__group
+
+
+    @property
+    def groupElementType(self):
+        """
+        """
+        pass
 
 
     def keygen(self, private_key=None, schnorr=True):
