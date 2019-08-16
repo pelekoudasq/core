@@ -4,7 +4,7 @@
 from crypto import ModPrimeCrypto, ModPrimeElement, _2048_PRIME, _2048_PRIMITIVE, _2048_DDH
 
 
-# ----------------------------- External interface -----------------------------
+# -------------------------------- External API --------------------------------
 
 # No need to take care of provided arguments' types; common Python
 # types like int and str may safely be provided at this level
@@ -38,7 +38,7 @@ signed_message = cryptosys.sign_text_message(message, private_key)
 verified = cryptosys.verify_text_signature(signed_message, public_key)
 
 
-# ----------------------------- Internal interface -----------------------------
+# -------------------------------- Internal API --------------------------------
 
 # Take care of provided arguments' types at this level; mpz or ModPrimeElement
 # have to be provided instead of common Python types like int or str
@@ -65,11 +65,6 @@ exponent = mpz(9192283018239872384768709283019821039781928123817398172931839120)
 
 signature = cryptosys._dsa_signature(exponent, private_key)
 verified = cryptosys._dsa_verify(exponent, signature, public_key['value'])
-
-# Encrypt algebraic element
-
-message = ModPrimeElement(4450087957327360487628958739, modulus)
-ciphertxt = cryptosys._encrypt_element(message, public_key['value'])
 ```
 
 ## Tests

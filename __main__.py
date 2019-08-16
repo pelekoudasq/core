@@ -7,7 +7,7 @@ g0  = _4096_PRIMITIVE # _2048_PRIMITIVE
 DDH = _4096_DDH # _2048_DDH
 
 
-# ------------------------------- External usage -------------------------------
+# -------------------------------- External API --------------------------------
 
 cryptosys = ModPrimeCrypto(modulus=p, primitive=g0) # Defaults to quadratic residues
 
@@ -42,7 +42,7 @@ verified = cryptosys.verify_text_signature(signed_message, public_key)
 print('\n * Text-message signature validation: %s' % str(verified))
 
 
-# ------------------------------- Internal usage -------------------------------
+# -------------------------------- Internal API --------------------------------
 
 from gmpy2 import mpz
 modulus = group.modulus
@@ -65,14 +65,14 @@ signature = cryptosys._dsa_signature(exponent, private_key)
 verified = cryptosys._dsa_verify(exponent, signature, public_key['value'])
 print('\n * Exponent signature validation: %s' % str(verified))
 
-# Encrypt algebraic element
-
-message = ModPrimeElement(4450087957327360487628958739, modulus)
-ciphertxt = cryptosys._encrypt_element(message, public_key['value'])
-
-print('\n-- CIPHERTEXT --\n')
-print('Decryptor\n')
-print(ciphertxt['alpha'])
-print('\nEncrypted element\n')
-print(ciphertxt['beta'])
-print()
+# # Encrypt algebraic element
+#
+# message = ModPrimeElement(4450087957327360487628958739, modulus)
+# ciphertxt = cryptosys._encrypt_element(message, public_key['value'])
+#
+# print('\n-- CIPHERTEXT --\n')
+# print('Decryptor\n')
+# print(ciphertxt['alpha'])
+# print('\nEncrypted element\n')
+# print(ciphertxt['beta'])
+# print()
