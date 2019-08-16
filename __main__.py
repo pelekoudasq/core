@@ -59,7 +59,7 @@ print('\n * DDH proof validation: %s' % str(valid))
 
 # Sign and verify signature under the DSA-Scheme
 
-exponent = mpz(239384877347538475938475384)
+exponent = mpz(919228301823987238476870928301982103978254287481928123817398172931839120)
 
 signature = cryptosys._dsa_signature(exponent, private_key)
 verified = cryptosys._dsa_verify(exponent, signature, public_key['value'])

@@ -59,12 +59,12 @@ log = mpz(_2048_DDH['log'])
 proof = cryptosys._chaum_pedersen_proof(ddh, log)
 valid = cryptosys._chaum_pedersen_verify(ddh, proof)
 
-# Sign algebraic element and verify signature
+# Digital Signature Algorithm
 
-element = ModPrimeElement(4450087957327360487628958739, modulus)
+exponent = mpz(9192283018239872384768709283019821039781928123817398172931839120)
 
-signature = cryptosys._sign_element(element, private_key)
-verified = cryptosys._verify_element_signature(signature, public_key['value'])
+signature = cryptosys._dsa_signature(exponent, private_key)
+verified = cryptosys._dsa_verify(exponent, signature, public_key['value'])
 
 # Encrypt algebraic element
 
