@@ -7,7 +7,9 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
     Abstract class for ElGamal cryptosystems
     """
 
-# ----------------------------- External Interface -----------------------------
+# -------------------------------- External API --------------------------------
+
+    # Access
 
     @property
     @abstractmethod
@@ -24,6 +26,14 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         """
 
     @abstractmethod
+    def get_as_integer(self, public_key):
+        """
+        Returns the numerical value of the provided public key
+        """
+
+    # Key generation
+
+    @abstractmethod
     def keygen(self, private_key=None, schnorr=True):
         """
         Generates a pair of a private and a public key, the latter
@@ -37,17 +47,13 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         public key (refers to knowledge of the corresponding private key)
         """
 
-    @abstractmethod
-    def get_as_integer(self, public_key):
-        """
-        Returns the numerical value of the provided public key
-        """
+    # Digital signatures
 
     @abstractmethod
     def sign_text_message(self, message, private_key):
         """
-        Signs the provided text-message with the provided private key and
-        returns the signed message
+        Signs the provided message with the provided private key under the
+        ElGamal Signature Scheme.
         """
 
     @abstractmethod
@@ -57,8 +63,13 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         belongs to the holder of the provided public key
         """
 
-# ----------------------------- Internal Interface -----------------------------
+    # Encryption/Decryption
 
+# -------------------------------- Internal API --------------------------------
+
+    # Access
+    
+    # Schnorr protocol
 
     @abstractmethod
     def _schnorr_proof(self, secret, public, *extras):
@@ -77,6 +88,8 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         Validates the demonstrated proof-of-knowledge (`proof`) of the discrete logarithm of
         y (`public`). `*extras` are assumed to have been used in the Fiat-Shamir heuristic
         """
+
+    # Chaum-Pedersen protocol
 
     @abstractmethod
     def _chaum_pedersen_proof(self, ddh, z):
@@ -104,19 +117,23 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         where u = g ^ x modp, v = g ^ z modp with 0 <= x, z < q
         """
 
+    # Digital Signature Algorithm
+
     @abstractmethod
-    def _sign_element(self, element, private_key):
+    def _dsa_signature(self, exponent, private_key):
         """
-        Signs the provided algebraic element with the provided private key and
-        returns the signed element
+        Applies (EC)DSA to compute the digital signature of the provided `exponent`
+        under the given `private_key`
         """
 
     @abstractmethod
-    def _verify_element_signature(self, signature, public_key):
+    def _dsa_verify(self, exponent, signature, public_key):
         """
-        Verifies that the provided algebraic signature belongs to the holder of
-        the provided public key
+        Verifies that the provded `signature` is the (EC)DSA-signature of the
+        provided `exponent` under the given `public_key`
         """
+
+    # El-Gamal encryption
 
     @abstractmethod
     def _encrypt_element(self, element, public_key, randomness=None):
@@ -124,6 +141,13 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         Encrypts the provided algebraic element with the provided public key
         """
         pass
+
+    # @abstractmethod
+    # def _prove_encryption(self, ciphertxt):
+    #     """
+    #     Generates proof-of-knowledge of the original message for the
+    #     provided ciphertext
+    #     """
 
     # @abstractmethod
     # def __init__(self, cls, config, *opts):

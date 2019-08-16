@@ -1,6 +1,6 @@
 import Crypto
 from Crypto.Util.number import isPrime
-from gmpy2 import mpz, powmod, invert, mul, add, f_mod
+from gmpy2 import mpz, mpq, powmod, invert, mul, add, f_mod, qdiv
 
 from .elgamal import ElGamalCrypto
 from .algebra import Group, GroupElement
@@ -201,13 +201,20 @@ class ModPrimeSubgroup(Group):
         """
         return self.__generator ** exponent
 
-    def random_exponent(self):
+    def random_exponent(self, min=2):
         """
-        Returns a random exponent > 1, bounded by the group's order
+        Returns a random exponent >= `min`, bounded by the group's order
 
         :rtype: mpz
         """
-        exponent = random_integer(2, self.__order)
+        # Note: the default value min=2 guarantees that raising the generator
+        # to the random exponent r does not yield the generator itself or the
+        # group's neutral element. In some applications (like the ElGamal
+        # Signature Scheme) it is further essential that r is coprime to the
+        # group's order q; if the latter is prime and related to the underlying
+        # modulus p via s * q = p - 1, p > 2 prime, then simply choose
+        # min=s+1 to meet this requirement
+        exponent = random_integer(min, self.__order)
         return mpz(exponent)
 
     def random_element(self):
@@ -216,6 +223,29 @@ class ModPrimeSubgroup(Group):
         """
         random_exp = self.random_exponent()
         return self.__generator ** random_exp
+
+    def exponent_from_texts(self, *texts):
+        """
+        :type *texts: str
+        :rtype: mpz
+        """
+        p = self.__modulus
+        q = self.__order
+        g = self.__generator.value
+
+        hashed_params = hash_nums(p, q, g).hex()
+        hashed_texts = hash_texts(hashed_params, *texts)
+        exponent = int_from_bytes(hashed_texts)
+        exponent = f_mod(exponent, self.__order)
+        return exponent
+
+    def element_from_texts(self, *texts):
+        """
+        :type *texts: str
+        :rtype: ModPrimeElement
+        """
+        exp = self.exponent_from_texts(*texts)
+        return self.generate(exp)
 
     def fiatshamir(self, *elements):
         """
@@ -244,24 +274,6 @@ class ModPrimeSubgroup(Group):
         :rtype: mpz
         """
         return sum(args) % self.__order
-
-
-    def algebraize(self, *texts):
-        """
-        :type *texts: str
-        :rtype: ModPrimeElement
-        """
-
-        p = self.__modulus
-        q = self.__order
-        g = self.__generator.value
-
-        hashed_params = hash_nums(p, q, g).hex()
-        hashed_texts = hash_texts(hashed_params, *texts)
-
-        exp = f_mod(int_from_bytes(hashed_texts), q)
-
-        return self.generate(exp)
 
 
 class ModPrimeCrypto(ElGamalCrypto):
@@ -345,7 +357,9 @@ class ModPrimeCrypto(ElGamalCrypto):
             raise WeakCryptoError(e)
 
 
-# --------------------------------- Externals ---------------------------------
+# -------------------------------- External API --------------------------------
+
+    # Access
 
     @property
     def system(self):
@@ -369,12 +383,23 @@ class ModPrimeCrypto(ElGamalCrypto):
         return self.__group
 
 
-    @property
-    def groupElementType(self):
+    def get_as_integer(self, public_key):
         """
-        """
-        pass
+        Returns the numerical value of the provided public key, assuming a
+        dictionary of the form
 
+        {
+            'value: ModPrimeElement,
+            'proof: ...
+        }
+
+        :type public_key: dict
+        :rtype: int
+        """
+        return int(public_key['value'].value)
+
+
+    # Key generation
 
     def keygen(self, private_key=None, schnorr=True):
         """
@@ -421,22 +446,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         return key
 
 
-    def get_as_integer(self, public_key):
-        """
-        Returns the numerical value of the provided public key, assuming a
-        dictionary of the form
-
-        {
-            'value: ModPrimeElement,
-            'proof: ...
-        }
-
-        :type public_key: dict
-        :rtype: int
-        """
-        return int(public_key['value'].value)
-
-
     def validate_key(self, public_key):
         """
         Accepts a dictionary of the form
@@ -453,7 +462,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type public_key: dict
         :rtype: bool
         """
-
         try:
             proof = public_key['proof']
         except KeyError:
@@ -468,26 +476,33 @@ class ModPrimeCrypto(ElGamalCrypto):
         return self._schnorr_verify(proof=proof, public=public_key)
 
 
+    # Digital signatures
+
     def sign_text_message(self, message, private_key):
         """
-        Returned signed message is of the form
+        Signs the provided `message` m with the provided `private_key` x under
+        the DSA Scheme. Returned signed message is of the form
 
         {
-            'message': str,
+            'message': str,                 (m)
             'signature': {
-                'e': ModPrimeElement
-                'r': ModPrimeElement
-                's': mpz
+                'c_1': ModPrimeElement      ((g ^ r modp) modq)
+                'c_2': mpz                  ((H(m) + x * c_1)/r modq)
             }
         }
+
+        for a once used randomness in the range {2, ..., q - 1}. The original
+        message m gets hashed as H(m) before being signed for defence against
+        existential forgery.
 
         :type message: str
         :type private_key: mpz
         :rtype: dict
         """
 
-        element = self.__group.algebraize(message)
-        signature = self._sign_element(element, private_key)
+        hashed_message = self.__group.exponent_from_texts(message)
+        signature = self._dsa_signature(hashed_message, private_key)
+
         signed_message = {
             'message': message, 'signature': signature
         }
@@ -499,41 +514,71 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         Provided signed message is of the form
 
-        :type signed_message: {
-            'message': str,
+        {
+            'message': str,                 (m)
             'signature': {
-                'e': ModPrimeElement
-                'r': ModPrimeElement
-                's': mpz
+                'c_1': ModPrimeElement      ((g ^ r modp) modq)
+                'c_2': mpq                  ((H(m) + x * c_1)/r modq)
             }
         }
 
-        and provided public key is assumed to come along with proof-of knowledge
-        in the form
+        and provided public key is assumed to come in the form
 
         {
-            'value': ModPrimeElement,
+            'value': ModPrimeElement,       (y)
             'proof': ...
         }
+
+        Note: the attached proof-of-knowledge is irrelevant to the current
+        verification. It exists here only because the current method is a
+        high-level functionality and public keys are not separated from
+        their corresponding proofs at the high level
 
         :type signed_message: dict
         :type public_key: dict
         :rtype: bool
         """
 
-        message = signed_message['message']
+        # Extract data from public key
+        public_key = public_key['value']
+
+        # Extract data from signed message
+
+        message = signed_message['message']                                     # m
         signature = signed_message['signature']
 
-        element = self.__group.algebraize(message)
+        # Verify signature
 
-        if element != signature['e']:
-            return False
+        hashed_message = self.__group.exponent_from_texts(message)              # H(m)
+        verified = self._dsa_verify(hashed_message, signature, public_key)
 
-        return self._verify_element_signature(signature, public_key['value'])
+        return verified
 
 
-# --------------------------------- Internals ---------------------------------
+    # Encryption/Decryption
 
+
+    # def encrypt(self, message, public_key, randomness):
+    #     """
+    #     :type message: str
+    #     :type public_key: ModPrimeElement
+    #     :type randomness: mpz
+    #     :rtype:
+    #     """
+    #
+    #     if randomness is None:
+    #         randomness = random_integer(1, q)
+    #     elif not 0 < randomness < q:
+    #         e = 'Provided randomness exceeds order of group'
+    #         raise EncryptionNotPossible(e)
+
+
+
+
+# -------------------------------- Internal API --------------------------------
+
+    # Access
+    
     def _get_as_element(self, public_key):
         """
         Assumes a dictionary of the form
@@ -547,6 +592,9 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: ModPrimeElement
         """
         return public_key['value']
+
+
+    # Schnorr protocol
 
     def _schnorr_proof(self, secret, public, *extras):
         """
@@ -624,6 +672,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         # g ^ s modp == (g ^ r) * (y ^ c) modp ?
         return __group.generate(response) == commitment * (public ** challenge)
 
+
+    # Chaum-Pedersen protocol
 
     def _chaum_pedersen_proof(self, ddh, z):
         """
@@ -737,72 +787,98 @@ class ModPrimeCrypto(ElGamalCrypto):
         return u ** response == u_commitment * (w ** challenge)
 
 
-    def _sign_element(self, element, private_key):
+    # Digital Signature Algorithm
+
+    def _dsa_signature(self, exponent, private_key):
         """
-        Returned signed element is of the form
+        Applies DSA to compute the digital signature of the provided `exponent` e
+        (assumed to be in the range {1, ..., q - 1}) under the `private_key` x.
+        Returned signature has the form
 
         {
-            'e': ModPrimeElement,
-            'r': ModPrimeElement,
-            's': mpz
+            'c_1': mpz                  ((g ^ r modp) modq)
+            'c_2': mpz                  ((e + x * c_1)/r modq)
         }
 
-        :type element: ModPrimeElement
+        for a once used randmoness r in the range {2, ..., q - 1}
+
+        :type exponent: mpz
         :type private_key: mpz
         :rtype: dict
         """
-
         __group = self.__group
-        __p = __group.modulus
+        __q = __group.order
 
-        elem_value = element.value
+        r = __group.random_exponent()                                    # 1 < r < q
+        c_1 = f_mod(__group.generate(r).value, __q)                      # (g ^ r modp) modq
 
-        while 1:
-            u = __p - 1
-            w = 2 * random_integer(3, __p) - 1
-            v = invert(w, u)
-            r = __group.generate(w)
-            s = f_mod(mul(v, f_mod(add(elem_value, - mul(r.value, private_key)), u)), u)
-            if s!= 0:
-                break
+        exps = __group.add_exponents(exponent, mul(private_key, c_1))    # (e + x * c_1) modq
+        r_inv = invert(r, __q)                                           # r ^ -1 modq
+        c_2 = f_mod(mul(exps, r_inv), __q)                               # (e + x * c_1)/r modq
 
-        return {'e': element, 'r': r, 's': s}
+        signature = {'c_1': c_1, 'c_2': c_2}
+
+        return signature
 
 
-    def _verify_element_signature(self, signature, public_key):
+    def _dsa_verify(self, exponent, signature, public_key):
         """
-        Privided signature is of the form
+        Verifies that the provded `signature` is the DSA-signature of the given
+        `exponent` under the given `public_key`. Provided signature is of the form
 
         {
-            'e': ModPrimeElement
-            'r': ModPrimeElement
-            's': mpz
+            'c_1': mpz
+            'c_2': mpz
         }
 
+        :type exponent: mpz
         :type signature: dict
         :type public_key: ModPrimeElement
         :rtype: bool
         """
-
         __group = self.__group
+        __q = __group.order
 
-        e = signature['e']
-        r = signature['r']
-        s = signature['s']
+        # Extract data from signature
 
-        if not 0 < r.value < __group.modulus:
-            return False
+        c_1 = signature['c_1']
+        c_2 = signature['c_2']
 
-        # g ^ e == y ^ r * r ^ s modp ?
+        # Commitments' validity check
 
-        return __group.generate(e.value) == (public_key ** r.value) * (r ** s)
+        for c in (c_1, c_2):
+            if not 0 < c < __q:
+                return False
 
+        # Proceed to signature validation
+
+        c_2_inv = invert(c_2, __q)                                      # c_2 ^ -1 modq
+
+        v_1 = f_mod(mul(exponent, c_2_inv), __q)                        # (e * c_2 ^ -1) modq
+        v_2 = f_mod(mul(c_1, c_2_inv), __q)                             # (v_1 * c_2 ^ -1) modq
+
+        element = (__group.generate(v_1) * public_key ** v_2).value     # (g ^ v_1 * y ^ v_2) modp
+
+        # ((g ^ v_1 * y ^ v_2) modp) modq == c_1 ?
+        return f_mod(element, __q) == c_1
+
+
+    # El-Gamal encryption
 
     def _encrypt_element(self, element, public_key, randomness=None):
         """
-        :type element: ModPrimeElement
+        Returns the ciphertxt of the provided element generated by means of the
+        provided public key in the form
+
+        {
+            'alpha': ModPrimeElement,
+            'beta': ModPrimeElement
+        }
+
+        :type element: mpz
         :type public_key: ModPrimeElement
         :type randomness: mpz
+        :rtype: dict
         """
 
         __group = self.__group
@@ -828,17 +904,49 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         element = ModPrimeElement(value=element_value, modulus=p)
 
-        decryptor = __group.generate(randomness)
-        ciphertxt = element * (public_key ** randomness)
+        alpha = __group.generate(randomness)
+        beta  = element * (public_key ** randomness)
 
-        # g ^ r modp, m * y ^ r modp
-        return decryptor, ciphertxt
+        ciphertxt = {
+            'alpha': alpha,     # g ^ r modp
+            'beta': beta        # m * y ^ r modp
+        }
+
+        return ciphertxt
+
+
+    # def _prove_encryption(self, ciphertxt, original):
+    #     """
+    #     Generates proof-of-knowledge (Schnorr) of the original (algebraic)
+    #     element, whose encryption yields the provided ciphertext. Assumes
+    #     provided ciphertext in the form
+    #
+    #     {
+    #         'alpha': ModPrimeElement    (g ^ r modp)
+    #         'beta': ModPrimeElement     (m * y ^ r mod p)
+    #     }
+    #
+    #     Returned proof is in the form
+    #
+    #     {
+    #         'commitment': ModPrimeElement,
+    #         'challenge': mpz,
+    #         'response': mpz
+    #     }
+    #
+    #     :type ciphertxt: dict
+    #     :type original: ModPrimeElement
+    #     :rtype: dict
+    #     """
+    #     proof = self._schnorr_proof(
+    #
+    #     )
 
 # # ------------------------------- Construction -------------------------------
 #
 #
 #     @staticmethod
-#     def generate_system(config):
+#     def gen  erate_system(config):
 #         """
 #         """
 #         pass

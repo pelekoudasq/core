@@ -69,7 +69,7 @@ verified = cryptosys._verify_element_signature(signature, public_key['value'])
 # Encrypt algebraic element
 
 message = ModPrimeElement(4450087957327360487628958739, modulus)
-decryptor, cipher = cryptosys._encrypt_element(message, public_key['value'])
+ciphertxt = cryptosys._encrypt_element(message, public_key['value'])
 ```
 
 ## Tests

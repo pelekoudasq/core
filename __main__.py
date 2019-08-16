@@ -36,6 +36,7 @@ print('\n * Key validation: %s' % str(key_validated))
 message = 'SOS'
 
 signed_message = cryptosys.sign_text_message(message, private_key)
+print(signed_message)
 verified = cryptosys.verify_text_signature(signed_message, public_key)
 
 print('\n * Text-message signature validation: %s' % str(verified))
@@ -56,23 +57,22 @@ valid = cryptosys._chaum_pedersen_verify(ddh, proof)
 
 print('\n * DDH proof validation: %s' % str(valid))
 
-# Sign algebraic element and verify signature
+# Sign and verify signature under the DSA-Scheme
 
-element = ModPrimeElement(4450087957327360487628958739, modulus)
+exponent = mpz(239384877347538475938475384)
 
-signature = cryptosys._sign_element(element, private_key)
-verified = cryptosys._verify_element_signature(signature, public_key['value'])
-
-print('\n * Signed element validation: %s' % str(verified))
+signature = cryptosys._dsa_signature(exponent, private_key)
+verified = cryptosys._dsa_verify(exponent, signature, public_key['value'])
+print('\n * Exponent signature validation: %s' % str(verified))
 
 # Encrypt algebraic element
 
 message = ModPrimeElement(4450087957327360487628958739, modulus)
-decryptor, cipher = cryptosys._encrypt_element(message, public_key['value'])
+ciphertxt = cryptosys._encrypt_element(message, public_key['value'])
 
-print('\n-- CIPHER --\n')
+print('\n-- CIPHERTEXT --\n')
 print('Decryptor\n')
-print(decryptor)
-print('\nCiphertext\n')
-print(cipher)
+print(ciphertxt['alpha'])
+print('\nEncrypted element\n')
+print(ciphertxt['beta'])
 print()

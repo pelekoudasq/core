@@ -228,27 +228,27 @@ def test_validate_key(system):
 
 # --------------------------- Test element signature ---------------------------
 
-_system_element_key = [
-    (
-        _2048_SYSTEM, 4458795847948730958739, _2048_KEY, _2048_PUBLIC
-    ),
-    (
-        _4096_SYSTEM, 3737843847948750232978, _4096_KEY, _4096_PUBLIC
-    ),
-]
-
-@pytest.mark.parametrize(
-    'system, element, private_key, public_key', _system_element_key)
-def test_element_signature(system, element, private_key, public_key):
-
-    element = ModPrimeElement(value=element, modulus=system.group.modulus)
-    private_key = mpz(private_key)
-    public_key = ModPrimeElement(value=public_key, modulus=system.group.modulus)
-
-    signature = system._sign_element(element, private_key)
-    verified = system._verify_element_signature(signature, public_key)
-
-    assert verified
+# _system_element_key = [
+#     (
+#         _2048_SYSTEM, 4458795847948730958739, _2048_KEY, _2048_PUBLIC
+#     ),
+#     (
+#         _4096_SYSTEM, 3737843847948750232978, _4096_KEY, _4096_PUBLIC
+#     ),
+# ]
+#
+# @pytest.mark.parametrize(
+#     'system, element, private_key, public_key', _system_element_key)
+# def test_element_signature(system, element, private_key, public_key):
+#
+#     element = ModPrimeElement(value=element, modulus=system.group.modulus)
+#     private_key = mpz(private_key)
+#     public_key = ModPrimeElement(value=public_key, modulus=system.group.modulus)
+#
+#     signature = system._sign_element(element, private_key)
+#     verified = system._verify_element_signature(signature, public_key)
+#
+#     assert verified
 
 
 # ------------------------ Test text-message signature ------------------------
