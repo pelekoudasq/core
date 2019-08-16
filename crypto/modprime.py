@@ -209,11 +209,7 @@ class ModPrimeSubgroup(Group):
         """
         # Note: the default value min=2 guarantees that raising the generator
         # to the random exponent r does not yield the generator itself or the
-        # group's neutral element. In some applications (like the ElGamal
-        # Signature Scheme) it is further essential that r is coprime to the
-        # group's order q; if the latter is prime and related to the underlying
-        # modulus p via s * q = p - 1, p > 2 prime, then simply choose
-        # min=s+1 to meet this requirement
+        # group's neutral element (provided that the group's order is > 2)
         exponent = random_integer(min, self.__order)
         return mpz(exponent)
 
@@ -578,7 +574,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 # -------------------------------- Internal API --------------------------------
 
     # Access
-    
+
     def _get_as_element(self, public_key):
         """
         Assumes a dictionary of the form

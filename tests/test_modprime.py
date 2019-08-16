@@ -13,7 +13,7 @@ _2048_SYSTEM = ModPrimeCrypto(modulus=_2048_PRIME, primitive=_2048_PRIMITIVE)
 _4096_SYSTEM = ModPrimeCrypto(modulus=_4096_PRIME, primitive=_4096_PRIMITIVE)
 
 
-# -------------------------- Test underlying algebra --------------------------
+# ----------------------------- Underlying algebra -----------------------------
 
 _AlgebraError_modulus_rootorder = [
     (0, 0),
@@ -50,43 +50,116 @@ def test_ModPrimeSubgroup_Construction(modulus, root_order, order):
     assert (group.modulus, group.order) == (modulus, order)
 
 
-# -------------------------------------------
+# -------------------------------- External API --------------------------------
 
-_modular_residues = [
 
-    # (x, q, p), q = (p - 1)/r when checking for r-residues x mod p > 2
+# Key generation and validation
 
-    # quadratic
-
-    (1, 1, 3, True),
-
-    (1, 2, 5, True), (2, 2, 5, False), (3, 2, 5, False), (4, 2, 5, True),
-
-    (1, 3, 7, True), (2, 3, 7, True), (3, 3, 7, False), (4, 3, 7, True),
-    (5, 3, 7, False), (6, 3, 7, False),
-
-    (1, 5, 11, True), (2, 5, 11, False), (3, 5, 11, True),  (4, 5, 11, True),
-    (5, 5, 11, True), (6, 5, 11, False), (7, 5, 11, False), (8, 5, 11, False),
-    (9, 5, 11, True), (10, 5, 11, False),
-
-    (_2048_GENERATOR, _2048_ORDER, _2048_PRIME, True),
-    (_4096_GENERATOR, _4096_ORDER, _4096_PRIME, True)
-
-    # qubic
-    # quatric
+_system_secret_public = [
+    (
+        _2048_SYSTEM, _2048_KEY, _2048_PUBLIC
+    ),
+    (
+        _4096_SYSTEM, _4096_KEY, _4096_PUBLIC
+    )
 ]
 
-modular_inverses = [
-    (1, 1, 2),
-    (1, 1, 3), (2, 2, 3),
-    (1, 1, 4), (3, 3, 4),
-    (1, 1, 5), (2, 3, 5), (3, 2, 5), (4, 4, 5),
-    (1, 1, 6), (5, 5, 6),
-    (1, 1, 7), (2, 4, 7), (3, 5, 7), (4, 2, 7), (5, 3, 7), (6, 6, 7)
+@pytest.mark.parametrize('system, secret, public', _system_secret_public)
+def test_non_random_keygen(system, secret, public):
+
+    key = system.keygen(private_key=secret)
+    public_key = key['public']
+    proof = public_key['proof']
+    public_key = public_key['value']
+
+    valid = system._schnorr_verify(proof, public_key)
+
+    assert secret == key['private'] and public_key.value == public and valid
+
+_system = [
+    _2048_SYSTEM,
+    _4096_SYSTEM
 ]
 
+@pytest.mark.parametrize('system', _system)
+def test_random_keygen(system):
 
-# ------------------------------ Schnorr protocol ------------------------------
+    key = system.keygen()
+    public_key = key['public']
+    proof = public_key['proof']
+    public_key = public_key['value']
+
+    valid = system._schnorr_verify(proof, public_key)
+
+    assert valid
+
+@pytest.mark.parametrize('system', _system)
+def test_validate_key(system):
+
+    key = system.keygen()
+    public_key = key['public']
+    valid = system.validate_key(public_key)
+
+
+# Digital signatures
+
+_system_message_key__bool = [
+    (
+        _2048_SYSTEM,
+        'kjkdfgkjdhfkgjhdkfjd',
+        _2048_KEY,
+        _2048_PUBLIC,
+        True
+    ),
+    (
+        _2048_SYSTEM,
+        'kjkdfgkjdhfkgjhdkfjd',
+        _2048_KEY - 1,
+        _2048_PUBLIC,
+        False                                                # Wrong private key
+    ),
+    (
+        _4096_SYSTEM,
+        'kdjfghkhelshfijaoiuv',
+        _4096_KEY,
+        _4096_PUBLIC,
+        True
+    ),
+    (
+        _4096_SYSTEM,
+        'kdjfghkhelshfijaoiuv',
+        _4096_KEY - 1,
+        _4096_PUBLIC,
+        False                                                # Wrong private key
+    ),
+]
+
+@pytest.mark.parametrize(
+    'system, message, private_key, public_key, _bool', _system_message_key__bool)
+def test_text_message_signature(system, message, private_key, public_key, _bool):
+
+    private_key = mpz(private_key)
+    public_key = {
+        'value': ModPrimeElement(value=public_key, modulus=system.group.modulus),
+        'proof': {
+            'whatever': '... attached proof plays no role here...'
+            # ...
+        }
+    }
+
+    signed_message = system.sign_text_message(message, private_key)
+    verified = system.verify_text_signature(signed_message, public_key)
+
+    assert verified is _bool
+
+
+# Encryption/Decryption
+
+
+# -------------------------------- Internal API --------------------------------
+
+
+# Schnorr protocol
 
 _system_secret_public_extras__bool = [
     (
@@ -153,15 +226,33 @@ def test_schnorr_protocol(system, secret, public, extras_1, extras_2, _bool):
     assert valid is _bool
 
 
-# -------------------------- Chaum-Pedersen protocol --------------------------
+# Chaum-Pedersen protocol
 
 _system_ddh_z__bool = [
     (
-        _2048_SYSTEM, _2048_DDH['ddh'], _2048_DDH['log'], True
+        _2048_SYSTEM,
+        _2048_DDH['ddh'],
+        _2048_DDH['log'],
+        True
     ),
     (
-        _4096_SYSTEM, _4096_DDH['ddh'], _4096_DDH['log'], True
-    )
+        _2048_SYSTEM,
+        _4096_DDH['ddh'],
+        _2048_DDH['log'],
+        False                                                  # Wrong logarithm
+    ),
+    (
+        _4096_SYSTEM,
+        _4096_DDH['ddh'],
+        _4096_DDH['log'],
+        True
+    ),
+    (
+        _4096_SYSTEM,
+        _2048_DDH['ddh'],
+        _4096_DDH['log'],
+        False                                                  # Wrong logarithm
+    ),
 ]
 
 @pytest.mark.parametrize('system, ddh, z, _bool', _system_ddh_z__bool)
@@ -175,111 +266,49 @@ def test_chaum_pedersen_protocol(system, ddh, z, _bool):
     assert valid is _bool
 
 
-# ----------------------------------- Keygen -----------------------------------
+# Digital Signature Algorithm
 
-_system_secret_public = [
+_system_exponent_key__bool = [
     (
-        _2048_SYSTEM, _2048_KEY, _2048_PUBLIC
+        _2048_SYSTEM,
+        239384877347538475938475384987497493874593847593875,
+        _2048_KEY,
+        _2048_PUBLIC,
+        True
     ),
     (
-        _4096_SYSTEM, _4096_KEY, _4096_PUBLIC
-    )
-]
-
-@pytest.mark.parametrize('system, secret, public', _system_secret_public)
-def test_non_random_keygen(system, secret, public):
-
-    key = system.keygen(private_key=secret)
-    public_key = key['public']
-    proof = public_key['proof']
-    public_key = public_key['value']
-
-    valid = system._schnorr_verify(proof, public_key)
-
-    assert secret == key['private'] and public_key.value == public and valid
-
-_system = [
-    _2048_SYSTEM,
-    _4096_SYSTEM
-]
-
-@pytest.mark.parametrize('system', _system)
-def test_random_keygen(system):
-
-    key = system.keygen()
-    public_key = key['public']
-    proof = public_key['proof']
-    public_key = public_key['value']
-
-    valid = system._schnorr_verify(proof, public_key)
-
-    assert valid
-
-
-# ------------------------------- Key validation -------------------------------
-
-@pytest.mark.parametrize('system', _system)
-def test_validate_key(system):
-
-    key = system.keygen()
-    public_key = key['public']
-    valid = system.validate_key(public_key)
-
-
-# --------------------------- Test element signature ---------------------------
-
-# _system_element_key = [
-#     (
-#         _2048_SYSTEM, 4458795847948730958739, _2048_KEY, _2048_PUBLIC
-#     ),
-#     (
-#         _4096_SYSTEM, 3737843847948750232978, _4096_KEY, _4096_PUBLIC
-#     ),
-# ]
-#
-# @pytest.mark.parametrize(
-#     'system, element, private_key, public_key', _system_element_key)
-# def test_element_signature(system, element, private_key, public_key):
-#
-#     element = ModPrimeElement(value=element, modulus=system.group.modulus)
-#     private_key = mpz(private_key)
-#     public_key = ModPrimeElement(value=public_key, modulus=system.group.modulus)
-#
-#     signature = system._sign_element(element, private_key)
-#     verified = system._verify_element_signature(signature, public_key)
-#
-#     assert verified
-
-
-# ------------------------ Test text-message signature ------------------------
-
-
-_system_element_key = [
-    (
-        _2048_SYSTEM, 'kjkdfgkjdhfkgjhdkfjd', _2048_KEY, _2048_PUBLIC
+        _2048_SYSTEM,
+        239384877347538475938475384987497493874593847593875,
+        _2048_KEY - 1,
+        _2048_PUBLIC,
+        False                                                # Wrong private key
     ),
     (
-        _4096_SYSTEM, 'kdjfghkhelshfijaoiuv', _4096_KEY, _4096_PUBLIC
+        _4096_SYSTEM,
+        919228301823987238476870928301982103978254287481928123817398172931839120,
+        _4096_KEY,
+        _4096_PUBLIC,
+        True
+    ),
+    (
+        _4096_SYSTEM,
+        919228301823987238476870928301982103978254287481928123817398172931839120,
+        _4096_KEY - 1,
+        _4096_PUBLIC,
+        False                                                # Wrong private key
     ),
 ]
 
 @pytest.mark.parametrize(
-    'system, message, private_key, public_key', _system_element_key)
-def test_text_message_signature(system, message, private_key, public_key):
+    'system, exponent, private_key, public_key, _bool', _system_exponent_key__bool)
+def test_dsa_signature(system, exponent, private_key, public_key, _bool):
 
     private_key = mpz(private_key)
-    public_key = {
-        'value': ModPrimeElement(value=public_key, modulus=system.group.modulus),
-        'proof': {
-            'whatever': '... attached proof plays no role here...'
-            # ...
-        }
-    }
+    public_key = ModPrimeElement(value=public_key, modulus=system.group.modulus)
 
-    signed_message = system.sign_text_message(message, private_key)
-    verified = system.verify_text_signature(signed_message, public_key)
+    signature = system._dsa_signature(exponent, private_key)
+    verified = system._dsa_verify(exponent, signature, public_key)
 
-    assert verified
+    assert verified is _bool
 
-
-# --------------------- Test element ecnryption/decryption ---------------------
+# El-Gamal encryption
