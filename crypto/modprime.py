@@ -180,6 +180,15 @@ class ModPrimeSubgroup(Group):
             e = 'No generator has yet been specified for this group'
             raise AlgebraError(e)
 
+    def get_parameters(self):
+        """
+        """
+        p = self.__modulus
+        q = self.__order
+        g = self.__generator.value
+
+        return p, q, g
+
     def set_generator(self, element):
         """
         :type element: ModPrimeElement
@@ -224,14 +233,13 @@ class ModPrimeSubgroup(Group):
         :type *texts: str
         :rtype: mpz
         """
-        p = self.__modulus
-        q = self.__order
-        g = self.__generator.value
+        p, q, g = self.get_parameters()
 
         hashed_params = hash_nums(p, q, g).hex()
         hashed_texts = hash_texts(hashed_params, *texts)
         exponent = int_from_bytes(hashed_texts)
         exponent = f_mod(exponent, self.__order)
+
         return exponent
 
     def element_from_texts(self, *texts):
@@ -250,9 +258,7 @@ class ModPrimeSubgroup(Group):
         :rtype: mpz
         """
 
-        p = self.__modulus
-        q = self.__order
-        g = self.__generator.value
+        p, q, g = self.get_parameters()
 
         # Convert to mpz if ModPrimeElement
         elements = [x.value if isinstance(x, ModPrimeElement) else x for x in elements]
@@ -287,7 +293,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     GroupElement = ModPrimeElement
     Group = ModPrimeSubgroup
 
-    __slots__ = ('__group')
+    __slots__ = ('__group', '__modulus', '__order')
 
 
     def __init__(self, modulus, primitive, root_order=2,
@@ -365,13 +371,9 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         :rtype: dict
         """
-        __group = self.__group
+        p, q, g = self.__group.get_parameters()
 
-        p = int(__group.modulus)
-        q = int(__group.order)
-        g = int(__group.generator.value)
-
-        return {'modulus': p, 'order': q, 'generator': g}
+        return {'modulus': int(p), 'order': int(q), 'generator': int(g)}
 
 
     @property
@@ -606,6 +608,21 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         return public_key['value']
 
+    def _expand_ciphertxt(self, ciphertxt):
+        """
+        Assuming a structure of the form
+
+        {
+            'alpha': ...,
+            'beta': ...
+        }
+
+        it returns a tuple with the provided dictionary's values
+        """
+        alpha = ciphertxt['alpha']
+        beta = ciphertxt['beta']
+
+        return alpha, beta
 
     # Schnorr protocol
 
@@ -926,9 +943,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type private_key: mpz
         :rtype: ModPrimeElement
         """
-
-        alpha = ciphertxt['alpha']
-        beta = ciphertxt['beta']
+        alpha, beta = self._expand_ciphertxt(ciphertxt)
 
         original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
 
@@ -958,9 +973,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type original: ModPrimeElement
         :rtype: dict
         """
-        alpha = ciphertxt['alpha']
-        beta = ciphertxt['beta']
-
+        alpha, beta = self._expand_ciphertxt(ciphertxt)
         proof = self._schnorr_proof(randomness, alpha, beta)
 
         return proof
@@ -972,9 +985,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type ciphertxt:
         :rtype: bool
         """
-        alpha = ciphertxt['alpha']
-        beta = ciphertxt['beta']
-
+        alpha, beta = self._expand_ciphertxt(ciphertxt)
         verified = self._schnorr_verify(proof, alpha, beta)
 
         return verified
