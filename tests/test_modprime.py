@@ -359,3 +359,22 @@ def test_encryption_decryption(system, element, public_key, private_key):
     original = system._decrypt(ciphertxt, private_key)
 
     assert element == original
+
+@pytest.mark.parametrize(
+    'system, element, public_key, private_key', _system_element_key)
+def test_encryption_proof(system, element, public_key, private_key):
+
+    __p = system.group.modulus
+
+    # Type conversions
+    element = ModPrimeElement(element, __p)
+    public_key = ModPrimeElement(public_key, __p)
+    private_key = mpz(private_key)
+
+    # Ecnryption/Decryption
+    randomness = system.group.random_exponent()
+    ciphertxt = system._encrypt(element, public_key, randomness)
+    proof = system._prove_encryption(ciphertxt, randomness)
+    verified = system._verify_encryption(proof, ciphertxt)
+
+    assert verified

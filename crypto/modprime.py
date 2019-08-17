@@ -822,11 +822,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         __group = self.__group
         __q = __group.order
 
-        r = __group.random_exponent()                                    # 1 < r < q
-        c_1 = f_mod(__group.generate(r).value, __q)                      # (g ^ r modp) modq
+        randomness = __group.random_exponent()                           # 1 < r < q
+        c_1 = f_mod(__group.generate(randomness).value, __q)             # (g ^ r modp) modq
 
         exps = __group.add_exponents(exponent, mul(private_key, c_1))    # (e + x * c_1) modq
-        r_inv = invert(r, __q)                                           # r ^ -1 modq
+        r_inv = invert(randomness, __q)                                  # r ^ -1 modq
         c_2 = f_mod(mul(exps, r_inv), __q)                               # (e + x * c_1)/r modq
 
         signature = {'c_1': c_1, 'c_2': c_2}
@@ -965,11 +965,19 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return proof
 
-    #TODO: implement
-    def _verify_encryption():
+
+    def _verify_encryption(self, proof, ciphertxt):
         """
+        :type proof:
+        :type ciphertxt:
+        :rtype: bool
         """
-        pass
+        alpha = ciphertxt['alpha']
+        beta = ciphertxt['beta']
+
+        verified = self._schnorr_verify(proof, alpha, beta)
+
+        return verified
 
     #TODO: implement
     def _decrypt_with_randomness(self, public, ciphertext, secret):

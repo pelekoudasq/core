@@ -80,3 +80,12 @@ print()
 original = cryptosys._decrypt(ciphertxt, private_key)
 
 print('\n * ElGamal decryption success: %s\n' % str(original==element))
+
+# Encryption proof
+
+randomness = cryptosys.group.random_exponent()
+ciphertxt = cryptosys._encrypt(element, public_key['value'], randomness)
+proof = cryptosys._prove_encryption(ciphertxt, randomness)
+verified = cryptosys._verify_encryption(proof, ciphertxt)
+
+print('\n * ElGamal encryption verified: %s\n' % str(verified))
