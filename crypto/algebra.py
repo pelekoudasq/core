@@ -45,8 +45,9 @@ class GroupElement(object, metaclass=ABCMeta):
         """
         """
 
+    @property
     @abstractmethod
-    def inv(self):
+    def inverse(self):
         """
         """
 

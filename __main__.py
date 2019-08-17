@@ -19,7 +19,7 @@ group = cryptosys.group                 # Access ElGamal cryptosystem underlying
 # Generate key-pair along with proof-of-knowledge
 
 key = cryptosys.keygen()
-private_key = key['private']            # Access numerical value of private key
+private_key = key['private']            # Access numerical value (mpz) of private key
 public_key = key['public']              # Contains also proof-of-knowledge
 
 # Access numerical value of pubic key
@@ -65,14 +65,18 @@ signature = cryptosys._dsa_signature(exponent, private_key)
 verified = cryptosys._dsa_verify(exponent, signature, public_key['value'])
 print('\n * Exponent signature validation: %s' % str(verified))
 
-# # Encrypt algebraic element
-#
-# message = ModPrimeElement(4450087957327360487628958739, modulus)
-# ciphertxt = cryptosys._encrypt_element(message, public_key['value'])
-#
-# print('\n-- CIPHERTEXT --\n')
-# print('Decryptor\n')
-# print(ciphertxt['alpha'])
-# print('\nEncrypted element\n')
-# print(ciphertxt['beta'])
-# print()
+# El-Gamal encryption and decryption of algebraic element
+
+element = ModPrimeElement(4450087957327360487628958739, modulus)
+ciphertxt = cryptosys._encrypt(element, public_key['value'])
+
+print('\n-- CIPHERTEXT --\n')
+print('Decryptor\n')
+print(ciphertxt['alpha'])
+print('\nEncrypted element\n')
+print(ciphertxt['beta'])
+print()
+
+original = cryptosys._decrypt(ciphertxt, private_key)
+
+print('\n * ElGamal decryption success: %s\n' % str(original==element))

@@ -68,7 +68,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
 # -------------------------------- Internal API --------------------------------
 
     # Access
-    
+
     # Schnorr protocol
 
     @abstractmethod
@@ -136,7 +136,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
     # El-Gamal encryption
 
     @abstractmethod
-    def _encrypt_element(self, element, public_key, randomness=None):
+    def _encrypt(self, element, public_key, randomness=None):
         """
         Encrypts the provided algebraic element with the provided public key
         """

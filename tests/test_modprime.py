@@ -15,6 +15,21 @@ _4096_SYSTEM = ModPrimeCrypto(modulus=_4096_PRIME, primitive=_4096_PRIMITIVE)
 
 # ----------------------------- Underlying algebra -----------------------------
 
+_original_inverse_modulus = [
+    (1, 1, 2),
+    (1, 1, 3), (2, 2, 3),
+    (1, 1, 4), (3, 3, 4),
+    (1, 1, 5), (2, 3, 5), (3, 2, 5), (4, 4, 5),
+    (1, 1, 6), (5, 5, 6),
+    (1, 1, 7), (2, 4, 7), (3, 5, 7), (4, 2, 7), (5, 3, 7), (6, 6, 7)
+]
+
+@pytest.mark.parametrize('original, inverse, modulus', _original_inverse_modulus)
+def test_modular_inversion(original, inverse, modulus):
+
+    original = ModPrimeElement(mpz(original), mpz(modulus))
+    assert original.inverse.value == inverse
+
 _AlgebraError_modulus_rootorder = [
     (0, 0),
     (1, 0), (1, 1),
@@ -312,3 +327,35 @@ def test_dsa_signature(system, exponent, private_key, public_key, _bool):
     assert verified is _bool
 
 # El-Gamal encryption
+
+_system_element_key = [
+    (
+        _2048_SYSTEM,
+        792387492873492873492879428794827973465837687123194802943820394774576454,
+        _2048_PUBLIC,
+        _2048_KEY
+    ),
+    (
+        _4096_SYSTEM,
+        792387492873492873492879428794827973465837687123194802943820394774576454,
+        _4096_PUBLIC,
+        _4096_KEY
+    )
+]
+
+@pytest.mark.parametrize(
+    'system, element, public_key, private_key', _system_element_key)
+def test_encryption_decryption(system, element, public_key, private_key):
+
+    __p = system.group.modulus
+
+    # Type conversions
+    element = ModPrimeElement(element, __p)
+    public_key = ModPrimeElement(public_key, __p)
+    private_key = mpz(private_key)
+
+    # Ecnryption/Decryption
+    ciphertxt = system._encrypt(element, public_key)
+    original = system._decrypt(ciphertxt, private_key)
+
+    assert element == original
