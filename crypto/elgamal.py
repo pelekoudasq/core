@@ -142,12 +142,21 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         """
         pass
 
-    # @abstractmethod
-    # def _prove_encryption(self, ciphertxt):
-    #     """
-    #     Generates proof-of-knowledge of the original message for the
-    #     provided ciphertext
-    #     """
+    @abstractmethod
+    def _decrypt(self, ciphertxt, private_key):
+        """
+        Decrypts the provided ciphertxt with the given private key
+        and returns the original
+        """
+        pass
+
+    @abstractmethod
+    def _prove_encryption(self, ciphertxt, randomness):
+        """
+        Generates proof-of-knowledge of the provided randomness used in the
+        ElGamal encryption yielding the given ciphertxt
+        """
+        pass
 
     # @abstractmethod
     # def __init__(self, cls, config, *opts):
@@ -162,16 +171,3 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
     #         raise
     #
     #     self._set_params(system)
-    #
-    #
-    # @staticmethod
-    # @abstractmethod
-    # def generate_system(*config):
-    #     """
-    #     """
-    #
-    # @classmethod
-    # @abstractmethod
-    # def validate_system(cls, system, *options):
-    #     """
-    #     """
