@@ -9,33 +9,33 @@ from crypto import ModPrimeCrypto, ModPrimeElement, _2048_PRIME, _2048_PRIMITIVE
 # No need to take care of provided arguments' types; common Python
 # types like int and str may safely be provided at this level
 
-# Generate mod p ElGamal cryptosystem, defaults to quadratic residues
+# Generate mod p ElGamal systemtem, defaults to quadratic residues
 
-cryptosys = ModPrimeCrypto(modulus=_2048_PRIME, primitive=_2048_PRIMITIVE)
+system = ModPrimeCrypto(modulus=_2048_PRIME, primitive=_2048_PRIMITIVE)
 
-group = cryptosys.group                 # Access ElGamal cryptosystem's underlying group
-system = cryptosys.system               # Access algebraic parameters (modulus, order, generator)
+group = system.group                 # Access ElGamal systemtem's underlying group
+system = system.system               # Access algebraic parameters (modulus, order, generator)
 
 # Generate key-pair along with proof-of-knowledge (Schnorr)
 
-key = cryptosys.keygen()
+key = system.keygen()
 private_key = key['private']            # Access numerical value of private key
 public_key = key['public']              # Contains also proof-of-knowledge
 
 # Access numerical value of pubic key
 
-print('\n-- PUBLIC KEY --\n%d' % cryptosys.get_as_integer(public_key))
+print('\n-- PUBLIC KEY --\n%d' % system._extract_public(public_key))
 
 # Verify knowledge of private key (no need to separate proof from public key)
 
-key_validated = cryptosys.validate_key(public_key)
+key_validated = system.validate_key(public_key)
 
 # Sign text-message and verify signature
 
 message = 'SOS'
 
-signed_message = cryptosys.sign_text_message(message, private_key)
-verified = cryptosys.verify_text_signature(signed_message, public_key)
+signed_message = system.sign_text_message(message, private_key)
+verified = system.verify_text_signature(signed_message, public_key)
 
 
 # -------------------------------- Internal API --------------------------------
@@ -49,28 +49,28 @@ verified = cryptosys.verify_text_signature(signed_message, public_key)
 # to the underlying ElGamal group and are always of type ModPrimeElement
 
 from gmpy2 import mpz
-modulus = cryptosys.group.modulus
+modulus = system.group.modulus
 
 # Prove and verify knowledge of DDH
 
 ddh = [ModPrimeElement(_, modulus) for _ in _2048_DDH['ddh']]
 log = mpz(_2048_DDH['log'])
 
-proof = cryptosys._chaum_pedersen_proof(ddh, log)
-valid = cryptosys._chaum_pedersen_verify(ddh, proof)
+proof = system._chaum_pedersen_proof(ddh, log)
+valid = system._chaum_pedersen_verify(ddh, proof)
 
 # Digital Signature Algorithm
 
 exponent = mpz(9192283018239872384768709283019821039781928123817398172931839120)
 
-signature = cryptosys._dsa_signature(exponent, private_key)
-verified = cryptosys._dsa_verify(exponent, signature, public_key['value'])
+signature = system._dsa_signature(exponent, private_key)
+verified = system._dsa_verify(exponent, signature, public_key['value'])
 
 # El-Gamal encryption and decryption of algebraic element
 
 element = ModPrimeElement(4450087957327360487628958739, modulus)
-ciphertxt = cryptosys._encrypt(element, public_key['value'])
-original = cryptosys._decrypt(ciphertxt, private_key)
+ciphertxt = system._encrypt(element, public_key['value'])
+original = system._decrypt(ciphertxt, private_key)
 ```
 
 ## Tests

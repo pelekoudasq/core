@@ -50,8 +50,3 @@ class GroupElement(object, metaclass=ABCMeta):
     def inverse(self):
         """
         """
-
-    # @abstractmethod
-    # def is_valid(self):
-    #     """
-    #     """

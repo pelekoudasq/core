@@ -283,7 +283,7 @@ class ModPrimeSubgroup(Group):
 
 class ModPrimeCrypto(ElGamalCrypto):
     """
-    ElGamal cryptosystem over the group of r-residues mod p, p > 2 prime.
+    ElGamal systemtem over the group of r-residues mod p, p > 2 prime.
     Defaults to r = 2, yielding the group of quadratic residues mod p
     """
 
@@ -293,7 +293,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     GroupElement = ModPrimeElement
     Group = ModPrimeSubgroup
 
-    __slots__ = ('__group', '__modulus', '__order')
+    __slots__ = ('__group')
 
 
     def __init__(self, modulus, primitive, root_order=2,
@@ -371,7 +371,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         :rtype: dict
         """
-        p, q, g = self.__group.get_parameters()
+        p, q, g = self._get_parameters()
 
         return {'modulus': int(p), 'order': int(q), 'generator': int(g)}
 
@@ -384,39 +384,33 @@ class ModPrimeCrypto(ElGamalCrypto):
         return self.__group
 
 
-    def get_as_integer(self, public_key):
-        """
-        Returns the numerical value of the provided public key, assuming a
-        dictionary of the form
-
-        {
-            'value: ModPrimeElement,
-            'proof: ...
-        }
-
-        :type public_key: dict
-        :rtype: int
-        """
-        return int(public_key['value'].value)
-
-
     # Key generation and validation
+
+    #############################################################
+    #                                                           #
+    #    By keypair is meant a dictionary of the form           #
+    #                                                           #
+    #    {                                                      #
+    #        'private': mpz,                                    #
+    #        'public': {                                        #
+    #            'value': ModPrimeElement,                      #
+    #            ['proof': {                                    #
+    #                'commitment': ModPrimeElement              #
+    #                'challenge': mpz                           #
+    #                'response': mpz                            #
+    #            }]                                             #
+    #        }                                                  #
+    #    }                                                      #
+    #                                                           #
+    #   where the optional field `proof` is a Schnorr proof     #
+    #                                                           #
+    #############################################################
+
 
     def keygen(self, private_key=None, schnorr=True):
         """
-        Generates a keypair of the form
-
-        {
-            'private': mpz,
-            'public': {
-                'value': ModPrimeElement,
-                'proof': {
-                    'commitment': ModPrimeElement
-                    'challenge': mpz
-                    'response': mpz
-                }
-            }
-        }
+        Generates and returns a keypair. If `shnorr` is `True`, the public part
+        will also contain a proof-of-knowledge of the private part.
 
         :type private_key: mpz
         :type schnorr: bool
@@ -447,18 +441,36 @@ class ModPrimeCrypto(ElGamalCrypto):
         return key
 
 
+    def extract_public(self, key):
+        """
+        Returns the public part of the provided keypair, containing also the
+        proof-of-knowledge generated together with that
+
+        :type key: dict
+        :rtype: int
+        """
+        return key['public']
+
+
+    def extract_value(self, public_key):
+        """
+        Returns as integer the value of the provided public key
+
+        :rtype: int
+        """
+        return int(public_key['value'].value)
+
+
     def validate_key(self, public_key):
         """
-        Accepts a dictionary of the form
+        Assuming `public_key` to be the public part
 
         {
             'value': ModPrimeElement,
-            'proof': {
-                'commitment': ModPrimeElement,
-                'challenge': mpz,
-                'response': mpz
-            }
+            'proof': ...
         }
+
+        of a keypair, verifies the included proof-of-knowledge of its private counterpart
 
         :type public_key: dict
         :rtype: bool
@@ -479,22 +491,36 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     # Text-message signatures
 
+    #####################################################################
+    #                                                                   #
+    #    By signed message is meant a dictionary of the form            #
+    #                                                                   #
+    #    {                                                              #
+    #        'message': str,                                            #
+    #        'signature': {                                             #
+    #            'c_1': ModPrimeElement                                 #
+    #            'c_2': mpz                                             #
+    #        }                                                          #
+    #    }                                                              #
+    #                                                                   #
+    #####################################################################
+
+
     def sign_text_message(self, message, private_key):
         """
-        Signs the provided `message` m with the provided `private_key` x under
-        the DSA Scheme. Returned signed message is of the form
+        Signs the provided `message` m with the provided `private_key` x,
+        returning the signed message
 
         {
-            'message': str,                 (m)
+            'message': m,
             'signature': {
-                'c_1': ModPrimeElement      ((g ^ r modp) modq)
-                'c_2': mpz                  ((H(m) + x * c_1)/r modq)
+                'c_1': (g ^ r modp) modq,
+                'c_2': (H(m) + x * c_1)/r modq
             }
         }
 
-        for a once used randomness in the range {2, ..., q - 1}. The original
-        message m gets hashed as H(m) before being signed for defence against
-        existential forgery.
+        for a once used randomness 1 < r < q. The original message m gets hashed
+        as H(m) before being signed for defence against existential forgery.
 
         :type message: str
         :type private_key: mpz
@@ -511,33 +537,15 @@ class ModPrimeCrypto(ElGamalCrypto):
         return signed_message
 
 
-    # Encryption/Decryption
-
-    # Elections API
-
     def verify_text_signature(self, signed_message, public_key):
         """
-        Provided signed message is of the form
+        Given a signed message `signed_message`, verifies the attached signature
+        under the provided public key `public_key`.
 
-        {
-            'message': str,                 (m)
-            'signature': {
-                'c_1': ModPrimeElement      ((g ^ r modp) modq)
-                'c_2': mpq                  ((H(m) + x * c_1)/r modq)
-            }
-        }
-
-        and provided public key is assumed to come in the form
-
-        {
-            'value': ModPrimeElement,       (y)
-            'proof': ...
-        }
-
-        Note: the attached proof-of-knowledge is irrelevant to the current
-        verification. It exists here only because the current method is a
-        high-level functionality and public keys are not separated from
-        their corresponding proofs at the high level
+        Note: the proof-of-knowledge included with the public key is irrelevant
+        to the current verification. It exists here only because the current
+        method is a high-level functionality and public keys are not separated
+        from their corresponding proofs at the high level
 
         :type signed_message: dict
         :type public_key: dict
@@ -559,7 +567,9 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return verified
 
-    #TODO: implement
+
+    # Elections API
+
     def sign_vote(self, vote, comments, election_public, zeus_key, trustees, choices):
         """
         :type vote:
@@ -570,7 +580,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type choices:
         :rtype:
         """
-        pass
+        p, q, g = self._get_parameters()
+        private, public = self._extract_keypair(zeus_key)
 
     #TODO: implement
     def verify_vote_signature(self, vote_signature):
@@ -594,19 +605,16 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     # Access
 
-    def _get_as_element(self, public_key):
+    def _get_parameters(self):
         """
-        Assumes a dictionary of the form
+        Returns the modulus p, order q and fixed generator g of the
+        underlying group as a tuple of the form (mpz, mpz, mpz)
 
-        {
-            'value: ModPrimeElement,
-            'proof: ...
-        }
-
-        :type public_key: dict
-        :rtype: ModPrimeElement
+        :rtype: tuple
         """
-        return public_key['value']
+        p, q, g = self.__group.get_parameters()
+        return p, q, g
+
 
     def _expand_ciphertxt(self, ciphertxt):
         """
@@ -624,20 +632,73 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return alpha, beta
 
+
+    #####################################################
+    #                                                   #
+    #    Provided keys are assumed to be of the form    #
+    #                                                   #
+    #    {   'private': mpz,                            #
+    #        'public': {                                #
+    #            'value: ModPrimeElement,               #
+    #            'proof: ...                            #
+    #        }                                          #
+    #    }                                              #
+    #                                                   #
+    #####################################################
+
+
+    def _extract_private(self, key):
+        """
+        Returns as mpz the private part of the provided key
+
+        :type key: dict
+        :rtype: mpz
+        """
+        return key['private']
+
+
+    def _extract_public(self, key):
+        """
+        Returns as group element the public part of the provided key
+
+        :type key: dict
+        :rtype: ModPrimeElement
+        """
+        return key['public']['value']
+
+
+    def _extract_keypair(self, key):
+        """
+        Returns a tuple with the private and public part of the provided key in
+        the form of a numerical value (mpz) and group element (ModPrimeElement)
+        respectively.
+
+        :type key: dict
+        :rtype: tuple
+        """
+
+
     # Schnorr protocol
+
+    ############################################################
+    #                                                          #
+    #    By Schnorr proof is meant a dictionary of the form    #
+    #                                                          #
+    #    {                                                     #
+    #       'commitment': ModPrimeElement                      #
+    #       'challenge': mpz                                   #
+    #       'response': mpz                                    #
+    #    }                                                     #
+    #                                                          #
+    ############################################################
+
 
     def _schnorr_proof(self, secret, public, *extras):
         """
         Implementation of Schnorr protocol from the prover's side (non-interactive)
 
-        Returns proof-of-knowldge of the discrete logarithm x (`secret`) of y (`public`).
-        `*extras` are to be used in the Fiat-Shamir heuristic. The proof has the form
-
-        {
-            'commitment': ModPrimeElement
-            'challenge': mpz
-            'response': mpz
-        }
+        Returns proof-of-knowldge (Schnorr proof) of the discrete logarithm x (`secret`)
+        of y (`public`), with `*extras` being used in the Fiat-Shamir heuristic
 
         :type secret: mpz
         :type public: modPrimeElement
@@ -657,27 +718,22 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         response = __group.add_exponents(randomness, challenge * secret) # r + c * x
 
-        return {
+        proof = {
             'commitment': commitment,
             'challenge': challenge,
             'response': response
         }
+
+        return proof
 
 
     def _schnorr_verify(self, proof, public, *extras):
         """
         Implementation of Schnorr protocol from the verifier's side (non-interactive)
 
-        Validates the demonstrated proof-of-knowledge (`proof`) of the discrete logarithm of
-        y (`public`). `*extras` are assumed to have been used in the Fiat-Shamir heuristic
-
-        Provided proof has the form
-
-        {
-            'commitment': ModPrimeElement
-            'challenge': mpz
-            'response': mpz
-        }
+        Validates the demonstrated Schnorr proof-of-knowledge (`proof`) of the discrete
+        logarithm of y (`public`), with `*extras` assumed to have been used in the
+        Fiat-Shamir heuristic
 
         :type proof: dict
         :type public: modPrimeElement
@@ -705,12 +761,27 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     # Chaum-Pedersen protocol
 
+    ###################################################################
+    #                                                                 #
+    #    By Chaum-Pedersen proof is meant a dictionary of the form    #
+    #                                                                 #
+    #    {                                                            #
+    #        'base_commitment': ModPrimeElement                       #
+    #        'message_commitment': ModPrimeElement                    #
+    #        'challenge': mpz                                         #
+    #        'response': mpz                                          #
+    #    }                                                            #
+    #                                                                 #
+    ###################################################################
+
+
     def _chaum_pedersen_proof(self, ddh, z):
         """
         Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
 
-        Returns zero-knowledge proof that the provided 3-ple `ddh` is a DDH with respect
-        to the generator g of the cryptosystem's underlying group, i.e., of the form
+        Returns zero-knowledge proof (Chaum-Pedersen proof) that the provided 3-ple `ddh`
+        is a DDH with respect to the generator g of the systemtem's underlying group,
+        i.e., of the form
 
                         (g ^ x modp, g ^ z modp, g ^ (x * z) modp)
 
@@ -719,15 +790,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         The provided `ddh` is of the form
 
                     [ModPrimeElement, ModPrimeElement, ModPrimeElement]
-
-        and the returned proof of the form
-
-        {
-            'base_commitment': ModPrimeElement
-            'message_commitment': ModPrimeElement
-            'challenge': mpz
-            'response': mpz
-        }
 
         :type ddh: list
         :type z: mpz
@@ -763,7 +825,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
 
         Validates the demonstrated zero-knowledge `proof` that the provided 3-ple `ddh` is a
-        DDH with respect to the generator g of the cryptosystem's underlying group, i.e., of
+        DDH with respect to the generator g of the systemtem's underlying group, i.e., of
         the form
                                 (u, v, g ^ (x * z) modp)
 
@@ -819,18 +881,29 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     # Digital Signature Algorithm
 
+    ############################################################
+    #                                                          #
+    #    By DSA-signature is meant a dictionary of the form    #
+    #                                                          #
+    #    {                                                     #
+    #        'c_1': mpz                                        #
+    #        'c_2': mpz                                        #
+    #    }                                                     #
+    #                                                          #
+    ############################################################
+
+
     def _dsa_signature(self, exponent, private_key):
         """
-        Applies DSA to compute the digital signature of the provided `exponent` e
-        (assumed to be in the range {1, ..., q - 1}) under the `private_key` x.
-        Returned signature has the form
+        Returns and computes the DSA-signature
 
         {
-            'c_1': mpz                  ((g ^ r modp) modq)
-            'c_2': mpz                  ((e + x * c_1)/r modq)
+            'c_1': (g ^ r modp) modq
+            'c_2': (e + x * c_1)/r modq
         }
 
-        for a once used randmoness r in the range {2, ..., q - 1}
+        of the provided `exponent` e (assumed to be in the range {1, ..., q - 1})
+        under the `private_key` x for a once used randmoness 1 < r < q
 
         :type exponent: mpz
         :type private_key: mpz
@@ -853,13 +926,8 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def _dsa_verify(self, exponent, signature, public_key):
         """
-        Verifies that the provded `signature` is the DSA-signature of the given
-        `exponent` under the given `public_key`. Provided signature is of the form
-
-        {
-            'c_1': mpz
-            'c_2': mpz
-        }
+        Verifies that the provided DSA-signature `signature` signs the given
+        `exponent` under the given `public_key`
 
         :type exponent: mpz
         :type signature: dict
@@ -895,18 +963,29 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     # El-Gamal encryption
 
+    ################################################################
+    #                                                              #
+    #    By ElGamal-cipertext is meant a dictionary of the form    #
+    #                                                              #
+    #    {                                                         #
+    #        'alpha': ModPrimeElement                              #
+    #        'beta': ModPrimeElement                               #
+    #    }                                                         #
+    #                                                              #
+    ################################################################
+
+
     def _encrypt(self, element, public_key, randomness=None):
         """
-        Computes and returns the ElGamal ciphertext of the provided `element` m
-        in the form
+        Computes and returns the ElGamal-ciphertext
 
         {
-            'alpha': ModPrimeElement        (g ^ r (modp))
-            'beta': ModPrimeElement         (m * y ^ r (mod p))
+            'alpha': g ^ r (modp)
+            'beta': m * y ^ r (mod p)
         }
 
-        where `public_key` is the receiver's public key y and r a once used
-        randomness in the range {1, ..., q - 1}
+        of the provided `element` m, where `public_key` is the receiver's
+        public key y and 1 < r < q a once used randomness
 
         :type element: ModPrimeElement
         randomness: mpz
@@ -930,14 +1009,8 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def _decrypt(self, ciphertxt, private_key):
         """
-        Decrypts the provided ElGamal `ciphertxt`
-
-        {
-            'alpha': ModPrimeElement        (g ^ r (modp))
-            'beta': ModPrimeElement         (m * y ^ r (mod p))
-        }
-
-        under the provided `private_key` x and returns the original element
+        Decrypts the provided ElGamal-ciphertext `ciphertxt` under the provided
+        `private_key` and returns the original element
 
         :type ciphertxt: dict
         :type private_key: mpz
@@ -953,21 +1026,8 @@ class ModPrimeCrypto(ElGamalCrypto):
     def _prove_encryption(self, ciphertxt, randomness):
         """
         Generates (Schnorr) proof-of-knowledge of the `randomness` r used in the
-        ElGamal encryption which yields the provided `ciphertext`. Assumes given
-        ciphertext in the form
-
-        {
-            'alpha': ModPrimeElement    (g ^ r (modp))
-            'beta': ModPrimeElement     (m * y ^ r (modp))
-        }
-
-        Returned proof is of the form
-
-        {
-            'commitment': ModPrimeElement,
-            'challenge': mpz,
-            'response': mpz
-        }
+        yielding the provided ElGamal-ciphertext `ciphertext`. Returned proof
+        has the form of a Schnorr proof
 
         :type ciphertxt: dict
         :type original: ModPrimeElement

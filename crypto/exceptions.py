@@ -5,13 +5,13 @@ class AlgebraError(BaseException):
 
 class WrongCryptoError(BaseException):
     """
-    Raised when no cryptosystem exists for the provided configs
+    Raised when no systemtem exists for the provided configs
     """
     pass
 
 class WeakCryptoError(BaseException):
     """
-    Raised when the requested cryptosystem does not meet the security standards
+    Raised when the requested systemtem does not meet the security standards
     """
     pass
 

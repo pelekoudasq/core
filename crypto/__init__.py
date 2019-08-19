@@ -8,7 +8,7 @@ from .elliptic import EllipticCrypto
 
 __all__ = (
 
-    # cryptosystems
+    # systemtems
 
     'ModPrimeCrypto', 'EllipticCrypto',
 

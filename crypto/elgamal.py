@@ -4,7 +4,7 @@ from .exceptions import WrongCryptoError, WeakCryptoError
 
 class ElGamalCrypto(object, metaclass=ABCMeta):
     """
-    Abstract class for ElGamal cryptosystems
+    Abstract class for ElGamal systemtems
     """
 
 # -------------------------------- External API --------------------------------
@@ -15,18 +15,18 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
     @abstractmethod
     def system(self):
         """
-        Returns a dictionary with the cryptosystem's parameters
+        Returns a dictionary with the systemtem's parameters
         """
 
     @property
     @abstractmethod
     def group(self):
         """
-        Returns the cryptosystem's underlying group
+        Returns the systemtem's underlying group
         """
 
     @abstractmethod
-    def get_as_integer(self, public_key):
+    def _extract_public(self, public_key):
         """
         Returns the numerical value of the provided public key
         """
@@ -97,7 +97,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
 
         Returns zero-knowledge proof that the provided 3-ple `ddh` is a DDH with respect
-        to the generator g of the cryptosystem's underlying group, i.e., of the form
+        to the generator g of the systemtem's underlying group, i.e., of the form
 
                         (g ^ x modp, g ^ z modp, g ^ (x * z) modp)
 
@@ -110,7 +110,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
 
         Validates the demonstrated zero-knowledge `proof` that the provided 3-ple `ddh` is a
-        DDH with respect to the generator g of the cryptosystem's underlying group, i.e., of
+        DDH with respect to the generator g of the systemtem's underlying group, i.e., of
         the form
                                 (u, v, g ^ (x * z) modp)
 
