@@ -1,5 +1,8 @@
 from abc import ABCMeta, abstractmethod
+from functools import partial
+
 from .exceptions import WrongCryptoError, WeakCryptoError
+from .utils import extract_value, hash_encode, hash_decode
 
 
 class ElGamalCrypto(object, metaclass=ABCMeta):
@@ -25,10 +28,11 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         Returns the systemtem's underlying group
         """
 
+    @property
     @abstractmethod
-    def _extract_public(self, public_key):
+    def GroupElement(self):
         """
-        Returns the numerical value of the provided public key
+        Returns the class whose instances are the group elements of the cryptosystem
         """
 
     # Key generation
@@ -41,7 +45,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def validate_key(self, public_key):
+    def validate_public_key(self, public_key):
         """
         Validates the proof-of-knowledge coming attached in the provided
         public key (refers to knowledge of the corresponding private key)
@@ -68,6 +72,18 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
 # -------------------------------- Internal API --------------------------------
 
     # Access
+
+    @abstractmethod
+    def _parameters(self):
+        """
+        """
+        pass
+
+    @abstractmethod
+    def _extract_ciphertext(self, ciphertext):
+        """
+        """
+        pass
 
     # Schnorr protocol
 
@@ -143,31 +159,143 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _decrypt(self, ciphertxt, private_key):
+    def _decrypt(self, ciphertext, private_key):
         """
-        Decrypts the provided ciphertxt with the given private key
+        Decrypts the provided ciphertext with the given private key
         and returns the original
         """
         pass
 
     @abstractmethod
-    def _prove_encryption(self, ciphertxt, randomness):
+    def _prove_encryption(self, ciphertext, randomness):
         """
         Generates proof-of-knowledge of the provided randomness used in the
-        ElGamal encryption yielding the given ciphertxt
+        encryption yielding the given ElGamal ciphertext
         """
         pass
 
-    # @abstractmethod
-    # def __init__(self, cls, config, *opts):
-    #     try:
-    #         system = cls.generate_system(config)
-    #     except WrongCryptoError:
-    #         raise
-    #
-    #     try:
-    #         cls.validate_system(system, *opts)
-    #     except (WrongCryptoError, WeakCryptoError):
-    #         raise
-    #
-    #     self._set_params(system)
+    @abstractmethod
+    def _verify_encryption(self, proof, ciphertext):
+        """
+        Verifies proof-of-knowledge of randomness used in the encryption yielding
+        the provided ElGamal ciphertext
+        """
+        pass
+
+
+# ------------------------------------------------------------------------------
+
+    def create_zeus_keypair(self, zeus_secret_key=None):
+        """
+        Creates and returns a key pair for zeus
+
+        :type zeus_secret_key: mpz
+        :rtype: dict
+        """
+        zeus_keypair = self.keygen(zeus_secret_key)
+        return zeus_keypair
+
+
+    def _extract_public_shares(self, trustee_public_keys):
+        """
+        Extracts public keys of the provided trustees as group elements
+        and returns them in a list
+
+        :type trustee_public_keys: list
+        :rtype: list
+        """
+        public_shares = [self._extract_value(public_key)\
+            for public_key in trustee_public_keys]
+        return public_shares
+
+
+    def compute_election_public_key(self, trustee_public_keys, zeus_keypair):
+        """
+        Computes and returns the election public key
+
+        :type trustees: list
+        :type zeus_keypair: dict
+        :rtype: GroupElement
+        """
+        public_shares = self._extract_public_shares(trustee_public_keys)    # group elements
+        zeus_public_key = self._extract_public_value(zeus_keypair)
+        combined = self._combine_public_keys(zeus_public_key, public_shares)
+        election_public_key = self._set_public_key(combined)
+        return election_public_key  # proof: None
+
+
+    def validate_election_public_key(self, election_public_key, trustee_keys,
+                                zeus_keypair):
+        """
+        :type election_public_key: dict
+        :type trustee_keys: list
+        :type zeus_keypair: dict
+        :rtype: bool
+        """
+        election_public_key = self._extract_value(election_public_key)
+        test_key = self.compute_election_public_key()
+
+
+
+# ------------------------------------------------------------------------------
+
+    @abstractmethod
+    def _combine_public_keys(self, initial, public_keys):
+        """
+        :type initial: GroupElement
+        :type public_keys: list
+        :rtype: GroupElement
+        """
+
+
+    def _set_vote(self, voter, encrypted, fingerprint,
+                  audit_code=None, publish=None, voter_secret=None,
+                  previous=None, index=None, status=None, plaintext=None):
+        """
+        """
+
+        vote = {
+            'voter': str(voter),
+            'encrypted': encrypted,
+            'fingerprint': hash_decode(fingerprint)
+        }
+
+        if audit_code:
+            vote['audit_code'] = int(audit_code)
+        if publish:
+            vote['voter_secret'] = str(voter_secret)    # str(int(voter_secret))
+        if previous:
+            vote['index'] = str(index)
+        if status:
+            vote['status'] = status
+        if plaintext:
+            vote['plaintext'] = str(plaintext)
+
+        return vote
+
+
+    def _extract_vote(self, vote):
+        """
+        """
+        voter = vote['voter']
+        encrypted = vote['encrypted']
+        fingerprint = hash_encode(vote['fingerprint'])
+
+        audit_code = extract_value(vote, 'audit_code', int)
+        voter_secret = extract_value(vote, 'voter_secret', int)
+
+        previous = None
+        if 'previous' in vote.keys():
+            previous = hash_encode(vote['previous'])
+
+        index = extract_value(vote, 'index', int)
+
+        # plaintext is string?
+        #
+        # plaintext = mpz(extract_value(vote, 'plaintext', int))
+        # plaintext = self.GroupElement(plaintext)
+        #
+        plaintext = extract_value(vote, 'plaintext', self.GroupElement)
+
+        return voter, encrypted, fingerprint, audit_code,\
+            voter_secret, previous, index, status, plaintext

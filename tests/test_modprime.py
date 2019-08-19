@@ -109,11 +109,11 @@ def test_random_keygen(system):
     assert valid
 
 @pytest.mark.parametrize('system', _system)
-def test_validate_key(system):
+def test_validate_public_key(system):
 
     key = system.keygen()
     public_key = key['public']
-    valid = system.validate_key(public_key)
+    valid = system.validate_public_key(public_key)
 
 
 # Digital signatures
@@ -355,8 +355,8 @@ def test_encryption_decryption(system, element, public_key, private_key):
     private_key = mpz(private_key)
 
     # Ecnryption/Decryption
-    ciphertxt = system._encrypt(element, public_key)
-    original = system._decrypt(ciphertxt, private_key)
+    ciphertext = system._encrypt(element, public_key)
+    original = system._decrypt(ciphertext, private_key)
 
     assert element == original
 
@@ -369,12 +369,26 @@ def test_encryption_proof(system, element, public_key, private_key):
     # Type conversions
     element = ModPrimeElement(element, __p)
     public_key = ModPrimeElement(public_key, __p)
-    private_key = mpz(private_key)
 
-    # Ecnryption/Decryption
+    # Ecnryption/Proof validation
     randomness = system.group.random_exponent()
-    ciphertxt = system._encrypt(element, public_key, randomness)
-    proof = system._prove_encryption(ciphertxt, randomness)
-    verified = system._verify_encryption(proof, ciphertxt)
+    ciphertext = system._encrypt(element, public_key, randomness)
+    proof = system._prove_encryption(ciphertext, randomness)
+    verified = system._verify_encryption(proof, ciphertext)
 
     assert verified
+
+@pytest.mark.parametrize(
+    'system, element, public_key, private_key', _system_element_key)
+def test_encryption_with_randomness_and_proof(system, element, public_key, private_key):
+
+    __p = system.group.modulus
+
+    # Type conversions
+    element = ModPrimeElement(element, __p)
+    public_key = ModPrimeElement(public_key, __p)
+
+    # Encryption/Proof validation
+    ciphertext, randomness = system._encrypt_with_randomness(element, public_key)
+    proof = system._prove_encryption(ciphertext, randomness)
+    verified = system._verify_encryption(proof, ciphertext)

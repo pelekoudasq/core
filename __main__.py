@@ -18,9 +18,9 @@ group = system.group                 # Access ElGamal systemtem underlying group
 
 # Generate key-pair along with proof-of-knowledge
 
-key = system.keygen()
-private_key = system._extract_private(key)            # Access numerical value (mpz) of private key
-public_key = system.extract_public(key)              # Contains also proof-of-knowledge
+keypair = system.keygen()
+private_key = system._extract_private(keypair)            # Access numerical value (mpz) of private key
+public_key = system._extract_public(keypair)              # Contains also proof-of-knowledge
 
 # Access numerical value of pubic key
 
@@ -28,7 +28,7 @@ print('\n-- PUBLIC KEY --\n%d' % system.extract_value(public_key))
 
 # Verify knowledge of corresponding private key
 
-key_validated = system.validate_key(public_key)
+key_validated = system.validate_public_key(public_key)
 print('\n * Key validation: %s' % str(key_validated))
 
 # Sign text-message and verify signature
@@ -49,7 +49,7 @@ modulus = group.modulus
 
 # Extract numerical (mpz) value of public key
 
-public_key = system._extract_public(key)
+public_key = system._extract_public_value(keypair)
 
 # Prove and verify knowledge of DDH
 
@@ -72,24 +72,29 @@ print('\n * Exponent signature validation: %s' % str(verified))
 # El-Gamal encryption and decryption of algebraic element
 
 element = ModPrimeElement(4450087957327360487628958739, modulus)
-ciphertxt = system._encrypt(element, public_key)
+ciphertext = system._encrypt(element, public_key)
 
 print('\n-- CIPHERTEXT --\n')
 print('Decryptor\n')
-print(ciphertxt['alpha'])
+print(ciphertext['alpha'])
 print('\nEncrypted element\n')
-print(ciphertxt['beta'])
+print(ciphertext['beta'])
 print()
 
-original = system._decrypt(ciphertxt, private_key)
+original = system._decrypt(ciphertext, private_key)
 
 print('\n * ElGamal decryption success: %s\n' % str(original==element))
 
 # Encryption proof
 
 randomness = system.group.random_exponent()
-ciphertxt = system._encrypt(element, public_key, randomness)
-proof = system._prove_encryption(ciphertxt, randomness)
-verified = system._verify_encryption(proof, ciphertxt)
+ciphertext = system._encrypt(element, public_key, randomness)
+proof = system._prove_encryption(ciphertext, randomness)
+verified = system._verify_encryption(proof, ciphertext)
 
 print('\n * ElGamal encryption verified: %s\n' % str(verified))
+
+# ------------
+
+print(system.GroupElement)
+print(system.group.element_from_integer(827364872364872638472638746283764827364))

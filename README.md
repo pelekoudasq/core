@@ -24,11 +24,11 @@ public_key = key['public']              # Contains also proof-of-knowledge
 
 # Access numerical value of pubic key
 
-print('\n-- PUBLIC KEY --\n%d' % system._extract_public(public_key))
+print('\n-- PUBLIC KEY --\n%d' % system._extract_public_value(public_key))
 
 # Verify knowledge of private key (no need to separate proof from public key)
 
-key_validated = system.validate_key(public_key)
+key_validated = system.validate_public_key(public_key)
 
 # Sign text-message and verify signature
 
@@ -69,8 +69,8 @@ verified = system._dsa_verify(exponent, signature, public_key['value'])
 # El-Gamal encryption and decryption of algebraic element
 
 element = ModPrimeElement(4450087957327360487628958739, modulus)
-ciphertxt = system._encrypt(element, public_key['value'])
-original = system._decrypt(ciphertxt, private_key)
+ciphertext = system._encrypt(element, public_key['value'])
+original = system._decrypt(ciphertext, private_key)
 ```
 
 ## Tests
