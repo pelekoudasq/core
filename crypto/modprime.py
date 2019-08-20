@@ -750,8 +750,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         signed_message = self._set_signed_message(message,
             signature=self._set_dsa_signature(exponent, c_1, c_2))
 
-		# Validate signature or raise exception otherwise
-
+        # Validate signature or raise exception otherwise
         if not self._verify_text_signature(signed_message, zeus_public_key):
             e = 'Invalid vote signature'
             raise InvalidSignatureError(e)
@@ -868,287 +867,289 @@ class ModPrimeCrypto(ElGamalCrypto):
 
 
 	def _set_public_key_from_element(self, element, proof=None):
-		"""
-		:type element: ModPrimeElement
-		:type proof: dict
-		:rtype: dict
-		"""
-		public_key = {'value': element, 'proof': proof}
-		return public_key
+        """
+        :type element: ModPrimeElement
+        :type proof: dict
+        :rtype: dict
+        """
+        public_key = {'value': element, 'proof': proof}
+        return public_key
 
 
 	def _set_public_key_from_value(self, value, proof=None):
-		"""
-		:type value: mpz
-		:type proof: dict
-		:rtype: dict
-		"""
-		public_key = {
-			'value': ModPrimeElement(value, self.__p),
-			'proof': proof
-		}
-		return public_key
-
+        """
+        :type value: mpz
+        :type proof: dict
+        :rtype: dict
+        """
+        public_key = {
+            'value': ModPrimeElement(value, self.__p),
+            'proof': proof
+        }
+        return public_key
+
 
-	def _set_keypair(self, private_key, public_key):
-		"""
-		:type private_key:
-		:type public_key: dict
-		:rtype: dict
-		"""
-		keypair = {'private': private_key, 'public': public_key}
-		return keypair
+    def _set_keypair(self, private_key, public_key):
+        """
+        :type private_key:
+        :type public_key: dict
+        :rtype: dict
+        """
+        keypair = {'private': private_key, 'public': public_key}
+        return keypair
 
-
-	def _extract_keypair(self, key):
-		"""
-		Returns a tuple with the private and public part of the provided key in
-		the form of a numerical value (mpz) and a dict respectively
-
-		:type key: dict
-		:rtype: tuple
-		"""
-		return key['private'], key['public']
-
-
-	def _extract_private(self, key):
-		"""
-		:type key: dict
-		:rtype: mpz
-		"""
-		return key['private']
+
+    def _extract_keypair(self, key):
+        """
+        Returns a tuple with the private and public part of the provided key in
+        the form of a numerical value (mpz) and a dict respectively
+
+        :type key: dict
+        :rtype: tuple
+        """
+        return key['private'], key['public']
+
+
+    def _extract_private(self, key):
+        """
+        :type key: dict
+        :rtype: mpz
+        """
+        return key['private']
 
 
-	def _extract_public(self, key):
-		"""
-		:type: key
-		:rtype: dict
-		"""
-		return key['public']
+    def _extract_public(self, key):
+        """
+        :type: key
+        :rtype: dict
+        """
+        return key['public']
 
 
-	def _extract_public_value(self, key):
-		"""
-		:type key: dict
-		:rtype: ModPrimeElement
-		"""
-		return key['public']['value']
+    def _extract_public_value(self, key):
+        """
+        :type key: dict
+        :rtype: ModPrimeElement
+        """
+        return key['public']['value']
 
 
-	def _extract_value(self, public_key):
-		"""
-		:type public_key: dict
-		:rtype: ModPrimeElement
-		"""
-		return public_key['value']
-
-
-	def _combine_public_keys(self, initial, public_keys):
-		"""
-		Assuming the provided public keys in the form of gorup elements,
-		computes and returns the combined key
-
-		:type initial: ModPrimeElement
-		:type public_keys: list[ModPrimeElement]
-		:rtype: ModPrimeElement
-		"""
-		combined = initial
-		for public_key in public_keys:
-			combined = combined * public_key
-		return combined
-
-
-	def keygen(self, private_key=None, schnorr=True):
-		"""
-		Generates and returns a keypair. If `shnorr` is `True`, the public part
-		will also contain a proof-of-knowledge of the private part.
-
-		:type private_key: mpz
-		:type schnorr: bool
-		:rtype: dict
-		"""
-
-		__group = self.__group
-
-		if private_key is None:
-			private_key = __group.random_exponent()
-
-		elif not 1 < private_key < self.__order:
-			e = 'Provided private key exceeds the allowed range'
-			raise InvalidKeyError(e)
-
-		public_key = __group.generate(private_key)              # y = g ^ x modp
-
-		proof = None
-		if schnorr is True:
-			proof = self._schnorr_proof(private_key, public_key)
+    def _extract_value(self, public_key):
+        """
+        :type public_key: dict
+        :rtype: ModPrimeElement
+        """
+        return public_key['value']
+
+
+    def _combine_public_keys(self, initial, public_keys):
+        """
+        Assuming the provided public keys in the form of gorup elements,
+        computes and returns the combined key
+
+        :type initial: ModPrimeElement
+        :type public_keys: list[ModPrimeElement]
+        :rtype: ModPrimeElement
+        """
+        combined = initial
+        for public_key in public_keys:
+            combined = combined * public_key
+        return combined
 
-		public_key = self._set_public_key_from_element(public_key, proof)
-		keypair = self._set_keypair(private_key, public_key)
-
-		return keypair
-
-
-	def validate_public_key(self, public_key):
-		"""
-		Assuming `public_key` to be the public part
-
-		{
-			'value': ModPrimeElement,
-			'proof': ...
-		}
-
-		of a keypair, verifies the included proof-of-knowledge of its private counterpart
-
-		:type public_key: dict
-		:rtype: bool
-		"""
-		try:
-			proof = public_key['proof']
-		except KeyError:
-			# No proof has been provided together with the public key
-			return False
 
-		public_key = public_key['value']
+    def keygen(self, private_key=None, schnorr=True):
+        """
+        Generates and returns a keypair. If `shnorr` is `True`, the public part
+        will also contain a proof-of-knowledge of the private part.
+
+        :type private_key: mpz
+        :type schnorr: bool
+        :rtype: dict
+        """
 
-		if not public_key.contained_in(self.__group):
-			return False
+        __group = self.__group
 
-		return self._schnorr_verify(proof=proof, public=public_key)
-
-
-	def extract_value(self, public_key):
-		"""
-		Returns as common integer the value of the provided public key
-
-		:rtype: int
-		"""
-		return int(public_key['value'].value)
+        if private_key is None:
+            private_key = __group.random_exponent()
+
+        elif not 1 < private_key < self.__order:
+            e = 'Provided private key exceeds the allowed range'
+            raise InvalidKeyError(e)
+
+        public_key = __group.generate(private_key)              # y = g ^ x modp
 
+        proof = None
+        if schnorr is True:
+            proof = self._schnorr_proof(private_key, public_key)
 
-	# Text-message signatures
-
-	#####################################################################
-	#                                                                   #
-	#    By signed message is meant a dictionary of the form            #
-	#                                                                   #
-	#    {                                                              #
-	#        'message': str,                                            #
-	#        'signature': {                                             #
-	#            'exponent': mpz,                                       #
-	#		     'commitments': {                                       #
-	#		 		'c_1': mpz,                                         #
-	#				'c_2': mpz                                          #
-	#        }                                                          #
-	#    }                                                              #
-	#                                                                   #
-	#####################################################################
-
-
-	def _set_signed_message(self, message, signature):
-		"""
-		:type message: str
-		:type signature: dict
-		:rtype: dict
-		"""
-		return {'message': message, 'signature': signature}
+        public_key = self._set_public_key_from_element(public_key, proof)
+        keypair = self._set_keypair(private_key, public_key)
 
+        return keypair
 
-	def _extract_message_signature(self, signed_message):
-		"""
-		:type signed_message: dict
-		:rtype: tuple
-		"""
-		message = signed_message['message']
-		signature = signed_message['signature']
-		return message, signature
 
+    def validate_public_key(self, public_key):
+        """
+        Assuming `public_key` to be the public part
+
+        {
+            'value': ModPrimeElement,
+            'proof': ...
+        }
 
-	def _extract_signed_message(self, signed_message):
-		"""
-		:type signed_message: dict
-		:rtype: tuple
-		"""
-		message = signed_message['message']
-		signature = signed_message['signature']
-		exponent, c_1, c_2 = self._extract_dsa_signature(signature)
-		return message, exponent, c_1, c_2
+        of a keypair, verifies the included proof-of-knowledge of its private counterpart
 
+        :type public_key: dict
+        :rtype: bool
+        """
+        try:
+            proof = public_key['proof']
+        except KeyError:
+            # No proof has been provided together with the public key
+            return False
 
-	def sign_text_message(self, message, private_key):
-		"""
-		Signs the provided `message` m with the provided `private_key` x,
-		returning the signed message
+        public_key = public_key['value']
 
-		{
-			'message': m,
-			'signature': {
-				'exponent': H(m),
-				'commitments': {
-					'c_1': (g ^ r modp) modq,
-					'c_2': (H(m) + x * c_1)/r modq
-				}
-			}
-		}
+        if not public_key.contained_in(self.__group):
+            return False
 
-		for a once used randomness 1 < r < q.
+        return self._schnorr_verify(proof=proof, public=public_key)
 
-		NOTE: The original message m gets hashed as H(m) before being signed for
-		defence against existential forgery.
 
-		:type message: str
-		:type private_key: mpz
-		:rtype: dict
-		"""
+    def extract_value(self, public_key):
+        """
+        Returns as common integer the value of the provided public key
 
-		hashed_message = self.__group.exponent_from_texts(message)
-		signature = self._dsa_signature(hashed_message, private_key)
+        :rtype: int
+        """
+        return int(public_key['value'].value)
 
-		signed_message = self._set_signed_message(message, signature)
-		return signed_message
 
+    # Text-message signatures
 
-	def verify_text_signature(self, signed_message, public_key):
-		"""
-		Given a signed message `signed_message`, verifies the attached signature
-		under the provided public key `public_key`
+    #####################################################################
+    #                                                                   #
+    #    By signed message is meant a dictionary of the form            #
+    #                                                                   #
+    #    {                                                              #
+    #        'message': str,                                            #
+    #        'signature': {                                             #
+    #            'exponent': mpz,                                       #
+    #		     'commitments': {                                       #
+    #		 		'c_1': mpz,                                         #
+    #				'c_2': mpz                                          #
+    #        }                                                          #
+    #    }                                                              #
+    #                                                                   #
+    #####################################################################
 
-		:type signed_message: dict
-		:type public_key: dict
-		:rtype: bool
-		"""
 
-		# Extract data from signed message
-		message, signature = self._extract_message_signature(signed_message)
+    def _set_signed_message(self, message, signature):
+        """
+        :type message: str
+        :type signature: dict
+        :rtype: dict
+        """
+        return {'message': message, 'signature': signature}
 
-		# Extract value of public key
-		public_key = self._extract_value(public_key)
 
-		# Verify signature
-		hashed_message = self.__group.exponent_from_texts(message)              # H(m)
-		verified = self._dsa_verify(hashed_message, signature, public_key)
 
-		return verified
+    def _extract_message_signature(self, signed_message):
+        """
+        :type signed_message: dict
+        :rtype: tuple
+        """
+        message = signed_message['message']
+        signature = signed_message['signature']
+        return message, signature
 
 
-	# Digital Signature Algorithm
 
-	############################################################
-	#                                                          #
-	#    By DSA-signature is meant a dictionary of the form    #
-	#                                                          #
-	# 	{													   #
-	# 		'exponent': mpz,								   #
-	# 		'commitments': {								   #
-	# 			'c_1': mpz,									   #
-	# 			'c_2': mpz									   #
-	# 		}										           #
-	# 	}													   #
-	#                                                          #
-	############################################################
+    def _extract_signed_message(self, signed_message):
+        """
+        :type signed_message: dict
+        :rtype: tuple
+        """
+        message = signed_message['message']
+        signature = signed_message['signature']
+        exponent, c_1, c_2 = self._extract_dsa_signature(signature)
+        return message, exponent, c_1, c_2
 
 
-	def _set_dsa_signature(self, exponent, c_1, c_2):
+    def sign_text_message(self, message, private_key):
+        """
+        Signs the provided `message` m with the provided `private_key` x,
+        returning the signed message
+
+        {
+            'message': m,
+            'signature': {
+                'exponent': H(m),
+                'commitments': {
+                    'c_1': (g ^ r modp) modq,
+                    'c_2': (H(m) + x * c_1)/r modq
+                }
+            }
+        }
+
+        for a once used randomness 1 < r < q.
+
+        NOTE: The original message m gets hashed as H(m) before being signed for
+        defence against existential forgery.
+
+        :type message: str
+        :type private_key: mpz
+        :rtype: dict
+        """
+
+        hashed_message = self.__group.exponent_from_texts(message)
+        signature = self._dsa_signature(hashed_message, private_key)
+
+        signed_message = self._set_signed_message(message, signature)
+        return signed_message
+
+
+    def verify_text_signature(self, signed_message, public_key):
+        """
+        Given a signed message `signed_message`, verifies the attached signature
+        under the provided public key `public_key`
+
+        :type signed_message: dict
+        :type public_key: dict
+        :rtype: bool
+        """
+
+        # Extract data from signed message
+        message, signature = self._extract_message_signature(signed_message)
+
+        # Extract value of public key
+        public_key = self._extract_value(public_key)
+
+        # Verify signature
+        hashed_message = self.__group.exponent_from_texts(message)              # H(m)
+        verified = self._dsa_verify(hashed_message, signature, public_key)
+
+        return verified
+
+
+    # Digital Signature Algorithm
+
+    ############################################################
+    #                                                          #
+    #    By DSA-signature is meant a dictionary of the form    #
+    #                                                          #
+    # 	{                                                      #
+    # 		'exponent': mpz,                                   #
+    # 		'commitments': {                                   #
+    # 			'c_1': mpz,                                    #
+    # 			'c_2': mpz                                     #
+    # 		}                                                  #
+    # 	}                                                      #
+    #                                                          #
+    ############################################################
+
+
+    def _set_dsa_signature(self, exponent, c_1, c_2):
 		"""
 		:exponent: mpz
 		:type c_1: mpz
