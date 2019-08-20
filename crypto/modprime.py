@@ -265,8 +265,8 @@ class ModPrimeSubgroup(Group):
         """
         integer += 1
         if integer >= self.__order:
-			e = 'Provided integer is too large'
-			raise AlgebraError(e)
+            e = 'Provided integer is too large'
+            raise AlgebraError(e)
 
         integer = mpz(integer)
 
@@ -383,8 +383,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         # System validation
 
         if check_3mod4 and modulus % 4 != 3:
-	           e = 'Provided modulus is not 3 mod 4'
-			raise WrongCryptoError(e)
+            e = 'Provided modulus is not 3 mod 4'
+            raise WrongCryptoError(e)
 
         if prime_order and not isPrime(group.order):
             e = 'Order of the requested group is not prime'
@@ -519,7 +519,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: dict
         """
         vote = {
-            'voter': str(voter)
+            'voter': str(voter),
             'encrypted': encrypted,
             'fingerprint': hash_decode(fingerprint)
         }
@@ -575,7 +575,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         previous = None
         if 'previous' in vote.keys():
-			previous = hash_encode(vote['previous'])
+            previous = hash_encode(vote['previous'])
 
         index = extract_value(vote, 'index', int)
         status = extract_value(vote, 'status', str)
@@ -613,7 +613,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         choices (candidates) format example:
 
             ['Party-A: 0-2, 0', 'Party-A: Candidate-0000',
-            'Party-B: generator0-2, 1', 'Party-B: Candidate-0001']
+            'Party-B: generator0-2, 1', 'Party-B: Can            didate-0001']
 
         :type vote: dict
         :type comments:
@@ -866,7 +866,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 	###############################################################
 
 
-	def _set_public_key_from_element(self, element, proof=None):
+    def _set_public_key_from_element(self, element, proof=None):
         """
         :type element: ModPrimeElement
         :type proof: dict
@@ -876,7 +876,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return public_key
 
 
-	def _set_public_key_from_value(self, value, proof=None):
+    def _set_public_key_from_value(self, value, proof=None):
         """
         :type value: mpz
         :type proof: dict
@@ -1164,7 +1164,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             }
         }
 
-		return signature
+        return signature
 
 
     def _extract_dsa_signature(self, signature):
@@ -1508,160 +1508,160 @@ class ModPrimeCrypto(ElGamalCrypto):
     ################################################################
 
 
-	def _set_ciphertext(self, alpha, beta):
-		"""
-		:type alpha: ModPrimeElement
-		:type beta: ModPrimeElement
-		:rtype: dict
-		"""
-		return {'alpha': alpha, 'beta': beta}
+    def _set_ciphertext(self, alpha, beta):
+        """
+        :type alpha: ModPrimeElement
+        :type beta: ModPrimeElement
+        :rtype: dict
+        """
+        return {'alpha': alpha, 'beta': beta}
 
 
-	def _extract_ciphertext(self, ciphertext):
-		"""
-		:type ciphertext: dict
-		:rtype: typle
-		"""
-		alpha = ciphertext['alpha']
-		beta = ciphertext['beta']
-		return alpha, beta
+    def _extract_ciphertext(self, ciphertext):
+        """
+        :type ciphertext: dict
+        :rtype: typle
+        """
+        alpha = ciphertext['alpha']
+        beta = ciphertext['beta']
+        return alpha, beta
 
 
-	def _set_ciphertext_proof(self, ciphertext, proof):
-		"""
-		:type ciphertext: dict
-		:type proof: dict
-		:rtype: dict
-		"""
-		return {'ciphertext': ciphertext, 'proof': proof}
+    def _set_ciphertext_proof(self, ciphertext, proof):
+        """
+        :type ciphertext: dict
+        :type proof: dict
+        :rtype: dict
+        """
+        return {'ciphertext': ciphertext, 'proof': proof}
 
 
-	def _extract_ciphertext_proof(self, ciphertext_proof):
-		"""
-		:type ciphertext_proof: dict
-		:rtype: tuple
-		"""
-		ciphertext = ciphertext_proof['ciphertext']
-		proof = ciphertext_proof['proof']
-		return ciphertext, proof
+    def _extract_ciphertext_proof(self, ciphertext_proof):
+        """
+        :type ciphertext_proof: dict
+        :rtype: tuple
+        """
+        ciphertext = ciphertext_proof['ciphertext']
+        proof = ciphertext_proof['proof']
+        return ciphertext, proof
 
 
-	def _extract_fingerprint_params(self, ciphertext_proof):
-		"""
-		:type ciphertext_proof: dict
-		:rtype: tuple
-		"""
-		ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
-		alpha, beta = self._extract_ciphertext(ciphertext)
-		commitment, challenge, response = self._extract_schnorr_proof(proof)
-		return alpha, beta, commitment, challenge, response
+    def _extract_fingerprint_params(self, ciphertext_proof):
+        """
+        :type ciphertext_proof: dict
+        :rtype: tuple
+        """
+        ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
+        alpha, beta = self._extract_ciphertext(ciphertext)
+        commitment, challenge, response = self._extract_schnorr_proof(proof)
+        return alpha, beta, commitment, challenge, response
 
 
-	def _make_fingerprint(self, ciphertext_proof):
-		"""
-		:type ciphertext_proof: dict
-		:rtype: bytes
-		"""
-		fingerprint_params = self._extract_fingerprint_params(ciphertext_proof)
-		fingerprint = hash_texts(*[str(param) for param in fingerprint_params])
-		return fingerprint
+    def _make_fingerprint(self, ciphertext_proof):
+        """
+        :type ciphertext_proof: dict
+        :rtype: bytes
+        """
+        fingerprint_params = self._extract_fingerprint_params(ciphertext_proof)
+        fingerprint = hash_texts(*[str(param) for param in fingerprint_params])
+        return fingerprint
 
 
-	def _encrypt(self, element, public_key, randomness=None):
-		"""
-		Computes and returns the ElGamal-ciphertext
+    def _encrypt(self, element, public_key, randomness=None):
+        """
+        Computes and returns the ElGamal-ciphertext
 
-		{
-			'alpha': g ^ r (modp)
-			'beta': m * y ^ r (mod p)
-		}
+        {
+            'alpha': g ^ r (modp)
+            'beta': m * y ^ r (mod p)
+        }
 
-		of the provided `element` m, where `public_key` is the receiver's
-		public key y and 1 < r < q a once used randomness
+        of the provided `element` m, where `public_key` is the receiver's
+        public key y and 1 < r < q a once used randomness
 
-		:type element: ModPrimeElement
-		:type public_key: ModPrimeElement
-		:type randomness: mpz
-		:rtype: dict
-		"""
-		__group = self.__group
+        :type element: ModPrimeElement
+        :type public_key: ModPrimeElement
+        :type randomness: mpz
+        :rtype: dict
+        """
+        __group = self.__group
 
-		__p, __q, _ = self._parameters()
+        __p, __q, _ = self._parameters()
 
-		if randomness is None:
-			randomness = __group.random_exponent()
+        if randomness is None:
+            randomness = __group.random_exponent()
 
-		alpha = __group.generate(randomness)            # g ^ r (modp)
-		beta = element * public_key ** randomness       # m * y ^ r (modp)
+        alpha = __group.generate(randomness)            # g ^ r (modp)
+        beta = element * public_key ** randomness       # m * y ^ r (modp)
 
-		ciphertext = self._set_ciphertext(alpha, beta)
-		return ciphertext
-
-
-	def _encrypt_with_randomness(self, element, public_key, randomness=None):
-		"""
-		:type element: ModPrimeElement
-		:type public_key: ModPrimeElement
-		:type randomness: mpz
-		:rtype: tuple
-		"""
-		__group = self.__group
-
-		if randomness is None:
-			randomness = __group.random_exponent()
-
-		ciphertext = self._encrypt(element, public_key, randomness)
-
-		return ciphertext, randomness
+        ciphertext = self._set_ciphertext(alpha, beta)
+        return ciphertext
 
 
-	def _prove_encryption(self, ciphertext, randomness):
-		"""
-		Generates (Schnorr) proof-of-knowledge of the `randomness` r used in the
-		encryption yielding the given ElGamal-ciphertext `ciphertext`. Returned
-		proof has the form of a Schnorr proof
+    def _encrypt_with_randomness(self, element, public_key, randomness=None):
+        """
+        :type element: ModPrimeElement
+        :type public_key: ModPrimeElement
+        :type randomness: mpz
+        :rtype: tuple
+        """
+        __group = self.__group
 
-		:type ciphertext: dict
-		:type original: ModPrimeElement
-		:rtype: dict
-		"""
-		alpha, beta = self._extract_ciphertext(ciphertext)
-		proof = self._schnorr_proof(randomness, alpha, beta)
+        if randomness is None:
+            randomness = __group.random_exponent()
 
-		return proof
+        ciphertext = self._encrypt(element, public_key, randomness)
 
-
-	def _decrypt(self, ciphertext, private_key):
-		"""
-		Decrypts the provided ElGamal-ciphertext `ciphertext` under the provided
-		`private_key` and returns the original element
-
-		:type ciphertext: dict
-		:type private_key: mpz
-		:rtype: ModPrimeElement
-		"""
-		alpha, beta = self._extract_ciphertext(ciphertext)
-
-		original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
-		return original
+        return ciphertext, randomness
 
 
-	def _verify_encryption(self, ciphertext_proof):
-		"""
-		Verifies proof-of-knowledge of randomness used in the encryption yielding
-		the provided ElGamal ciphertext
+    def _prove_encryption(self, ciphertext, randomness):
+        """
+        Generates (Schnorr) proof-of-knowledge of the `randomness` r used in the
+        encryption yielding the given ElGamal-ciphertext `ciphertext`. Returned
+        proof has the form of a Schnorr proof
 
-		:type ciphertext_proof: dict
-		:rtype: bool
-		"""
-		ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
-		alpha, beta = self._extract_ciphertext(ciphertext)
-		verified = self._schnorr_verify(proof, alpha, beta)
+        :type ciphertext: dict
+        :type original: ModPrimeElement
+        :rtype: dict
+        """
+        alpha, beta = self._extract_ciphertext(ciphertext)
+        proof = self._schnorr_proof(randomness, alpha, beta)
 
-		return verified
+        return proof
 
-	#TODO: implement
-	def _decrypt_with_randomness(self, public, ciphertext, secret):
-		"""
-		"""
-		pass
+
+    def _decrypt(self, ciphertext, private_key):
+        """
+        Decrypts the provided ElGamal-ciphertext `ciphertext` under the provided
+        `private_key` and returns the original element
+
+        :type ciphertext: dict
+        :type private_key: mpz
+        :rtype: ModPrimeElement
+        """
+        alpha, beta = self._extract_ciphertext(ciphertext)
+
+        original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
+        return original
+
+
+    def _verify_encryption(self, ciphertext_proof):
+        """
+        Verifies proof-of-knowledge of randomness used in the encryption yielding
+        the provided ElGamal ciphertext
+
+        :type ciphertext_proof: dict
+        :rtype: bool
+        """
+        ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
+        alpha, beta = self._extract_ciphertext(ciphertext)
+        verified = self._schnorr_verify(proof, alpha, beta)
+
+        return verified
+
+    #TODO: implement
+    def _decrypt_with_randomness(self, public, ciphertext, secret):
+        """
+        """
+        pass
