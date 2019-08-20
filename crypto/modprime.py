@@ -85,33 +85,33 @@ class ModPrimeElement(GroupElement):
         else:
             return self.value == other
 
-	def __mul__(self, other):
-		"""
-		:type other: ModPrimeElement
-		"""
-		result = self.__value * other.value % self.__modulus
-		return self.__class__(value=result, modulus=self.__modulus)
+    def __mul__(self, other):
+        """
+        :type other: ModPrimeElement
+        """
+        result = self.__value * other.value % self.__modulus
+        return self.__class__(value=result, modulus=self.__modulus)
 
-	def __pow__(self, exp):
-		"""
-		:type exp: mpz
-		:rtype: ModPrimeElement
-		"""
-		# # result = self.__value ** exp % self.__modulus ---> "...outrageous exponent"
-		# Use gmpy2.powmod instead in order to avoid overflow in mpz type
-		result = powmod(self.__value, exp, self.__modulus)
-		return self.__class__(value=result, modulus=self.__modulus)
+    def __pow__(self, exp):
+        """
+        :type exp: mpz
+        :rtype: ModPrimeElement
+        """
+        # # result = self.__value ** exp % self.__modulus ---> "...outrageous exponent"
+        # Use gmpy2.powmod instead in order to avoid overflow in mpz type
+        result = powmod(self.__value, exp, self.__modulus)
+        return self.__class__(value=result, modulus=self.__modulus)
 
-	def contained_in(self, group):
-		"""
-		:type: Group
-		:rtype: bool
-		"""
-		if isinstance(group, ModPrimeSubgroup) and group.modulus == self.__modulus:
-			# Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
-			# a mod p element x is contained in C iff x ^ q = 1
-			return self ** group.order == 1
-		return False
+    def contained_in(self, group):
+        """
+        :type: Group
+        :rtype: bool
+        """
+        if isinstance(group, ModPrimeSubgroup) and group.modulus == self.__modulus:
+            # Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
+            # a mod p element x is contained in C iff x ^ q = 1
+            return self ** group.order == 1
+        return False
 
 
 class ModPrimeSubgroup(Group):
