@@ -179,144 +179,144 @@ class ModPrimeSubgroup(Group):
         """
         return self.__order
 
-	@property
-	def generator(self):
-		"""
-		:rtype: ModPrimeElement
-		"""
-		try:
-			return self.__generator
-		except AttributeError:
-			e = 'No generator has yet been specified for this group'
-			raise AlgebraError(e)
+    @property
+    def generator(self):
+        """
+        :rtype: ModPrimeElement
+        """
+        try:
+            return self.__generator
+        except AttributeError:
+            e = 'No generator has yet been specified for this group'
+            raise AlgebraError(e)
 
-	@property
-	def Element(self):
-		"""
-		:rtype: class
-		"""
+    @property
+    def Element(self):
+        """
+        :rtype: class
+        """
 		return self.__Element
 
-	def parameters(self):
-		"""
-		"""
-		p = self.__modulus
-		q = self.__order
-		g = self.__generator.value
+    def parameters(self):
+        """
+        """
+        p = self.__modulus
+        q = self.__order
+        g = self.__generator.value
 
-		return p, q, g
+        return p, q, g
 
-	def set_generator(self, element):
-		"""
-		:type element: ModPrimeElement
-		"""
-		self.__generator = element
+    def set_generator(self, element):
+        """
+        :type element: ModPrimeElement
+        """
+        self.__generator = element
 
-	def generate(self, exponent):
-		"""
-		:type exponent: mpz
-		:rtype: ModPrimeElement
-		"""
-		return self.__generator ** exponent
+    def generate(self, exponent):
+        """
+        :type exponent: mpz
+        :rtype: ModPrimeElement
+        """
+        return self.__generator ** exponent
 
-	def add_exponents(self, *args):
-		"""
-		:type *args: mpz
-		:rtype: mpz
-		"""
-		return sum(args) % self.__order
+    def add_exponents(self, *args):
+        """
+        :type *args: mpz
+        :rtype: mpz
+        """
+        return sum(args) % self.__order
 
-	def random_exponent(self, min=2):
-		"""
-		Returns a random exponent >= `min`, bounded by the group's order
+    def random_exponent(self, min=2):
+        """
+        Returns a random exponent >= `min`, bounded by the group's order
 
-		:rtype: mpz
-		"""
-		# Note: the default value min=2 guarantees that raising the generator
-		# to the random exponent r does not yield the generator itself or the
-		# group's neutral element (provided that the group's order is > 2)
-		exponent = random_integer(min, self.__order)
-		return mpz(exponent)
+        :rtype: mpz
+        """
+        # Note: the default value min=2 guarantees that raising the generator
+        # to the random exponent r does not yield the generator itself or the
+        # group's neutral element (provided that the group's order is > 2)
+        exponent = random_integer(min, self.__order)
+        return mpz(exponent)
 
-	def exponent_from_texts(self, *texts):
-		"""
-		:type *texts: str
-		:rtype: mpz
-		"""
-		p, q, g = self.parameters()
+    def exponent_from_texts(self, *texts):
+        """
+        :type *texts: str
+        :rtype: mpz
+        """
+        p, q, g = self.parameters()
 
-		hashed_params = hash_nums(p, q, g).hex()
-		hashed_texts = hash_texts(hashed_params, *texts)
-		exponent = int_from_bytes(hashed_texts)
-		exponent = f_mod(exponent, self.__order)
+        hashed_params = hash_nums(p, q, g).hex()
+        hashed_texts = hash_texts(hashed_params, *texts)
+        exponent = int_from_bytes(hashed_texts)
+        exponent = f_mod(exponent, self.__order)
 
-		return exponent
+        return exponent
 
-	def random_element(self):
-		"""
-		:rtype: ModPrimeElement
-		"""
-		random_exp = self.random_exponent()
-		return self.__generator ** random_exp
+    def random_element(self):
+        """
+        :rtype: ModPrimeElement
+        """
+        random_exp = self.random_exponent()
+        return self.__generator ** random_exp
 
-	def element_from_integer(self, integer):
-		"""
-		Provided integer must be < q - 1
+    def element_from_integer(self, integer):
+        """
+        Provided integer must be < q - 1
 
-		:type integer: int
-		:rtype: ModPrimeElement
-		"""
-		integer += 1
-		if integer >= self.__order:
+        :type integer: int
+        :rtype: ModPrimeElement
+        """
+        integer += 1
+        if integer >= self.__order:
 			e = 'Provided integer is too large'
 			raise AlgebraError(e)
 
-		integer = mpz(integer)
+        integer = mpz(integer)
 
-		legendre = powmod(integer, self.__order, self.__modulus)
-		if legendre != 1:
-			integer = - integer % self.__modulus
+        legendre = powmod(integer, self.__order, self.__modulus)
+        if legendre != 1:
+            integer = - integer % self.__modulus
 
-		return self.Element(value=integer, modulus=self.__modulus)
+        return self.Element(value=integer, modulus=self.__modulus)
 
 
-	def element_from_texts(self, *texts):
-		"""
-		:type *texts: str
-		:rtype: ModPrimeElement
-		"""
-		exp = self.exponent_from_texts(*texts)
-		return self.generate(exp)
+    def element_from_texts(self, *texts):
+        """
+        :type *texts: str
+        :rtype: ModPrimeElement
+        """
+        exp = self.exponent_from_texts(*texts)
+        return self.generate(exp)
 
-	def fiatshamir(self, *elements):
-		"""
-		The output of this method is only involved in exponent operations
+    def fiatshamir(self, *elements):
+        """
+        The output of this method is only involved in exponent operations
 
-		:type: mpz or ModePrimeElement
-		:rtype: mpz
-		"""
+        :type: mpz or ModePrimeElement
+        :rtype: mpz
+        """
 
-		p, q, g = self.parameters()
+        p, q, g = self.parameters()
 
-		# Convert to mpz if ModPrimeElement
-		elements = [x.value if isinstance(x, ModPrimeElement) else x for x in elements]
+        # Convert to mpz if ModPrimeElement
+        elements = [x.value if isinstance(x, ModPrimeElement) else x for x in elements]
 
-		digest = hash_nums(p, q, g, *elements)
-		reduced = int_from_bytes(digest)
-		output = self.generate(reduced).value
+        digest = hash_nums(p, q, g, *elements)
+        reduced = int_from_bytes(digest)
+        output = self.generate(reduced).value
 
-		return output       # g ^ ( H( p | g | q | elements)  modq )  modp
+        return output       # g ^ ( H( p | g | q | elements)  modq )  modp
 
-	def contains(self, element):
-		"""
-		:type element: GroupElement
-		:rtype: bool
-		"""
-		if isinstance(element, ModPrimeElement) and element.modulus == self.__modulus:
-			# Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
-			# an mod p element x is contained in C iff x ^ q = 1
-			return element ** self.__order == 1
-		return False
+    def contains(self, element):
+        """
+        :type element: GroupElement
+        :rtype: bool
+        """
+        if isinstance(element, ModPrimeElement) and element.modulus == self.__modulus:
+            # Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
+            # an mod p element x is contained in C iff x ^ q = 1
+            return element ** self.__order == 1
+        return False
 
 
 class ModPrimeCrypto(ElGamalCrypto):
