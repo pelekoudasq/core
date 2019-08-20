@@ -15,14 +15,27 @@ class WeakCryptoError(BaseException):
     """
     pass
 
-class EncryptionNotPossible(BaseException):
-    """
-    Raised when encryption of an element is not possible in the current context
-    """
-    pass
-
 class InvalidKeyError(BaseException):
     """
     Raised when the provided private key is not valid in the current context
+    """
+    pass
+
+class InvalidVoteError(BaseException):
+    """
+    Raised when a submitted vote is found to be invalid
+    """
+    pass
+
+class InvalidSignatureError(BaseException):
+    """
+    Raised when a submitted signature does not have the expected format
+    or cannot be verified under the attached public key
+    """
+    pass
+
+class InvalidEncryptionError(BaseException):
+    """
+    Raised when the proof accompanying an encryption cannot be verified
     """
     pass

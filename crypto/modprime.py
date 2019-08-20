@@ -1,1343 +1,1672 @@
 import Crypto
 from Crypto.Util.number import isPrime
 from gmpy2 import mpz, mpq, powmod, invert, mul, add, f_mod, qdiv
+from functools import partial
+import importlib
 
 from .elgamal import ElGamalCrypto
 from .algebra import Group, GroupElement
-from .exceptions import AlgebraError, WrongCryptoError, WeakCryptoError
-from .utils import int_from_bytes, hash_nums, hash_texts, random_integer
+from .exceptions import AlgebraError, WrongCryptoError, WeakCryptoError,\
+ 						InvalidVoteError, InvalidSignatureError, InvalidEncryptionError
+from .utils import int_from_bytes, hash_nums, hash_texts, random_integer,\
+				   hash_encode, hash_decode, extract_value
 
 from .constants import V_FINGERPRINT,\
-	        V_PREVIOUS, V_ELECTION, V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES,\
-	        V_MODULUS, V_GENERATOR, V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT,\
-	        V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX, V_CAST_VOTE,\
-	        V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED
+			V_PREVIOUS, V_ELECTION, V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES,\
+			V_MODULUS, V_GENERATOR, V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT,\
+			V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX, V_CAST_VOTE,\
+			V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED
 
 
 class ModPrimeElement(GroupElement):
-    """
-    Element of the multiplicative group Z*_p = Z_p - {0}, p > 2 prime
-    """
+	"""
+	Element of the multiplicative group Z*_p = Z_p - {0}, p > 2 prime
+	"""
 
-    __slots__ = ('__value', '__modulus', '__inverse')
+	__slots__ = ('__value', '__modulus', '__inverse')
 
-    def __init__(self, value, modulus):
-        """
-        :type value: mpz
-        :type modulus: mpz
-        """
-        self.__value = value
-        self.__modulus = modulus
+	def __init__(self, value, modulus):
+		"""
+		:type value: mpz
+		:type modulus: mpz
+		"""
+		self.__value = value
+		self.__modulus = modulus
 
-        # Set here modular inverse (costly to compute everytime)
-        self.__inverse = invert(self.__value, self.__modulus)
+		# Set here modular inverse (costly to compute everytime)
+		self.__inverse = invert(self.__value, self.__modulus)
 
-    @property
-    def value(self):
-        """
-        :rtype: mpz
-        """
-        return self.__value
+	@property
+	def value(self):
+		"""
+		:rtype: mpz
+		"""
+		return self.__value
 
-    @property
-    def modulus(self):
-        """
-        :rtype: mpz
-        """
-        return self.__modulus
+	@property
+	def modulus(self):
+		"""
+		:rtype: mpz
+		"""
+		return self.__modulus
 
-    @property
-    def inverse(self):
-        """
-        :rtype: ModPrimeElement
-        """
-        return self.__class__(value=self.__inverse, modulus=self.__modulus)
+	@property
+	def inverse(self):
+		"""
+		:rtype: ModPrimeElement
+		"""
+		return self.__class__(value=self.__inverse, modulus=self.__modulus)
 
-    @property
-    def bit_length(self):
-        """
-        :rtype: int
-        """
-        return self.__value.bit_length()
+	@property
+	def bit_length(self):
+		"""
+		:rtype: int
+		"""
+		return self.__value.bit_length()
 
-    def __repr__(self):
-        """
-        :rtype: str
-        """
-        return str(self.__value)
+	def __repr__(self):
+		"""
+		:rtype: str
+		"""
+		return str(self.__value)
 
-    def __hash__(self):
-        """
-        :rtype: int
-        """
-        return hash(repr(self))
+	def __hash__(self):
+		"""
+		:rtype: int
+		"""
+		return hash(repr(self))
 
-    def __eq__(self, other):
-        """
-        :type other: ModPrimeElement or mpz
-        """
-        if isinstance(other, self.__class__):
-            return self.__value == other.value
-        else:
-            return self.value == other
+	def __eq__(self, other):
+		"""
+		:type other: ModPrimeElement or mpz
+		"""
+		if isinstance(other, self.__class__):
+			return self.__value == other.value
+		else:
+			return self.value == other
 
-    def __mul__(self, other):
-        """
-        :type other: ModPrimeElement
-        """
-        result = self.__value * other.value % self.__modulus
-        return self.__class__(value=result, modulus=self.__modulus)
+	def __mul__(self, other):
+		"""
+		:type other: ModPrimeElement
+		"""
+		result = self.__value * other.value % self.__modulus
+		return self.__class__(value=result, modulus=self.__modulus)
 
-    def __pow__(self, exp):
-        """
-        :type exp: mpz
-        :rtype: ModPrimeElement
-        """
-        # # result = self.__value ** exp % self.__modulus ---> "...outrageous exponent"
-        # Use gmpy2.powmod instead in order to avoid overflow in mpz type
-        result = powmod(self.__value, exp, self.__modulus)
-        return self.__class__(value=result, modulus=self.__modulus)
+	def __pow__(self, exp):
+		"""
+		:type exp: mpz
+		:rtype: ModPrimeElement
+		"""
+		# # result = self.__value ** exp % self.__modulus ---> "...outrageous exponent"
+		# Use gmpy2.powmod instead in order to avoid overflow in mpz type
+		result = powmod(self.__value, exp, self.__modulus)
+		return self.__class__(value=result, modulus=self.__modulus)
 
-    def contained_in(self, group):
-        """
-        :type: Group
-        :rtype: bool
-        """
-        if isinstance(group, ModPrimeSubgroup) and group.modulus == self.__modulus:
-            # Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
-            # a mod p element x is contained in C iff x ^ q = 1
-            return self ** group.order == 1
-        return False
+	def contained_in(self, group):
+		"""
+		:type: Group
+		:rtype: bool
+		"""
+		if isinstance(group, ModPrimeSubgroup) and group.modulus == self.__modulus:
+			# Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
+			# a mod p element x is contained in C iff x ^ q = 1
+			return self ** group.order == 1
+		return False
 
 
 class ModPrimeSubgroup(Group):
-    """
-    Subgroup of the multiplicative group Z*_p = Z_p - {0}, p > 2 prime
+	"""
+	Subgroup of the multiplicative group Z*_p = Z_p - {0}, p > 2 prime
 
-    There is one such group of order q for each divisor 0 < q < p - 1 of p - 1
-    and is generated by the r-power, r = (p - 1)/q, of any primitive in Z*_p
+	There is one such group of order q for each divisor 0 < q < p - 1 of p - 1
+	and is generated by the r-power, r = (p - 1)/q, of any primitive in Z*_p
 
-    E.g., the default value r = 2 yields the group of quadratic residues modp
-    """
+	E.g., the default value r = 2 yields the group of quadratic residues modp
+	"""
 
-    __slots__ = ('__modulus', '__order', '__generator', '__Element')
+	__slots__ = ('__modulus', '__order', '__generator', '__Element')
 
-    def __init__(self, modulus, root_order=2):
-        """
-        :type modulus: mpz
-        :type root_order: mpz
-        """
-        modulus = modulus
-        root_order = root_order
+	def __init__(self, modulus, root_order=2):
+		"""
+		:type modulus: mpz
+		:type root_order: mpz
+		"""
+		modulus = modulus
+		root_order = root_order
 
-        if modulus <= 2 or not isPrime(modulus):
-            e = 'Provided modulus is not an odd prime'
-            raise AlgebraError(e)
+		if modulus <= 2 or not isPrime(modulus):
+			e = 'Provided modulus is not an odd prime'
+			raise AlgebraError(e)
 
-        if root_order <= 0 or root_order >= modulus:
-            e = 'Provided order of unit-root is not in the allowed range'
-            raise AlgebraError(e)
+		if root_order <= 0 or root_order >= modulus:
+			e = 'Provided order of unit-root is not in the allowed range'
+			raise AlgebraError(e)
 
-        order, s = divmod(modulus - 1, root_order)
+		order, s = divmod(modulus - 1, root_order)
 
-        if s != 0:
-            e = 'Provided order of unit-root does not divide the multiplicative group\'s order'
-            raise AlgebraError(e)
+		if s != 0:
+			e = 'Provided order of unit-root does not divide the multiplicative group\'s order'
+			raise AlgebraError(e)
 
-        self.__modulus = modulus
-        self.__order = order
-        self.__Element = ModPrimeElement
-
-
-    def __repr__(self):
-        """
-        :rtype: str
-        """
-        return '%s (%d, %d)' % (self.__class__, self.__modulus, self.__order)
-
-    def __hash__(self):
-        """
-        :rtype: str
-        """
-        return hash(repr(self))
-
-    @property
-    def modulus(self):
-        """
-        :rtype: mpz
-        """
-        return self.__modulus
-
-    @property
-    def order(self):
-        """
-        :rtype: mpz
-        """
-        return self.__order
-
-    @property
-    def generator(self):
-        """
-        :rtype: ModPrimeElement
-        """
-        try:
-            return self.__generator
-        except AttributeError:
-            e = 'No generator has yet been specified for this group'
-            raise AlgebraError(e)
-
-    @property
-    def Element(self):
-        """
-        :rtype: class
-        """
-        return self.__Element
-
-    def parameters(self):
-        """
-        """
-        p = self.__modulus
-        q = self.__order
-        g = self.__generator.value
-
-        return p, q, g
-
-    def set_generator(self, element):
-        """
-        :type element: ModPrimeElement
-        """
-        self.__generator = element
-
-    def generate(self, exponent):
-        """
-        :type exponent: mpz
-        :rtype: ModPrimeElement
-        """
-        return self.__generator ** exponent
-
-    def add_exponents(self, *args):
-        """
-        :type *args: mpz
-        :rtype: mpz
-        """
-        return sum(args) % self.__order
-
-    def random_exponent(self, min=2):
-        """
-        Returns a random exponent >= `min`, bounded by the group's order
-
-        :rtype: mpz
-        """
-        # Note: the default value min=2 guarantees that raising the generator
-        # to the random exponent r does not yield the generator itself or the
-        # group's neutral element (provided that the group's order is > 2)
-        exponent = random_integer(min, self.__order)
-        return mpz(exponent)
-
-    def exponent_from_texts(self, *texts):
-        """
-        :type *texts: str
-        :rtype: mpz
-        """
-        p, q, g = self.parameters()
-
-        hashed_params = hash_nums(p, q, g).hex()
-        hashed_texts = hash_texts(hashed_params, *texts)
-        exponent = int_from_bytes(hashed_texts)
-        exponent = f_mod(exponent, self.__order)
-
-        return exponent
-
-    def random_element(self):
-        """
-        :rtype: ModPrimeElement
-        """
-        random_exp = self.random_exponent()
-        return self.__generator ** random_exp
-
-    def element_from_integer(self, integer):
-        """
-        Provided integer must be < q - 1
-
-        :type integer: int
-        :rtype: ModPrimeElement
-        """
-        integer += 1
-        if integer >= self.__order:
-            e = 'Provided integer is too large'
-            raise AlgebraError(e)
-
-        integer = mpz(integer)
-
-        legendre = powmod(integer, self.__order, self.__modulus)
-        if legendre != 1:
-            integer = - integer % self.__modulus
-
-        return self.Element(value=integer, modulus=self.__modulus)
+		self.__modulus = modulus
+		self.__order = order
+		self.__Element = ModPrimeElement
 
 
-    def element_from_texts(self, *texts):
-        """
-        :type *texts: str
-        :rtype: ModPrimeElement
-        """
-        exp = self.exponent_from_texts(*texts)
-        return self.generate(exp)
+	def __repr__(self):
+		"""
+		:rtype: str
+		"""
+		return '%s (%d, %d)' % (self.__class__, self.__modulus, self.__order)
 
-    def fiatshamir(self, *elements):
-        """
-        The output of this method is only involved in exponent operations
+	def __hash__(self):
+		"""
+		:rtype: str
+		"""
+		return hash(repr(self))
 
-        :type: mpz or ModePrimeElement
-        :rtype: mpz
-        """
+	@property
+	def modulus(self):
+		"""
+		:rtype: mpz
+		"""
+		return self.__modulus
 
-        p, q, g = self.parameters()
+	@property
+	def order(self):
+		"""
+		:rtype: mpz
+		"""
+		return self.__order
 
-        # Convert to mpz if ModPrimeElement
-        elements = [x.value if isinstance(x, ModPrimeElement) else x for x in elements]
+	@property
+	def generator(self):
+		"""
+		:rtype: ModPrimeElement
+		"""
+		try:
+			return self.__generator
+		except AttributeError:
+			e = 'No generator has yet been specified for this group'
+			raise AlgebraError(e)
 
-        digest = hash_nums(p, q, g, *elements)
-        reduced = int_from_bytes(digest)
-        output = self.generate(reduced).value
+	@property
+	def Element(self):
+		"""
+		:rtype: class
+		"""
+		return self.__Element
 
-        return output       # g ^ ( H( p | g | q | elements)  modq )  modp
+	def parameters(self):
+		"""
+		"""
+		p = self.__modulus
+		q = self.__order
+		g = self.__generator.value
 
-    def contains(self, element):
-        """
-        :type element: GroupElement
-        :rtype: bool
-        """
-        if isinstance(element, ModPrimeElement) and element.modulus == self.__modulus:
-            # Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
-            # an mod p element x is contained in C iff x ^ q = 1
-            return element ** self.__order == 1
-        return False
+		return p, q, g
+
+	def set_generator(self, element):
+		"""
+		:type element: ModPrimeElement
+		"""
+		self.__generator = element
+
+	def generate(self, exponent):
+		"""
+		:type exponent: mpz
+		:rtype: ModPrimeElement
+		"""
+		return self.__generator ** exponent
+
+	def add_exponents(self, *args):
+		"""
+		:type *args: mpz
+		:rtype: mpz
+		"""
+		return sum(args) % self.__order
+
+	def random_exponent(self, min=2):
+		"""
+		Returns a random exponent >= `min`, bounded by the group's order
+
+		:rtype: mpz
+		"""
+		# Note: the default value min=2 guarantees that raising the generator
+		# to the random exponent r does not yield the generator itself or the
+		# group's neutral element (provided that the group's order is > 2)
+		exponent = random_integer(min, self.__order)
+		return mpz(exponent)
+
+	def exponent_from_texts(self, *texts):
+		"""
+		:type *texts: str
+		:rtype: mpz
+		"""
+		p, q, g = self.parameters()
+
+		hashed_params = hash_nums(p, q, g).hex()
+		hashed_texts = hash_texts(hashed_params, *texts)
+		exponent = int_from_bytes(hashed_texts)
+		exponent = f_mod(exponent, self.__order)
+
+		return exponent
+
+	def random_element(self):
+		"""
+		:rtype: ModPrimeElement
+		"""
+		random_exp = self.random_exponent()
+		return self.__generator ** random_exp
+
+	def element_from_integer(self, integer):
+		"""
+		Provided integer must be < q - 1
+
+		:type integer: int
+		:rtype: ModPrimeElement
+		"""
+		integer += 1
+		if integer >= self.__order:
+			e = 'Provided integer is too large'
+			raise AlgebraError(e)
+
+		integer = mpz(integer)
+
+		legendre = powmod(integer, self.__order, self.__modulus)
+		if legendre != 1:
+			integer = - integer % self.__modulus
+
+		return self.Element(value=integer, modulus=self.__modulus)
+
+
+	def element_from_texts(self, *texts):
+		"""
+		:type *texts: str
+		:rtype: ModPrimeElement
+		"""
+		exp = self.exponent_from_texts(*texts)
+		return self.generate(exp)
+
+	def fiatshamir(self, *elements):
+		"""
+		The output of this method is only involved in exponent operations
+
+		:type: mpz or ModePrimeElement
+		:rtype: mpz
+		"""
+
+		p, q, g = self.parameters()
+
+		# Convert to mpz if ModPrimeElement
+		elements = [x.value if isinstance(x, ModPrimeElement) else x for x in elements]
+
+		digest = hash_nums(p, q, g, *elements)
+		reduced = int_from_bytes(digest)
+		output = self.generate(reduced).value
+
+		return output       # g ^ ( H( p | g | q | elements)  modq )  modp
+
+	def contains(self, element):
+		"""
+		:type element: GroupElement
+		:rtype: bool
+		"""
+		if isinstance(element, ModPrimeElement) and element.modulus == self.__modulus:
+			# Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
+			# an mod p element x is contained in C iff x ^ q = 1
+			return element ** self.__order == 1
+		return False
 
 
 class ModPrimeCrypto(ElGamalCrypto):
-    """
-    ElGamal systemtem over the group of r-residues mod p, p > 2 prime.
-    Defaults to r = 2, yielding the group of quadratic residues mod p
-    """
+	"""
+	ElGamal systemtem over the group of r-residues mod p, p > 2 prime.
+	Defaults to r = 2, yielding the group of quadratic residues mod p
+	"""
 
-    MIN_MOD_SIZE = 2048
-    MIN_GEN_SIZE = 2000
+	MIN_MOD_SIZE = 2048
+	MIN_GEN_SIZE = 2000
 
-    __slots__ = (
-        '__group', '__GroupElement',
-
-        # Group params included for mpz computations outside the group interface
-        '__modulus', '__order', '__generator'
-    )
+	__slots__ = (
+		'__group', '__GroupElement',
+
+		# Group params included for mpz computations outside the group interface
+		'__modulus', '__order', '__generator'
+	)
 
 
-    def __init__(self, modulus, primitive, root_order=2,
-                 check_3mod4=True, prime_order=True, min_mod_size=None, min_gen_size=None):
-        """
-        Assumes that the provided `primitive` g0 is indeed a primitive mod p (i.e., generates
-        the multiplicative group Z*_p) or, equivalently, it is a primitive (p - 1)-root of 1
-        (i.e., g0 ^ (p - 1) = 1 and g0 ^ k != 1 for all 0 < k < p - 1)
-
-        :type modulus: int
-        :type primitive: int
-        :type root_order: int
-        :type check_3mod4: bool
-        :type prime_order: bool
-        :type min_mod_size: int
-        :type min_gen_size: int
-        """
+	def __init__(self, modulus, primitive, root_order=2,
+				 check_3mod4=True, prime_order=True, min_mod_size=None, min_gen_size=None):
+		"""
+		Assumes that the provided `primitive` g0 is indeed a primitive mod p (i.e., generates
+		the multiplicative group Z*_p) or, equivalently, it is a primitive (p - 1)-root of 1
+		(i.e., g0 ^ (p - 1) = 1 and g0 ^ k != 1 for all 0 < k < p - 1)
+
+		:type modulus: int
+		:type primitive: int
+		:type root_order: int
+		:type check_3mod4: bool
+		:type prime_order: bool
+		:type min_mod_size: int
+		:type min_gen_size: int
+		"""
 
-        # Type conversion
-        modulus = mpz(modulus)                                   # p
-        primitive = ModPrimeElement(mpz(primitive), modulus)     # g0
-        root_order = mpz(root_order)                             # r
+		# Type conversion
+		modulus = mpz(modulus)                                   # p
+		primitive = ModPrimeElement(mpz(primitive), modulus)     # g0
+		root_order = mpz(root_order)                             # r
 
-        # Resolve group
-        try:
-            group = ModPrimeSubgroup(modulus, root_order)
-        except AlgebraError:
-            raise
+		# Resolve group
+		try:
+			group = ModPrimeSubgroup(modulus, root_order)
+		except AlgebraError:
+			raise
 
-        self.__group = group
-        self.__modulus = group.modulus
-        self.__order = group.order
+		self.__group = group
+		self.__modulus = group.modulus
+		self.__order = group.order
 
-        self.__GroupElement = ModPrimeElement
+		self.__GroupElement = ModPrimeElement
 
-        # Resolve generator
-        # Algebraic fact: given a primitive g0 of Z*_p, p > 2 smooth, and 1 < r < p - 1
-        # with r | p - 1, then g0 ^ r generates the q-subgroup of Z*_p, q = (p - 1)/r
-        generator = primitive ** root_order
+		# Resolve generator
+		# Algebraic fact: given a primitive g0 of Z*_p, p > 2 smooth, and 1 < r < p - 1
+		# with r | p - 1, then g0 ^ r generates the q-subgroup of Z*_p, q = (p - 1)/r
+		generator = primitive ** root_order
 
-        try:
-            self.__group.set_generator(generator)
-        except AlgebraError:
-            raise
-        else:
-            group = self.__group
+		try:
+			self.__group.set_generator(generator)
+		except AlgebraError:
+			raise
+		else:
+			group = self.__group
 
-        self.__generator = group.generator.value
-
-        # System validation
-
-        if check_3mod4 and modulus % 4 != 3:
-            e = 'Provided modulus is not 3 mod 4'
-            raise WrongCryptoError(e)
+		self.__generator = group.generator.value
+
+		# System validation
+
+		if check_3mod4 and modulus % 4 != 3:
+			e = 'Provided modulus is not 3 mod 4'
+			raise WrongCryptoError(e)
 
-        if prime_order and not isPrime(group.order):
-            e = 'Order of the requested group is not prime'
-            raise WrongCryptoError(e)
-
-        MIN_MOD_SIZE = min_mod_size or self.__class__.MIN_MOD_SIZE
-        MIN_GEN_SIZE = min_gen_size or self.__class__.MIN_GEN_SIZE
-
-        if modulus.bit_length() < MIN_MOD_SIZE:
-            e = 'Provided modulus is < %d bits long' % MIN_MOD_SIZE
-            raise WeakCryptoError(e)
-
-        if group.generator.bit_length < MIN_GEN_SIZE:
-            e = 'Generator is < %d bits long' % MIN_GEN_SIZE
-            raise WeakCryptoError(e)
-
-
-    # Cryptosystem
-
-    @property
-    def system(self):
-        """
-        :rtype: dict
-        """
-        p, q, g = self._parameters()
-
-        return {'modulus': int(p), 'order': int(q), 'generator': int(g)}
-
-
-    @property
-    def group(self):
-        """
-        :rtype: ModPrimeSubgroup
-        """
-        return self.__group
-
-
-    @property
-    def GroupElement(self):
-        """
-        :rtype: class
-        """
-        return self.__GroupElement
-
-
-    def _parameters(self):
-        """
-        Returns the modulus p, order q and fixed generator g of the
-        underlying group as a tuple of the form (mpz, mpz, mpz)
-
-        :rtype: tuple
-        """
-        p = self.__modulus
-        q = self.__order
-        g = self.__generator
-        return p, q, g
-
-
-    # Elections API
-
-    def create_zeus_keypair(self, zeus_secret_key=None):
-        """
-        Creates and returns a key pair for zeus
-
-        :type zeus_secret_key: mpz
-        :rtype: dict
-        """
-        zeus_keypair = self.keygen(zeus_secret_key)
-        return zeus_keypair
-
-
-    def _extract_public_shares(self, trustees):
-        """
-        Extracts public keys of the provided trustees as group elements
-        and returns them in a list
-
-        :type trustees: list[dict]
-        :rtype: list[ModPrimeElement]
-        """
-        public_shares = [self._extract_value(public_key) for public_key in trustees]
-        return public_shares
-
-
-    def compute_election_public_key(self, trustees, zeus_keypair):
-        """
-        Computes and returns the election public key
-
-        :type trustees: list[dict]
-        :type zeus_keypair: dict
-        :rtype: GroupElement
-        """
-        public_shares = self._extract_public_shares(trustees)
-        zeus_public_key = self._extract_public_value(zeus_keypair)
-        combined = self._combine_public_keys(zeus_public_key, public_shares)
-        election_public_key = self._set_public_key(combined)                    # proof: None
-        return election_public_key
-
-
-    def validate_election_public_key(self, election_public_key, trustees, zeus_keypair):
-        """
-        :type election_public_key: dict
-        :type trustees: list[dict]
-        :type zeus_keypair: dict
-        :rtype: bool
-        """
-        election_public_key = self._extract_value(election_public_key)
-        test_key = self.compute_election_public_key()
-        return election_public_key == self._extract_value(test_key)
-
-
-    def _encode_integer(self, integer):
-        """
-        :type integer: int
-        :rtype: ModPrimeElement
-        """
-        element = self.group.element_from_integer(integer)
-        return element
-
-
-    def vote(self, election_public_key, voter, plaintext, audit_code=None):
-        """
-        Generated ans returns an encrypted vote from the encoded plaitext
-
-        :type election_public_key: dict
-        :type voter:
-        :type plaintext: int
-        :type audit_code:
-        :rtype: dict
-        """
-        election_public_key = self._extract_value(election_public_key)
-        element = self._encode_integer(plaintext)
-        ciphertext, randomness = self._encrypt_with_randomness(element, election_public_key)
-        proof = self._prove_encryption(ciphertext, randomness)
-        #
-        # CONTINUE FROM HERE
-        #
-        #
-
-
-
-    def _set_vote(self, voter, encrypted, fingerprint,
-                  audit_code=None, publish=None, voter_secret=None,
-                  previous=None, index=None, status=None, plaintext=None):
-        """
-        """
-
-        vote = {
-            'voter': str(voter),
-            'encrypted': encrypted,
-            'fingerprint': hash_decode(fingerprint)
-        }
-
-        if audit_code:
-            vote['audit_code'] = int(audit_code)
-        if publish:
-            vote['voter_secret'] = str(voter_secret)    # str(int(voter_secret))
-        if previous:
-            vote['index'] = str(index)
-        if status:
-            vote['status'] = status
-        if plaintext:
-            vote['plaintext'] = str(plaintext)
-
-        return vote
-
-
-    def _extract_vote(self, vote):
-        """
-        """
-        voter = vote['voter']
-        encrypted = vote['encrypted']
-        fingerprint = hash_encode(vote['fingerprint'])
-
-        audit_code = extract_value(vote, 'audit_code', int)
-        voter_secret = extract_value(vote, 'voter_secret', int)
-
-        previous = None
-        if 'previous' in vote.keys():
-            previous = hash_encode(vote['previous'])
-
-        index = extract_value(vote, 'index', int)
-
-        # plaintext is string?
-        #
-        # plaintext = mpz(extract_value(vote, 'plaintext', int))
-        # plaintext = self.GroupElement(plaintext)
-        #
-        plaintext = extract_value(vote, 'plaintext', self.GroupElement) # ???
-
-        return voter, encrypted, fingerprint, audit_code,\
-            voter_secret, previous, index, status, plaintext
-
-
-    def sign_vote(self, vote, comments, election_public, zeus_key, trustees, choices):
-        """
-        :type vote:
-        :type comments:
-        :type election_public:
-        :type zeus_key:
-        :type trustees:
-        :type choices:
-        :rtype:
-        """
-        p, q, g = self._parameters()
-        zeus_private, zeus_public = self._extract_keypair(zeus_key)
-
-
-    #TODO: implement
-    def verify_vote_signature(self, vote_signature):
-        """
-        :type vote_signature:
-        :rtype: bool
-        """
-        pass
-
-
-    #TODO: implement
-    def verify_audit_votes(self, election_public, choices, votes=None, audit_reqs=None):
-        """
-        :type election_public:
-        :type choices:
-        :type votes:
-        :type audit_reqs:
-        """
-        pass
-
-
-    # Key management
-
-    ###############################################################
-    #                                                             #
-    #    By keypair is meant a dictionary of the form             #
-    #                                                             #
-    #    {                                                        #
-    #        'private': mpz,                                      #
-    #        'public': {                                          #
-    #            'value': ModPrimeElement,                        #
-    #            'proof': ...                                     #
-    #        }                                                    #
-    #    }                                                        #
-    #                                                             #
-    #   where tha value for the key `proof` is either `None` or   #
-    #   a Schnorr proof                                           #
-    #                                                             #
-    ###############################################################
-
-
-    def _set_public_key(self, value, proof=None):
-        """
-        :type value: ModPrimeElement
-        :type proof: dict
-        :rtype: dict
-        """
-        public_key = {'value': value, 'proof': proof}
-        return public_key
-
-
-    def _set_keypair(self, private_key, public_key):
-        """
-        :type private_key:
-        :type public_key: dict
-        :rtype: dict
-        """
-        keypair = {'private': private_key, 'public': public_key}
-        return keypair
-
-
-    def _extract_keypair(self, key):
-        """
-        Returns a tuple with the private and public part of the provided key in
-        the form of a numerical value (mpz) and a dict respectively
-
-        :type key: dict
-        :rtype: tuple
-        """
-        return key['private'], key['public']
-
-
-    def _extract_private(self, key):
-        """
-        :type key: dict
-        :rtype: mpz
-        """
-        return key['private']
-
-
-    def _extract_public(self, key):
-        """
-        :type: key
-        :rtype: dict
-        """
-        return key['public']
-
-
-    def _extract_public_value(self, key):
-        """
-        :type key: dict
-        :rtype: ModPrimeElement
-        """
-        return key['public']['value']
-
-
-    def _extract_value(self, public_key):
-        """
-        :type public_key: dict
-        :rtype: ModPrimeElement
-        """
-        return public_key['value']
-
-
-    def _combine_public_keys(self, initial, public_keys):
-        """
-        Assuming the provided public keys in the form of gorup elements,
-        computes and returns the combined key
-
-        :type initial: ModPrimeElement
-        :type public_keys: list[ModPrimeElement]
-        :rtype: ModPrimeElement
-        """
-        combined = initial
-        for public_key in public_keys:
-            combined = combined * public_key
-        return combined
-
-
-    def keygen(self, private_key=None, schnorr=True):
-        """
-        Generates and returns a keypair. If `shnorr` is `True`, the public part
-        will also contain a proof-of-knowledge of the private part.
-
-        :type private_key: mpz
-        :type schnorr: bool
-        :rtype: dict
-        """
-
-        __group = self.__group
-
-        if private_key is None:
-            private_key = __group.random_exponent()
-
-        elif not 1 < private_key < self.__order:
-            e = 'Provided private key exceeds the allowed range'
-            raise InvalidKeyError(e)
-
-        public_key = __group.generate(private_key)              # y = g ^ x modp
-
-        proof = None
-        if schnorr is True:
-            proof = self._schnorr_proof(private_key, public_key)
-
-        public_key = self._set_public_key(public_key, proof)
-        keypair = self._set_keypair(private_key, public_key)
-
-        return keypair
-
-
-    def validate_public_key(self, public_key):
-        """
-        Assuming `public_key` to be the public part
-
-        {
-            'value': ModPrimeElement,
-            'proof': ...
-        }
-
-        of a keypair, verifies the included proof-of-knowledge of its private counterpart
-
-        :type public_key: dict
-        :rtype: bool
-        """
-        try:
-            proof = public_key['proof']
-        except KeyError:
-            # No proof has been provided together with the public key
-            return False
-
-        public_key = public_key['value']
-
-        if not public_key.contained_in(self.__group):
-            return False
-
-        return self._schnorr_verify(proof=proof, public=public_key)
-
-
-    def extract_value(self, public_key):
-        """
-        Returns as common integer the value of the provided public key
-
-        :rtype: int
-        """
-        return int(public_key['value'].value)
-
-
-    # Text-message signatures
-
-    #####################################################################
-    #                                                                   #
-    #    By signed message is meant a dictionary of the form            #
-    #                                                                   #
-    #    {                                                              #
-    #        'message': str,                                            #
-    #        'signature': {                                             #
-    #            'c_1': ModPrimeElement                                 #
-    #            'c_2': mpz                                             #
-    #        }                                                          #
-    #    }                                                              #
-    #                                                                   #
-    #####################################################################
-
-
-    def _set_signed_message(self, message, signature):
-        """
-        :type message: str
-        :type signature: dict
-        :rtype: dict
-        """
-        return {'message': message, 'signature': signature}
-
-
-    def _extract_signed_message(self, signed_message):
-        """
-        :type signed_message: dict
-        :rtype: tuple
-        """
-        message = signed_message['message']
-        signature = signed_message['signature']
-        return message, signature
-
-
-    def sign_text_message(self, message, private_key):
-        """
-        Signs the provided `message` m with the provided `private_key` x,
-        returning the signed message
-
-        {
-            'message': m,
-            'signature': {
-                'c_1': (g ^ r modp) modq,
-                'c_2': (H(m) + x * c_1)/r modq
-            }
-        }
-
-        for a once used randomness 1 < r < q. The original message m gets hashed
-        as H(m) before being signed for defence against existential forgery.
-
-        :type message: str
-        :type private_key: mpz
-        :rtype: dict
-        """
-
-        hashed_message = self.__group.exponent_from_texts(message)
-        signature = self._dsa_signature(hashed_message, private_key)
-
-        signed_message = self._set_signed_message(message, signature)
-        return signed_message
-
-
-    def verify_text_signature(self, signed_message, public_key):
-        """
-        Given a signed message `signed_message`, verifies the attached signature
-        under the provided public key `public_key`
-
-        :type signed_message: dict
-        :type public_key: dict
-        :rtype: bool
-        """
-
-        # Extract data from signed message
-        message, signature = self._extract_signed_message(signed_message)
-
-        # Extract value of public key
-        public_key = self._extract_value(public_key)
-
-        # Verify signature
-        hashed_message = self.__group.exponent_from_texts(message)              # H(m)
-        verified = self._dsa_verify(hashed_message, signature, public_key)
-
-        return verified
-
-
-    # Digital Signature Algorithm
-
-    ############################################################
-    #                                                          #
-    #    By DSA-signature is meant a dictionary of the form    #
-    #                                                          #
-    #    {                                                     #
-    #        'c_1': mpz                                        #
-    #        'c_2': mpz                                        #
-    #    }                                                     #
-    #                                                          #
-    ############################################################
-
-
-    def _set_dsa_signature(self, c_1, c_2):
-        """
-        :type c_1: mpz
-        :type c_2: mpz
-        :rtype: dict
-        """
-        return {'c_1': c_1, 'c_2': c_2}
-
-
-    def _extract_dsa_signature(self, signature):
-        """
-        :type signature: dict
-        :rtype: tuple
-        """
-        c_1 = signature['c_1']
-        c_2 = signature['c_2']
-        return c_1, c_2
-
-
-    def _dsa_signature(self, exponent, private_key):
-        """
-        Returns and computes the DSA-signature
-
-        {
-            'c_1': (g ^ r modp) modq
-            'c_2': (e + x * c_1)/r modq
-        }
-
-        of the provided `exponent` e (assumed to be in the range {1, ..., q - 1})
-        under the `private_key` x for a once used randmoness 1 < r < q
-
-        :type exponent: mpz
-        :type private_key: mpz
-        :rtype: dict
-        """
-        __group = self.__group
-        __q = self.__order
-
-        randomness = __group.random_exponent()                           # 1 < r < q
-        c_1 = f_mod(__group.generate(randomness).value, __q)             # (g ^ r modp) modq
-
-        exps = __group.add_exponents(exponent, mul(private_key, c_1))    # (e + x * c_1) modq
-        r_inv = invert(randomness, __q)                                  # r ^ -1 modq
-        c_2 = f_mod(mul(exps, r_inv), __q)                               # (e + x * c_1)/r modq
-
-        signature = self._set_dsa_signature(c_1, c_2)
-        return signature
-
-
-    def _dsa_verify(self, exponent, signature, public_key):
-        """
-        Verifies that the provided DSA-signature `signature` signs the given
-        `exponent` under the given `public_key`
-
-        :type exponent: mpz
-        :type signature: dict
-        :type public_key: ModPrimeElement
-        :rtype: bool
-        """
-        __group = self.__group
-        __q = self.__order
-
-        # Extract data from signature
-        c_1, c_2 = self._extract_dsa_signature(signature)
-
-        # Commitments' validity check
-        for c in (c_1, c_2):
-            if not 0 < c < __q:
-                return False
-
-        # Proceed to signature validation
-
-        c_2_inv = invert(c_2, __q)                                      # c_2 ^ -1 modq
-
-        v_1 = f_mod(mul(exponent, c_2_inv), __q)                        # (e + c_2 ^ -1) modq
-        v_2 = f_mod(mul(c_1, c_2_inv), __q)                             # (v_1 * c_2 ^ -1) modq
-
-        element = (__group.generate(v_1) * public_key ** v_2).value     # (g ^ v_1 * y ^ v_2) modp
-
-        # ((g ^ v_1 * y ^ v_2) modp) modq == c_1 ?
-        return f_mod(element, __q) == c_1
-
-
-    # Schnorr protocol
-
-    ############################################################
-    #                                                          #
-    #    By Schnorr proof is meant a dictionary of the form    #
-    #                                                          #
-    #    {                                                     #
-    #       'commitment': ModPrimeElement                      #
-    #       'challenge': mpz                                   #
-    #       'response': mpz                                    #
-    #    }                                                     #
-    #                                                          #
-    ############################################################
-
-
-    def _set_schnorr_proof(self, commitment, challenge, response):
-        """
-        :type commitment: ModPrimeElement
-        :type challenge: mpz
-        :type response: mpz
-        :rtype: dict
-        """
-        proof = {
-            'commitment': commitment,
-            'challenge': challenge,
-            'response': response
-        }
-
-        return proof
-
-    def _extract_schnorr_proof(self, proof):
-        """
-        :type proof: dict
-        :rtype: tuple
-        """
-        commitment = proof['commitment']
-        challenge = proof['challenge']
-        response = proof['response']
-
-        return commitment, challenge, response
-
-
-    def _schnorr_proof(self, secret, public, *extras):
-        """
-        Implementation of Schnorr protocol from the prover's side (non-interactive)
-
-        Returns proof-of-knowldge (Schnorr proof) of the discrete logarithm x (`secret`)
-        of y (`public`), with `*extras` being used in the Fiat-Shamir heuristic
-
-        :type secret: mpz
-        :type public: modPrimeElement
-        :type *extras: mpz or int or ModPrimeElement
-        :rtype: dict
-        """
-
-        __group = self.__group
-
-        randomness = __group.random_exponent()          # r
-        commitment = __group.generate(randomness)       # g ^ r
-
-        challenge  = __group.fiatshamir(
-            public,
-            commitment,
-            *extras)     # c = g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp
-
-        response = __group.add_exponents(randomness, challenge * secret) # r + c * x
-
-        proof = self._set_schnorr_proof(commitment, challenge, response)
-        return proof
-
-
-    def _schnorr_verify(self, proof, public, *extras):
-        """
-        Implementation of Schnorr protocol from the verifier's side (non-interactive)
-
-        Validates the demonstrated Schnorr proof-of-knowledge (`proof`) of the discrete
-        logarithm of y (`public`), with `*extras` assumed to have been used in the
-        Fiat-Shamir heuristic
-
-        :type proof: dict
-        :type public: modPrimeElement
-        :type *extras: mpz or int or ModPrimeElement
-        """
-        __group = self.__group
-
-        # g ^ r, c, s
-        commitment, challenge, response = self._extract_schnorr_proof(proof)
-
-        # Check correctness of chalenge:
-        # c == g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp ?
-        _challenge = __group.fiatshamir(
-            public,
-            commitment,
-            *extras)
-
-        if _challenge != challenge:
-            return False
-
-        # g ^ s modp == (g ^ r) * (y ^ c) modp ?
-        return __group.generate(response) == commitment * (public ** challenge)
-
-
-    # Chaum-Pedersen protocol
-
-    ###################################################################
-    #                                                                 #
-    #    By Chaum-Pedersen proof is meant a dictionary of the form    #
-    #                                                                 #
-    #    {                                                            #
-    #        'base_commitment': ModPrimeElement                       #
-    #        'message_commitment': ModPrimeElement                    #
-    #        'challenge': mpz                                         #
-    #        'response': mpz                                          #
-    #    }                                                            #
-    #                                                                 #
-    ###################################################################
-
-
-    def _set_chaum_pedersen_proof(self, base_commitment, message_commitment,
-                                        challenge, response):
-        """
-        :type base_commitment: ModPrimeElement
-        :type message_commitment: ModPrimeElement
-        :challenge: mpz
-        :response: mpz
-        :rtype: dict
-        """
-        proof = {
-            'base_commitment': base_commitment,
-            'message_commitment': message_commitment,
-            'challenge': challenge,
-            'response': response
-        }
-
-        return proof
-
-    def _extract_chaum_pedersen_proof(self, proof):
-        """
-        :type proof: dict
-        :rtype: tuple
-        """
-        base_commitment = proof['base_commitment']
-        message_commitment = proof['message_commitment']
-        challenge = proof['challenge']
-        response = proof['response']
-
-        return base_commitment, message_commitment, challenge, response
-
-
-    def _chaum_pedersen_proof(self, ddh, z):
-        """
-        Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
-
-        Returns zero-knowledge proof (Chaum-Pedersen proof) that the provided 3-ple `ddh`
-        is a DDH with respect to the generator g of the systemtem's underlying group,
-        i.e., of the form
-
-                        (g ^ x modp, g ^ z modp, g ^ (x * z) modp)
-
-        for some integers 0 <= x, z < q
-
-        The provided `ddh` is of the form
-
-                    [ModPrimeElement, ModPrimeElement, ModPrimeElement]
-
-        :type ddh: list
-        :type z: mpz
-        :rtype: dict
-        """
-
-        __group = self.__group
-
-        u, v, w = ddh
-
-        randomness = __group.random_exponent()
-
-        g_commitment = __group.generate(randomness)                     # g ^ r
-        u_commitment = u ** randomness                                  # u ^ r
-
-        challenge = __group.fiatshamir(
-            u, v, w,
-            g_commitment,
-            u_commitment)   # c = g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp
-
-        response = __group.add_exponents(randomness, challenge * z)     # s = r + c * z  modq
-
-        proof = self._set_chaum_pedersen_proof(g_commitment, u_commitment,
-                                            challenge, response)
-        return proof
-
-
-    def _chaum_pedersen_verify(self, ddh, proof):
-        """
-        Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
-
-        Validates the demonstrated zero-knowledge `proof` that the provided 3-ple `ddh` is a
-        DDH with respect to the generator g of the systemtem's underlying group, i.e., of
-        the form
-                                (u, v, g ^ (x * z) modp)
-
-        where u = g ^ x modp, v = g ^ z modp with 0 <= x, z < q
-
-        The provided `ddh` is of the form
-
-                    [ModPrimeElement, ModPrimeElement, ModPrimeElement]
-
-        and the provided `proof` of the form
-
-        {
-            'base_commitment': ModPrimeElement
-            'message_commitment': ModPrimeElement
-            'challenge': mpz
-            'response': mpz
-        }
-
-        :type ddh: list
-        :type proof: dict
-        :rtype: bool
-        """
-
-        __group = self.__group
-
-        u, v, w = ddh
-
-        # g ^ r, u ^ r, c, s
-        g_commitment, u_commitment, challenge, response = \
-            self._extract_chaum_pedersen_proof(proof)
-
-        # Check correctness of challenge:
-        # c == g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp ?
-        _challenge = __group.fiatshamir(
-            u, v, w,
-            g_commitment,
-            u_commitment)
-
-        if _challenge != challenge:
-            return False
-
-        # Verify prover's commitment to presumed randomness:
-        # g ^ s == g ^ r * v ^ c  modp ?
-        if __group.generate(response) != g_commitment * (v ** challenge):
-            return False
-
-        # Verify that the provided u is of the form g ^ (k * z) for some k (and
-        # thus k = x due to prover's commitment to randomness r):
-        # u ^ s == u ^ r * w ^ c  modp ?
-        return u ** response == u_commitment * (w ** challenge)
-
-
-    # El-Gamal encryption
-
-    ################################################################
-    #                                                              #
-    #    By ElGamal-cipertext is meant a dictionary of the form    #
-    #                                                              #
-    #    {                                                         #
-    #        'alpha': ModPrimeElement                              #
-    #        'beta': ModPrimeElement                               #
-    #    }                                                         #
-    #                                                              #
-    ################################################################
-
-
-    def _set_ciphertext(self, alpha, beta):
-        """
-        :type alpha: ModPrimeElement
-        :type beta: ModPrimeElement
-        :rtype: dict
-        """
-        return {'alpha': alpha, 'beta': beta}
-
-
-    def _extract_ciphertext(self, ciphertext):
-        """
-        :type ciphertext: dict
-        :rtype: typle
-        """
-        alpha = ciphertext['alpha']
-        beta = ciphertext['beta']
-        return alpha, beta
-
-
-    def _encrypt(self, element, public_key, randomness=None):
-        """
-        Computes and returns the ElGamal-ciphertext
-
-        {
-            'alpha': g ^ r (modp)
-            'beta': m * y ^ r (mod p)
-        }
-
-        of the provided `element` m, where `public_key` is the receiver's
-        public key y and 1 < r < q a once used randomness
-
-        :type element: ModPrimeElement
-        :type public_key: ModPrimeElement
-        :type randomness: mpz
-        :rtype: dict
-        """
-        __group = self.__group
-
-        __p, __q, _ = self._parameters()
-
-        if randomness is None:
-            randomness = __group.random_exponent()
-
-        alpha = __group.generate(randomness)            # g ^ r (modp)
-        beta = element * public_key ** randomness       # m * y ^ r (modp)
-
-        ciphertext = self._set_ciphertext(alpha, beta)
-        return ciphertext
-
-
-    def _encrypt_with_randomness(self, element, public_key, randomness=None):
-        """
-        :type element: ModPrimeElement
-        :type public_key: ModPrimeElement
-        :type randomness: mpz
-        :rtype: tuple
-        """
-        __group = self.__group
-
-        if randomness is None:
-            randomness = __group.random_exponent()
-
-        ciphertext = self._encrypt(element, public_key, randomness)
-
-        return ciphertext, randomness
-
-
-    def _prove_encryption(self, ciphertext, randomness):
-        """
-        Generates (Schnorr) proof-of-knowledge of the `randomness` r used in the
-        encryption yielding the given ElGamal-ciphertext `ciphertext`. Returned
-        proof has the form of a Schnorr proof
-
-        :type ciphertext: dict
-        :type original: ModPrimeElement
-        :rtype: dict
-        """
-        alpha, beta = self._extract_ciphertext(ciphertext)
-        proof = self._schnorr_proof(randomness, alpha, beta)
-
-        return proof
-
-
-    def _decrypt(self, ciphertext, private_key):
-        """
-        Decrypts the provided ElGamal-ciphertext `ciphertext` under the provided
-        `private_key` and returns the original element
-
-        :type ciphertext: dict
-        :type private_key: mpz
-        :rtype: ModPrimeElement
-        """
-        alpha, beta = self._extract_ciphertext(ciphertext)
-
-        original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
-        return original
-
-
-    def _verify_encryption(self, proof, ciphertext):
-        """
-        Verifies proof-of-knowledge of randomness used in the encryption yielding
-        the provided ElGamal ciphertext
-
-        :type proof:
-        :type ciphertext:
-        :rtype: bool
-        """
-        alpha, beta = self._extract_ciphertext(ciphertext)
-        verified = self._schnorr_verify(proof, alpha, beta)
-
-        return verified
-
-    #TODO: implement
-    def _decrypt_with_randomness(self, public, ciphertext, secret):
-        """
-        """
-        pass
+		if prime_order and not isPrime(group.order):
+			e = 'Order of the requested group is not prime'
+			raise WrongCryptoError(e)
+
+		MIN_MOD_SIZE = min_mod_size or self.__class__.MIN_MOD_SIZE
+		MIN_GEN_SIZE = min_gen_size or self.__class__.MIN_GEN_SIZE
+
+		if modulus.bit_length() < MIN_MOD_SIZE:
+			e = 'Provided modulus is < %d bits long' % MIN_MOD_SIZE
+			raise WeakCryptoError(e)
+
+		if group.generator.bit_length < MIN_GEN_SIZE:
+			e = 'Generator is < %d bits long' % MIN_GEN_SIZE
+			raise WeakCryptoError(e)
+
+
+	# Cryptosystem
+
+	@property
+	def system(self):
+		"""
+		:rtype: dict
+		"""
+		p, q, g = self._parameters()
+
+		return {'modulus': int(p), 'order': int(q), 'generator': int(g)}
+
+
+	@property
+	def group(self):
+		"""
+		:rtype: ModPrimeSubgroup
+		"""
+		return self.__group
+
+
+	@property
+	def GroupElement(self):
+		"""
+		:rtype: class
+		"""
+		return self.__GroupElement
+
+
+	def _parameters(self):
+		"""
+		Returns the modulus p, order q and fixed generator g of the
+		underlying group as a tuple of the form (mpz, mpz, mpz)
+
+		:rtype: tuple
+		"""
+		p = self.__modulus
+		q = self.__order
+		g = self.__generator
+		return p, q, g
+
+
+	# Elections API
+
+	def create_zeus_keypair(self, zeus_secret_key=None):
+		"""
+		Creates and returns a key pair for zeus
+
+		:type zeus_secret_key: mpz
+		:rtype: dict
+		"""
+		zeus_keypair = self.keygen(zeus_secret_key)
+		return zeus_keypair
+
+
+	def _extract_public_shares(self, trustees):
+		"""
+		Extracts public keys of the provided trustees as group elements
+		and returns them in a list
+
+		:type trustees: list[dict]
+		:rtype: list[ModPrimeElement]
+		"""
+		public_shares = [self._extract_value(public_key) for public_key in trustees]
+		return public_shares
+
+
+	def compute_election_public_key(self, trustees, zeus_keypair):
+		"""
+		Computes and returns the election public key
+
+		:type trustees: list[dict]
+		:type zeus_keypair: dict
+		:rtype: ModPrimeElement
+		"""
+		public_shares = self._extract_public_shares(trustees)
+		zeus_public_key = self._extract_public_value(zeus_keypair)
+		combined = self._combine_public_keys(zeus_public_key, public_shares)
+		election_public_key = self._set_public_key_from_element(combined)                    # proof: None
+		return election_public_key
+
+
+	def validate_election_public_key(self, election_public_key, trustees, zeus_keypair):
+		"""
+		:type election_public_key: dict
+		:type trustees: list[dict]
+		:type zeus_keypair: dict
+		:rtype: bool
+		"""
+		election_public_key = self._extract_value(election_public_key)
+		test_key = self.compute_election_public_key()
+		return election_public_key == self._extract_value(test_key)
+
+
+	def _encode_integer(self, integer):
+		"""
+		:type integer: int
+		:rtype: ModPrimeElement
+		"""
+		element = self.group.element_from_integer(integer)
+		return element
+
+	def _set_vote(self, voter, encrypted, fingerprint,
+				  audit_code=None, publish=None, voter_secret=None,
+				  previous=None, index=None, status=None, plaintext=None):
+		"""
+		:type voter:
+		:type encrypted: dict
+		:type fingerprint: bytes
+		:type audit_code:
+		:type publish:
+		:type voter_sercret:
+		:type previous:
+		:type index:
+		:type status:
+		:type plaintext: int
+		:rtype: dict
+		"""
+		vote = {
+			'voter': str(voter),
+			'encrypted': encrypted,
+			'fingerprint': hash_decode(fingerprint)
+		}
+
+		if audit_code:
+			vote['audit_code'] = int(audit_code)
+		if publish:
+			vote['voter_secret'] = str(voter_secret)    # str(int(voter_secret))
+		if previous:
+			vote['index'] = str(index)
+		if status:
+			vote['status'] = status
+		if plaintext:
+			vote['plaintext'] = str(plaintext)
+
+		return vote
+
+	def vote(self, election_public_key, voter, plaintext, audit_code=None):
+		"""
+		Generates and returns an encrypted vote from the encoded plaintext
+
+		:type election_public_key: dict
+		:type voter:
+		:type plaintext: int
+		:type audit_code:
+		:rtype: dict
+		"""
+		election_public_key = self._extract_value(election_public_key)
+		encoded_plaintext = self._encode_integer(plaintext)
+		ciphertext, randomness = self._encrypt_with_randomness(encoded_plaintext, election_public_key)
+
+		proof = self._prove_encryption(ciphertext, randomness)
+
+		encrypted = self._set_ciphertext_proof(ciphertext, proof)
+		fingerprint = self._make_fingerprint(encrypted)
+
+		vote = self._set_vote(voter, encrypted, fingerprint, audit_code, publish, randomness)
+		return vote
+
+
+	def _extract_vote(self, vote):
+		"""
+		:type vote: dict
+		:rtype: dict
+		"""
+		voter = vote['voter']
+		encrypted = vote['encrypted']
+		fingerprint = hash_encode(vote['fingerprint'])
+
+		audit_code = extract_value(vote, 'audit_code', int)
+		voter_secret = extract_value(vote, 'voter_secret', int)
+
+		previous = None
+		if 'previous' in vote.keys():
+			previous = hash_encode(vote['previous'])
+
+		index = extract_value(vote, 'index', int)
+		status = extract_value(vote, 'status', str)
+
+		cast = partial(self.GroupElement, modulus=self.__modulus)
+		plaintext = extract_value(vote, 'plaintext', cast)
+
+		return voter, encrypted, fingerprint, audit_code,\
+			voter_secret, previous, index, status, plaintext
+
+
+	def validate_submitted_vote(self, vote):
+		"""
+		Checks if the vote's fingerprint is correct, returning the fingerprint
+		in this case; otherwise an exception gets raised.
+
+		:type vote: dict
+		:rtype: bytes
+		"""
+		_, encrypted, fingerprint, _, _, _, _, _, _ = self._extract_vote(vote)
+
+		if not self._verify_encryption(encrypted):
+			e = 'Invalid encryption proof'
+			raise InvalidVoteError(e)
+
+		if fingerprint != self._make_fingerprint(encrypted):
+			e = 'Invalid fingerprint'
+			raise InvalidVoteError(e)
+
+		return fingerprint
+
+
+	def sign_vote(self, vote, comments, election_public_key, zeus_keypair, trustees, choices):
+		"""
+		choices (candidates) format:
+
+			['Party-A: 0-2, 0', 'Party-A: Candidate-0000',
+	         'Party-B: generator0-2, 1', 'Party-B: Candidate-0001']
+
+		:type vote: dict
+		:type comments:
+		:type election_public_key: dict
+		:type zeus_keypair: dict
+		:type trustees: list[dict]
+		:type choices: list[str]
+		:rtype:
+		"""
+		__p, __q, __g = self._parameters()
+
+		election_public_key = self._extract_value(election_public_key)
+
+		zeus_private_key, zeus_public_key = self._extract_keypair(zeus_kepairy)
+		zeus_public_key = self._extract_value(zeus_public_key)
+
+		_, encrypted, fingerprint, _, _, previous, index, status, _ =\
+			self._extract_vote(vote)
+
+		alpha, beta, commitment, challenge, response =\
+			self._extract_fingerprint_params(encrypted)
+
+		trustees = [self._extract_value(trustee) for trustee in trustees]
+
+		m00 = status
+		m01 = '%s%s' % (V_FINGERPRINT, fingerprint)
+		m02 = '%s%s' % (V_INDEX, ('%d' % index) if index is not None else 'NONE')
+		m03 = '%s%s' % (V_PREVIOUS, (previous,)) 	# '%s%s' % (V_PREVIOUS, previous)
+		m04 = '%s%s' % (V_ELECTION, str(election_public_key))
+		m05 = '%s%s' % (V_ZEUS_PUBLIC, str(zeus_public_key))
+		m06 = '%s%s' % (V_TRUSTEES, ' '.join(str(_) for _ in trustees))
+		m07 = '%s%s' % (V_CANDIDATES, ' % '.join('%s' % _.encode('utf-8') for _ in choices))
+		m08 = '%s%s' % (V_MODULUS, str(__p))
+		m09 = '%s%s' % (V_ORDER, str(__q))
+		m10 = '%s%s' % (V_GENERATOR, str(__g))
+		m11 = '%s%s' % (V_ALPHA, str(alpha))
+		m12 = '%s%s' % (V_BETA, str(beta))
+		m13 = '%s%s' % (V_COMMITMENT, str(commitment))
+		m14 = '%s%s' % (V_CHALLENGE, str(challenge))
+		m15 = '%s%s' % (V_RESPONSE, str(response))
+		m16 = '%s%s' % (V_COMMENTS, (comments,))
+
+		message = '\n'.join((m00, m01, m02, m03, m04, m05, m06, m07,
+							 m08, m09, m10, m11, m12, m13, m14, m15, m16))
+
+		signed_message = self._sign_text_message(message, zeus_private_key)
+		message, exponent, c_1, c_2 = self._extract_signed_message(signed_message)
+		exponent, c_1, c_2 = str(exponent), str(c_1), str(c_2)
+
+		vote_signature = message
+		vote_signature += '\n-----------------\n'
+		vote_signature += '%s\n%s\n%s\n' (exponent, c_1, c_2)
+
+		return vote_signature
+
+
+	def verify_vote_signature(self, vote_signature):
+		"""
+		Returns `True` if the signature is verified, otherwise raises exception
+		:type vote_signature: str
+		:rtype: bool
+		"""
+		message, _, exponent, c_1, c_2, _ = vote_signature.rsplit('\n', 5)
+
+		(m00, m01, m02, m03, m04, m05, m06, m07,
+	     m08, m09, m10, m11, m12, m13, m14, m15, m16) = message.split('\n', 16)
+
+		# Check signature structure
+
+		if not ((m00.startswith(V_CAST_VOTE) or
+				m00.startswith(V_AUDIT_REQUEST) or
+				m00.startswith(V_PUBLIC_AUDIT) or
+				m00.startswith(V_PUBLIC_AUDIT_FAILED)) or
+		   not m01.startswith(V_FINGERPRINT) or
+		   not m02.startswith(V_INDEX) or
+		   not m03.startswith(V_PREVIOUS) or
+		   not m04.startswith(V_ELECTION) or
+		   not m05.startswith(V_ZEUS_PUBLIC) or
+		   not m06.startswith(V_TRUSTEES) or
+		   not m07.startswith(V_CANDIDATES) or
+		   not m08.startswith(V_MODULUS) or
+		   not m09.startswith(V_ORDER) or
+		   not m10.startswith(V_GENERATOR) or
+		   not m11.startswith(V_ALPHA) or
+		   not m12.startswith(V_BETA) or
+		   not m13.startswith(V_COMMITMENT) or
+		   not m14.startswith(V_CHALLENGE) or
+		   not m15.startswith(V_RESPONSE) or
+		   not m16.startswith(V_COMMENTS)):
+			e = 'Invalid vote signature structure'
+			raise InvalidSignatureError(e)
+
+		# Extract data
+
+		status = m00
+		fingerprint = m01[len(V_FINGERPRINT):]
+
+		index_str = m02[len(V_INDEX):]
+		if index_str == 'NONE':
+			index = None
+		elif index_str.isdigit():
+			index = int(index_str)
+		else:
+			e = "Invalid vote index '%s'" % index_str
+			raise InvalidSignatureError(e)
+
+		previous = m03[len(V_PREVIOUS):]
+
+		zeus_public_key = mpz(m05[len(V_ZEUS_PUBLIC):])
+		zeus_public_key = self._set_public_key_from_value(zeus_public_key)
+
+		_m06 = m06[len(V_TRUSTEES):]
+		trustess = [int(x) for _ in _m06.split(' ')] if _m06 else []
+
+		_m07 = m07[len(V_CANDIDATES):]
+		candidates = _m07.split(' % ')
+
+		modulus = mpz(m08[len(V_MODULUS):])
+		order = mpz(m09[len(V_ORDER):])
+		generator = mpz(m10[len(V_GENERATOR):])
+
+		alpha = mpz(m11[len(V_ALPHA):])
+		beta = mpz(m11[len(V_BETA):])
+
+		commitment = mpz(m11[len(V_COMMITMENT):])
+		challenge = mpz(m11[len(V_CHALLENGE):])
+		response = mpz(m12[len(V_RESPONSE):])
+
+		comments = m16[len(V_COMMENTS):]
+
+		# Retrieve signed message
+
+		exponent = mpz(exponent)
+		c_1 = mpz(c_1)
+		c_2 = mpz(c_2)
+		signed_message = self._set_signed_message(message,
+			signature=self._set_dsa_signature(exponent, c_1, c_2))
+
+		# Validate signature or raise exception otherwise
+
+		if not self._verify_text_signature(signed_message, zeus_public_key):
+			e = 'Invalid vote signature'
+			raise InvalidSignatureError(e)
+
+		# Verify encryption proof or raise exception otherwise
+		ciphertext = self._set_ciphertext(alpha, beta)
+		proof = self._set_schnorr_proof(commitment, challenge, response)
+		encrypted = self._set_ciphertext_proof(ciphertext, proof)
+		if index is not None and not self._verify_encryption(encrypted):
+			e = 'Invalid vote encryption'
+			raise InvalidEncryptionError(e)
+
+		return True
+
+
+	#TODO: implement
+	def verify_audit_votes(self, election_public, choices, votes=None, audit_reqs=None):
+		"""
+		:type election_public:
+		:type choices:
+		:type votes:
+		:type audit_reqs:
+		"""
+		pass
+
+
+	def _set_factor(self, data, proof):
+		"""
+		:type data: ModPrimeElement
+		:type proof: dict
+		:rtype: dict
+		"""
+		factor = {'data': data.value, 'proof': proof}
+		return factor
+
+
+	def _extract_factor(self, factor):
+		"""
+		:type factor: dict
+		:rtype: tuple
+		"""
+		data = ModPrimeElement(factor['data'], self.__modulus)
+		proof = factor['proof']
+		return data, proof
+
+
+	def _set_trustee_factors(self, public, factors):
+		"""
+		:type public:
+		:type factors: list[dict]
+		:rtype: dict
+		"""
+		trustee_factors = {'public': public, 'factors': factors}
+		return trustee_factors
+
+
+	def _extract_trustee_factors(self, trustee_factors):
+		"""
+		:type trustee_factors:
+		:rtype: tuple
+		"""
+		public = trustee_factors['public']
+		factors = trustee_factors['factors']
+		return public, factors
+
+
+	def _get_last_mix(mixes):
+		"""
+		"""
+		return mixes[-1]
+
+
+	def _get_mixer_class(self, module):
+		"""
+		:type module: str
+		:rtype:
+		"""
+		module_name = importlib.import_module('zeus_crypto.mixnets.%s' % module)
+		_cls = getattr(module_name, module.capitalize())
+		return _clas
+
+
+	def initialize_mixer(self, module, params, election_public_key):
+		"""
+		:type module: str
+		:type params: dict
+		:type election_public_key: dict
+		"""
+		public_key = self._extract_value(election_public_key)	# GroupElement
+		_cls = self._get_mixer_class(module)
+		return _cls(params, public_key)
+
+
+
+
+	# Key management
+
+	###############################################################
+	#                                                             #
+	#    By keypair is meant a dictionary of the form             #
+	#                                                             #
+	#    {                                                        #
+	#        'private': mpz,                                      #
+	#        'public': {                                          #
+	#            'value': ModPrimeElement,                        #
+	#            'proof': ...                                     #
+	#        }                                                    #
+	#    }                                                        #
+	#                                                             #
+	#   where tha value for the key `proof` is either `None` or   #
+	#   a Schnorr proof                                           #
+	#                                                             #
+	###############################################################
+
+
+	def _set_public_key_from_element(self, element, proof=None):
+		"""
+		:type element: ModPrimeElement
+		:type proof: dict
+		:rtype: dict
+		"""
+		public_key = {'value': element, 'proof': proof}
+		return public_key
+
+
+	def _set_public_key_from_value(self, value, proof=None):
+		"""
+		:type value: mpz
+		:type proof: dict
+		:rtype: dict
+		"""
+		public_key = {
+			'value': ModPrimeElement(value, self.__p),
+			'proof': proof
+		}
+		return public_key
+
+
+	def _set_keypair(self, private_key, public_key):
+		"""
+		:type private_key:
+		:type public_key: dict
+		:rtype: dict
+		"""
+		keypair = {'private': private_key, 'public': public_key}
+		return keypair
+
+
+	def _extract_keypair(self, key):
+		"""
+		Returns a tuple with the private and public part of the provided key in
+		the form of a numerical value (mpz) and a dict respectively
+
+		:type key: dict
+		:rtype: tuple
+		"""
+		return key['private'], key['public']
+
+
+	def _extract_private(self, key):
+		"""
+		:type key: dict
+		:rtype: mpz
+		"""
+		return key['private']
+
+
+	def _extract_public(self, key):
+		"""
+		:type: key
+		:rtype: dict
+		"""
+		return key['public']
+
+
+	def _extract_public_value(self, key):
+		"""
+		:type key: dict
+		:rtype: ModPrimeElement
+		"""
+		return key['public']['value']
+
+
+	def _extract_value(self, public_key):
+		"""
+		:type public_key: dict
+		:rtype: ModPrimeElement
+		"""
+		return public_key['value']
+
+
+	def _combine_public_keys(self, initial, public_keys):
+		"""
+		Assuming the provided public keys in the form of gorup elements,
+		computes and returns the combined key
+
+		:type initial: ModPrimeElement
+		:type public_keys: list[ModPrimeElement]
+		:rtype: ModPrimeElement
+		"""
+		combined = initial
+		for public_key in public_keys:
+			combined = combined * public_key
+		return combined
+
+
+	def keygen(self, private_key=None, schnorr=True):
+		"""
+		Generates and returns a keypair. If `shnorr` is `True`, the public part
+		will also contain a proof-of-knowledge of the private part.
+
+		:type private_key: mpz
+		:type schnorr: bool
+		:rtype: dict
+		"""
+
+		__group = self.__group
+
+		if private_key is None:
+			private_key = __group.random_exponent()
+
+		elif not 1 < private_key < self.__order:
+			e = 'Provided private key exceeds the allowed range'
+			raise InvalidKeyError(e)
+
+		public_key = __group.generate(private_key)              # y = g ^ x modp
+
+		proof = None
+		if schnorr is True:
+			proof = self._schnorr_proof(private_key, public_key)
+
+		public_key = self._set_public_key_from_element(public_key, proof)
+		keypair = self._set_keypair(private_key, public_key)
+
+		return keypair
+
+
+	def validate_public_key(self, public_key):
+		"""
+		Assuming `public_key` to be the public part
+
+		{
+			'value': ModPrimeElement,
+			'proof': ...
+		}
+
+		of a keypair, verifies the included proof-of-knowledge of its private counterpart
+
+		:type public_key: dict
+		:rtype: bool
+		"""
+		try:
+			proof = public_key['proof']
+		except KeyError:
+			# No proof has been provided together with the public key
+			return False
+
+		public_key = public_key['value']
+
+		if not public_key.contained_in(self.__group):
+			return False
+
+		return self._schnorr_verify(proof=proof, public=public_key)
+
+
+	def extract_value(self, public_key):
+		"""
+		Returns as common integer the value of the provided public key
+
+		:rtype: int
+		"""
+		return int(public_key['value'].value)
+
+
+	# Text-message signatures
+
+	#####################################################################
+	#                                                                   #
+	#    By signed message is meant a dictionary of the form            #
+	#                                                                   #
+	#    {                                                              #
+	#        'message': str,                                            #
+	#        'signature': {                                             #
+	#            'exponent': mpz,                                       #
+	#		     'commitments': {                                       #
+	#		 		'c_1': mpz,                                         #
+	#				'c_2': mpz                                          #
+	#        }                                                          #
+	#    }                                                              #
+	#                                                                   #
+	#####################################################################
+
+
+	def _set_signed_message(self, message, signature):
+		"""
+		:type message: str
+		:type signature: dict
+		:rtype: dict
+		"""
+		return {'message': message, 'signature': signature}
+
+
+	def _extract_message_signature(self, signed_message):
+		"""
+		:type signed_message: dict
+		:rtype: tuple
+		"""
+		message = signed_message['message']
+		signature = signed_message['signature']
+		return message, signature
+
+
+	def _extract_signed_message(self, signed_message):
+		"""
+		:type signed_message: dict
+		:rtype: tuple
+		"""
+		message = signed_message['message']
+		signature = signed_message['signature']
+		exponent, c_1, c_2 = self._extract_dsa_signature(signature)
+		return message, exponent, c_1, c_2
+
+
+	def sign_text_message(self, message, private_key):
+		"""
+		Signs the provided `message` m with the provided `private_key` x,
+		returning the signed message
+
+		{
+			'message': m,
+			'signature': {
+				'exponent': H(m),
+				'commitments': {
+					'c_1': (g ^ r modp) modq,
+					'c_2': (H(m) + x * c_1)/r modq
+				}
+			}
+		}
+
+		for a once used randomness 1 < r < q.
+
+		NOTE: The original message m gets hashed as H(m) before being signed for
+		defence against existential forgery.
+
+		:type message: str
+		:type private_key: mpz
+		:rtype: dict
+		"""
+
+		hashed_message = self.__group.exponent_from_texts(message)
+		signature = self._dsa_signature(hashed_message, private_key)
+
+		signed_message = self._set_signed_message(message, signature)
+		return signed_message
+
+
+	def verify_text_signature(self, signed_message, public_key):
+		"""
+		Given a signed message `signed_message`, verifies the attached signature
+		under the provided public key `public_key`
+
+		:type signed_message: dict
+		:type public_key: dict
+		:rtype: bool
+		"""
+
+		# Extract data from signed message
+		message, signature = self._extract_message_signature(signed_message)
+
+		# Extract value of public key
+		public_key = self._extract_value(public_key)
+
+		# Verify signature
+		hashed_message = self.__group.exponent_from_texts(message)              # H(m)
+		verified = self._dsa_verify(hashed_message, signature, public_key)
+
+		return verified
+
+
+	# Digital Signature Algorithm
+
+	############################################################
+	#                                                          #
+	#    By DSA-signature is meant a dictionary of the form    #
+	#                                                          #
+	# 	{													   #
+	# 		'exponent': mpz,								   #
+	# 		'commitments': {								   #
+	# 			'c_1': mpz,									   #
+	# 			'c_2': mpz									   #
+	# 		}										           #
+	# 	}													   #
+	#                                                          #
+	############################################################
+
+
+	def _set_dsa_signature(self, exponent, c_1, c_2):
+		"""
+		:exponent: mpz
+		:type c_1: mpz
+		:type c_2: mpz
+		:rtype: dict
+		"""
+		signature = {
+			'exponent': exponent,
+			'commitments': {
+				'c_1': c_1,
+				'c_2': c_2
+			}
+		}
+
+		return signature
+
+
+	def _extract_dsa_signature(self, signature):
+		"""
+		:type signature: dict
+		:rtype: tuple
+		"""
+		exponent = signature['exponent']
+		commitments = signature['commitments']
+		c_1 = commitments['c_1']
+		c_2 = commitments['c_2']
+		return exponent, c_1, c_2
+
+
+	def _dsa_signature(self, exponent, private_key):
+		"""
+		Returns and computes the DSA-signature
+
+		{
+			'exponent': e,
+			'commitments': {
+				'c_1': (g ^ r modp) modq
+				'c_2': (e + x * c_1)/r modq
+			}
+		}
+
+		of the provided `exponent` e (assumed to be in the range {1, ..., q - 1})
+		under the `private_key` x for a once used randmoness 1 < r < q
+
+		:type exponent: mpz
+		:type private_key: mpz
+		:rtype: dict
+		"""
+		__group = self.__group
+		__q = self.__order
+
+		randomness = __group.random_exponent()                           # 1 < r < q
+		c_1 = f_mod(__group.generate(randomness).value, __q)             # (g ^ r modp) modq
+
+		exps = __group.add_exponents(exponent, mul(private_key, c_1))    # (e + x * c_1) modq
+		r_inv = invert(randomness, __q)                                  # r ^ -1 modq
+		c_2 = f_mod(mul(exps, r_inv), __q)                               # (e + x * c_1)/r modq
+
+		signature = self._set_dsa_signature(exponent, c_1, c_2)
+		return signature
+
+
+	def _dsa_verify(self, exponent, signature, public_key):
+		"""
+		Verifies that the provided DSA-signature `signature` signs the given
+		`exponent` under the given `public_key`
+
+		:type exponent: mpz
+		:type signature: dict
+		:type public_key: ModPrimeElement
+		:rtype: bool
+		"""
+		__group = self.__group
+		__q = self.__order
+
+		# Extract data from signature
+		_, c_1, c_2 = self._extract_dsa_signature(signature)
+
+		# Commitments' validity check
+		for c in (c_1, c_2):
+			if not 0 < c < __q:
+				return False
+
+		# Proceed to signature validation
+
+		c_2_inv = invert(c_2, __q)                                      # c_2 ^ -1 modq
+
+		v_1 = f_mod(mul(exponent, c_2_inv), __q)                        # (e + c_2 ^ -1) modq
+		v_2 = f_mod(mul(c_1, c_2_inv), __q)                             # (v_1 * c_2 ^ -1) modq
+
+		element = (__group.generate(v_1) * public_key ** v_2).value     # (g ^ v_1 * y ^ v_2) modp
+
+		# ((g ^ v_1 * y ^ v_2) modp) modq == c_1 ?
+		return f_mod(element, __q) == c_1
+
+
+	# Schnorr protocol
+
+	############################################################
+	#                                                          #
+	#    By Schnorr proof is meant a dictionary of the form    #
+	#                                                          #
+	#    {                                                     #
+	#       'commitment': ModPrimeElement                      #
+	#       'challenge': mpz                                   #
+	#       'response': mpz                                    #
+	#    }                                                     #
+	#                                                          #
+	############################################################
+
+
+	def _set_schnorr_proof(self, commitment, challenge, response):
+		"""
+		:type commitment: ModPrimeElement
+		:type challenge: mpz
+		:type response: mpz
+		:rtype: dict
+		"""
+		proof = {
+			'commitment': commitment,
+			'challenge': challenge,
+			'response': response
+		}
+
+		return proof
+
+	def _extract_schnorr_proof(self, proof):
+		"""
+		:type proof: dict
+		:rtype: tuple
+		"""
+		commitment = proof['commitment']
+		challenge = proof['challenge']
+		response = proof['response']
+
+		return commitment, challenge, response
+
+
+	def _schnorr_proof(self, secret, public, *extras):
+		"""
+		Implementation of Schnorr protocol from the prover's side (non-interactive)
+
+		Returns proof-of-knowldge (Schnorr proof) of the discrete logarithm x (`secret`)
+		of y (`public`), with `*extras` being used in the Fiat-Shamir heuristic
+
+		:type secret: mpz
+		:type public: modPrimeElement
+		:type *extras: mpz or int or ModPrimeElement
+		:rtype: dict
+		"""
+
+		__group = self.__group
+
+		randomness = __group.random_exponent()          # r
+		commitment = __group.generate(randomness)       # g ^ r
+
+		challenge  = __group.fiatshamir(
+			public,
+			commitment,
+			*extras)     # c = g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp
+
+		response = __group.add_exponents(randomness, challenge * secret) # r + c * x
+
+		proof = self._set_schnorr_proof(commitment, challenge, response)
+		return proof
+
+
+	def _schnorr_verify(self, proof, public, *extras):
+		"""
+		Implementation of Schnorr protocol from the verifier's side (non-interactive)
+
+		Validates the demonstrated Schnorr proof-of-knowledge (`proof`) of the discrete
+		logarithm of y (`public`), with `*extras` assumed to have been used in the
+		Fiat-Shamir heuristic
+
+		:type proof: dict
+		:type public: modPrimeElement
+		:type *extras: mpz or int or ModPrimeElement
+		"""
+		__group = self.__group
+
+		# g ^ r, c, s
+		commitment, challenge, response = self._extract_schnorr_proof(proof)
+
+		# Check correctness of chalenge:
+		# c == g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp ?
+		_challenge = __group.fiatshamir(
+			public,
+			commitment,
+			*extras)
+
+		if _challenge != challenge:
+			return False
+
+		# g ^ s modp == (g ^ r) * (y ^ c) modp ?
+		return __group.generate(response) == commitment * (public ** challenge)
+
+
+	# Chaum-Pedersen protocol
+
+	###################################################################
+	#                                                                 #
+	#    By Chaum-Pedersen proof is meant a dictionary of the form    #
+	#                                                                 #
+	#    {                                                            #
+	#        'base_commitment': ModPrimeElement                       #
+	#        'message_commitment': ModPrimeElement                    #
+	#        'challenge': mpz                                         #
+	#        'response': mpz                                          #
+	#    }                                                            #
+	#                                                                 #
+	###################################################################
+
+
+	def _set_chaum_pedersen_proof(self, base_commitment, message_commitment,
+										challenge, response):
+		"""
+		:type base_commitment: ModPrimeElement
+		:type message_commitment: ModPrimeElement
+		:challenge: mpz
+		:response: mpz
+		:rtype: dict
+		"""
+		proof = {
+			'base_commitment': base_commitment,
+			'message_commitment': message_commitment,
+			'challenge': challenge,
+			'response': response
+		}
+
+		return proof
+
+	def _extract_chaum_pedersen_proof(self, proof):
+		"""
+		:type proof: dict
+		:rtype: tuple
+		"""
+		base_commitment = proof['base_commitment']
+		message_commitment = proof['message_commitment']
+		challenge = proof['challenge']
+		response = proof['response']
+
+		return base_commitment, message_commitment, challenge, response
+
+
+	def _chaum_pedersen_proof(self, ddh, z):
+		"""
+		Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
+
+		Returns zero-knowledge proof (Chaum-Pedersen proof) that the provided 3-ple `ddh`
+		is a DDH with respect to the generator g of the systemtem's underlying group,
+		i.e., of the form
+
+						(g ^ x modp, g ^ z modp, g ^ (x * z) modp)
+
+		for some integers 0 <= x, z < q
+
+		The provided `ddh` is of the form
+
+					[ModPrimeElement, ModPrimeElement, ModPrimeElement]
+
+		:type ddh: list
+		:type z: mpz
+		:rtype: dict
+		"""
+
+		__group = self.__group
+
+		u, v, w = ddh
+
+		randomness = __group.random_exponent()
+
+		g_commitment = __group.generate(randomness)                     # g ^ r
+		u_commitment = u ** randomness                                  # u ^ r
+
+		challenge = __group.fiatshamir(
+			u, v, w,
+			g_commitment,
+			u_commitment)   # c = g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp
+
+		response = __group.add_exponents(randomness, challenge * z)     # s = r + c * z  modq
+
+		proof = self._set_chaum_pedersen_proof(g_commitment, u_commitment,
+											challenge, response)
+		return proof
+
+
+	def _chaum_pedersen_verify(self, ddh, proof):
+		"""
+		Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
+
+		Validates the demonstrated zero-knowledge `proof` that the provided 3-ple `ddh` is a
+		DDH with respect to the generator g of the systemtem's underlying group, i.e., of
+		the form
+								(u, v, g ^ (x * z) modp)
+
+		where u = g ^ x modp, v = g ^ z modp with 0 <= x, z < q
+
+		The provided `ddh` is of the form
+
+					[ModPrimeElement, ModPrimeElement, ModPrimeElement]
+
+		and the provided `proof` of the form
+
+		{
+			'base_commitment': ModPrimeElement
+			'message_commitment': ModPrimeElement
+			'challenge': mpz
+			'response': mpz
+		}
+
+		:type ddh: list
+		:type proof: dict
+		:rtype: bool
+		"""
+
+		__group = self.__group
+
+		u, v, w = ddh
+
+		# g ^ r, u ^ r, c, s
+		g_commitment, u_commitment, challenge, response = \
+			self._extract_chaum_pedersen_proof(proof)
+
+		# Check correctness of challenge:
+		# c == g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp ?
+		_challenge = __group.fiatshamir(
+			u, v, w,
+			g_commitment,
+			u_commitment)
+
+		if _challenge != challenge:
+			return False
+
+		# Verify prover's commitment to presumed randomness:
+		# g ^ s == g ^ r * v ^ c  modp ?
+		if __group.generate(response) != g_commitment * (v ** challenge):
+			return False
+
+		# Verify that the provided u is of the form g ^ (k * z) for some k (and
+		# thus k = x due to prover's commitment to randomness r):
+		# u ^ s == u ^ r * w ^ c  modp ?
+		return u ** response == u_commitment * (w ** challenge)
+
+
+	# El-Gamal encryption
+
+	################################################################
+	#                                                              #
+	#    By ElGamal-cipertext is meant a dictionary of the form    #
+	#                                                              #
+	#    {                                                         #
+	#        'alpha': ModPrimeElement                              #
+	#        'beta': ModPrimeElement                               #
+	#    }                                                         #
+	#                                                              #
+	################################################################
+
+
+	def _set_ciphertext(self, alpha, beta):
+		"""
+		:type alpha: ModPrimeElement
+		:type beta: ModPrimeElement
+		:rtype: dict
+		"""
+		return {'alpha': alpha, 'beta': beta}
+
+
+	def _extract_ciphertext(self, ciphertext):
+		"""
+		:type ciphertext: dict
+		:rtype: typle
+		"""
+		alpha = ciphertext['alpha']
+		beta = ciphertext['beta']
+		return alpha, beta
+
+
+	def _set_ciphertext_proof(self, ciphertext, proof):
+		"""
+		:type ciphertext: dict
+		:type proof: dict
+		:rtype: dict
+		"""
+		return {'ciphertext': ciphertext, 'proof': proof}
+
+
+	def _extract_ciphertext_proof(self, ciphertext_proof):
+		"""
+		:type ciphertext_proof: dict
+		:rtype: tuple
+		"""
+		ciphertext = ciphertext_proof['ciphertext']
+		proof = ciphertext_proof['proof']
+		return ciphertext, proof
+
+
+	def _extract_fingerprint_params(self, ciphertext_proof):
+		"""
+		:type ciphertext_proof: dict
+		:rtype: tuple
+		"""
+		ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
+		alpha, beta = self._extract_ciphertext(ciphertext)
+		commitment, challenge, response = self._extract_schnorr_proof(proof)
+		return alpha, beta, commitment, challenge, response
+
+
+	def _make_fingerprint(self, ciphertext_proof):
+		"""
+		:type ciphertext_proof: dict
+		:rtype: bytes
+		"""
+		fingerprint_params = self._extract_fingerprint_params(ciphertext_proof)
+		fingerprint = hash_texts(*[str(param) for param in fingerprint_params])
+		return fingerprint
+
+
+	def _encrypt(self, element, public_key, randomness=None):
+		"""
+		Computes and returns the ElGamal-ciphertext
+
+		{
+			'alpha': g ^ r (modp)
+			'beta': m * y ^ r (mod p)
+		}
+
+		of the provided `element` m, where `public_key` is the receiver's
+		public key y and 1 < r < q a once used randomness
+
+		:type element: ModPrimeElement
+		:type public_key: ModPrimeElement
+		:type randomness: mpz
+		:rtype: dict
+		"""
+		__group = self.__group
+
+		__p, __q, _ = self._parameters()
+
+		if randomness is None:
+			randomness = __group.random_exponent()
+
+		alpha = __group.generate(randomness)            # g ^ r (modp)
+		beta = element * public_key ** randomness       # m * y ^ r (modp)
+
+		ciphertext = self._set_ciphertext(alpha, beta)
+		return ciphertext
+
+
+	def _encrypt_with_randomness(self, element, public_key, randomness=None):
+		"""
+		:type element: ModPrimeElement
+		:type public_key: ModPrimeElement
+		:type randomness: mpz
+		:rtype: tuple
+		"""
+		__group = self.__group
+
+		if randomness is None:
+			randomness = __group.random_exponent()
+
+		ciphertext = self._encrypt(element, public_key, randomness)
+
+		return ciphertext, randomness
+
+
+	def _prove_encryption(self, ciphertext, randomness):
+		"""
+		Generates (Schnorr) proof-of-knowledge of the `randomness` r used in the
+		encryption yielding the given ElGamal-ciphertext `ciphertext`. Returned
+		proof has the form of a Schnorr proof
+
+		:type ciphertext: dict
+		:type original: ModPrimeElement
+		:rtype: dict
+		"""
+		alpha, beta = self._extract_ciphertext(ciphertext)
+		proof = self._schnorr_proof(randomness, alpha, beta)
+
+		return proof
+
+
+	def _decrypt(self, ciphertext, private_key):
+		"""
+		Decrypts the provided ElGamal-ciphertext `ciphertext` under the provided
+		`private_key` and returns the original element
+
+		:type ciphertext: dict
+		:type private_key: mpz
+		:rtype: ModPrimeElement
+		"""
+		alpha, beta = self._extract_ciphertext(ciphertext)
+
+		original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
+		return original
+
+
+	def _verify_encryption(self, ciphertext_proof):
+		"""
+		Verifies proof-of-knowledge of randomness used in the encryption yielding
+		the provided ElGamal ciphertext
+
+		:type ciphertext_proof: dict
+		:rtype: bool
+		"""
+		ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
+		alpha, beta = self._extract_ciphertext(ciphertext)
+		verified = self._schnorr_verify(proof, alpha, beta)
+
+		return verified
+
+	#TODO: implement
+	def _decrypt_with_randomness(self, public, ciphertext, secret):
+		"""
+		"""
+		pass

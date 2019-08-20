@@ -374,7 +374,8 @@ def test_encryption_proof(system, element, public_key, private_key):
     randomness = system.group.random_exponent()
     ciphertext = system._encrypt(element, public_key, randomness)
     proof = system._prove_encryption(ciphertext, randomness)
-    verified = system._verify_encryption(proof, ciphertext)
+    ciphertext_proof = system._set_ciphertext_proof(ciphertext, proof)
+    verified = system._verify_encryption(ciphertext_proof)
 
     assert verified
 
@@ -391,4 +392,5 @@ def test_encryption_with_randomness_and_proof(system, element, public_key, priva
     # Encryption/Proof validation
     ciphertext, randomness = system._encrypt_with_randomness(element, public_key)
     proof = system._prove_encryption(ciphertext, randomness)
-    verified = system._verify_encryption(proof, ciphertext)
+    ciphertext_proof = system._set_ciphertext_proof(ciphertext, proof)
+    verified = system._verify_encryption(ciphertext_proof)
