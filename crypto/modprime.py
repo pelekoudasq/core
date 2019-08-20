@@ -19,29 +19,29 @@ from .constants import V_FINGERPRINT,\
 
 
 class ModPrimeElement(GroupElement):
-	"""
-	Element of the multiplicative group Z*_p = Z_p - {0}, p > 2 prime
-	"""
+    """
+    Element of the multiplicative group Z*_p = Z_p - {0}, p > 2 prime
+    """
 
-	__slots__ = ('__value', '__modulus', '__inverse')
+    __slots__ = ('__value', '__modulus', '__inverse')
 
-	def __init__(self, value, modulus):
-		"""
-		:type value: mpz
-		:type modulus: mpz
-		"""
-		self.__value = value
-		self.__modulus = modulus
+    def __init__(self, value, modulus):
+        """
+        :type value: mpz
+        :type modulus: mpz
+        """
+        self.__value = value
+        self.__modulus = modulus
 
-		# Set here modular inverse (costly to compute everytime)
-		self.__inverse = invert(self.__value, self.__modulus)
+        # Set here modular inverse (costly to compute everytime)
+        self.__inverse = invert(self.__value, self.__modulus)
 
-	@property
-	def value(self):
-		"""
-		:rtype: mpz
-		"""
-		return self.__value
+    @property
+    def value(self):
+        """
+        :rtype: mpz
+        """
+        return self.__value
 
 	@property
 	def modulus(self):
