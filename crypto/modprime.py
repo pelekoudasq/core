@@ -673,7 +673,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 		return vote_signature
 
 
-	def verify_vote_signature(self, vote_signature):
+    def verify_vote_signature(self, vote_signature):
 		"""
 		Returns `True` if the signature is verified, otherwise raises exception
 		:type vote_signature: str
