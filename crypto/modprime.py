@@ -102,6 +102,7 @@ class ModPrimeElement(GroupElement):
         result = powmod(self.__value, exp, self.__modulus)
         return self.__class__(value=result, modulus=self.__modulus)
 
+
     def contained_in(self, group):
         """
         :type: Group
@@ -571,7 +572,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         fingerprint = hash_encode(vote['fingerprint'])
 
         audit_code = extract_value(vote, 'audit_code', int)
-        voter_secret = extract_value(vote, 'voter_secret', int)
+        voter_secret = extract_value(vote, 'voter_secret', mpz)
 
         previous = None
         if 'previous' in vote.keys():
@@ -766,15 +767,47 @@ class ModPrimeCrypto(ElGamalCrypto):
         return True
 
 
-    #TODO: implement
-    def verify_audit_votes(self, election_public, choices, votes=None, audit_reqs=None):
+    def verify_audit_votes(self, election_public_key, choices, votes=None, audit_reqs=None):
         """
-        :type election_public:
+        :type election_public_key: dict
         :type choices:
         :type votes:
         :type audit_reqs:
+        :rtype: (list, list)
         """
-        pass
+        missing = []
+        failed = []
+
+        add_plaintext = 1
+        nr_candidates = len(choices)
+        max_encoded = gamma_encoding_max(nr_candidates)
+
+        for vote in votes:
+            _, encrypted, _, _, voter_secret, _, _, _, _ = self._extract_vote(vote)
+
+            if not voter_secret:
+                missing.append(vote)
+                continue
+            if not self._verify_encryption(encrypted):
+                failed.append(vote)
+                continue
+
+            alpha_vote, _, _, _, _ = self._extract_fingerprint_params(encrypted)
+            alpha = self.group.generate(voter_secret)
+
+            if alpha != alpha_vote:
+                failed.append(vote)
+                continue
+
+            encoded = self._decrypt_with_randomness(election_public_key,
+                ciphertext, voter_secret)
+
+            if encoded.value > max_encoded.value:
+                failed.append(vote)
+            if add_plaintext:
+                vote['plaintext'] = encoded.value
+
+        return missing, failed
 
 
     def _set_factor(self, data, proof):
@@ -1631,21 +1664,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         return proof
 
 
-    def _decrypt(self, ciphertext, private_key):
-        """
-        Decrypts the provided ElGamal-ciphertext `ciphertext` under the provided
-        `private_key` and returns the original element
-
-        :type ciphertext: dict
-        :type private_key: mpz
-        :rtype: ModPrimeElement
-        """
-        alpha, beta = self._extract_ciphertext(ciphertext)
-
-        original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
-        return original
-
-
     def _verify_encryption(self, ciphertext_proof):
         """
         Verifies proof-of-knowledge of randomness used in the encryption yielding
@@ -1660,8 +1678,33 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return verified
 
-    #TODO: implement
-    def _decrypt_with_randomness(self, public, ciphertext, secret):
+
+    def _decrypt(self, ciphertext, private_key):
         """
+        Decrypts the provided ElGamal-ciphertext `ciphertext` under the provided
+        `private_key` and returns the original element
+
+        :type ciphertext: dict
+        :type private_key: mpz
+        :rtype: ModPrimeElement
         """
-        pass
+        alpha, beta = self._extract_ciphertext(ciphertext)
+
+        original = (alpha ** private_key).inverse * beta		# (alpha ^ x) ^ -1 * beta (modp)
+        return original
+
+
+	# TODO: complete (cannot see point of this function)
+    def _decrypt_with_randomness(self, public_key, ciphertext, private_key):
+        """
+		:type public_key: dict
+		:type ciphertext: dict
+		:type private_key: mpz
+        """
+        public_key = self._extract_value(public_key)
+        _, beta = self._extract_ciphertext(ciphertext)
+
+        encoded = (public_key ** private_key).inverse * beta    # (y ^ x) ^ -1 * beta (modp)
+        if encoded.value >= self.group.order: # ?
+            pass # ?
+        return encoded
