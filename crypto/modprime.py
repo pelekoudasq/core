@@ -43,47 +43,47 @@ class ModPrimeElement(GroupElement):
         """
         return self.__value
 
-	@property
-	def modulus(self):
-		"""
-		:rtype: mpz
-		"""
-		return self.__modulus
+    @property
+    def modulus(self):
+        """
+        :rtype: mpz
+        """
+        return self.__modulus
 
-	@property
-	def inverse(self):
-		"""
-		:rtype: ModPrimeElement
-		"""
-		return self.__class__(value=self.__inverse, modulus=self.__modulus)
+    @property
+    def inverse(self):
+        """
+        :rtype: ModPrimeElement
+        """
+        return self.__class__(value=self.__inverse, modulus=self.__modulus)
 
-	@property
-	def bit_length(self):
-		"""
-		:rtype: int
-		"""
-		return self.__value.bit_length()
+    @property
+    def bit_length(self):
+        """
+        :rtype: int
+        """
+        return self.__value.bit_length()
 
-	def __repr__(self):
-		"""
-		:rtype: str
-		"""
-		return str(self.__value)
+    def __repr__(self):
+        """
+        :rtype: str
+        """
+        return str(self.__value)
 
-	def __hash__(self):
-		"""
-		:rtype: int
-		"""
-		return hash(repr(self))
+    def __hash__(self):
+        """
+        :rtype: int
+        """
+        return hash(repr(self))
 
-	def __eq__(self, other):
-		"""
-		:type other: ModPrimeElement or mpz
-		"""
-		if isinstance(other, self.__class__):
-			return self.__value == other.value
-		else:
-			return self.value == other
+    def __eq__(self, other):
+        """
+        :type other: ModPrimeElement or mpz
+        """
+        if isinstance(other, self.__class__):
+            return self.__value == other.value
+        else:
+            return self.value == other
 
 	def __mul__(self, other):
 		"""
