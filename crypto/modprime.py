@@ -681,7 +681,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 		"""
 		message, _, exponent, c_1, c_2, _ = vote_signature.rsplit('\n', 5)
 
-		(m00, m01, m02, m03, m04, m05, m06, m07,
+        (m00, m01, m02, m03, m04, m05, m06, m07,
 	     m08, m09, m10, m11, m12, m13, m14, m15, m16) = message.split('\n', 16)
 
 		# Check signature structure
