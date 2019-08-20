@@ -195,7 +195,7 @@ class ModPrimeSubgroup(Group):
         """
         :rtype: class
         """
-		return self.__Element
+        return self.__Element
 
     def parameters(self):
         """
@@ -232,9 +232,6 @@ class ModPrimeSubgroup(Group):
 
         :rtype: mpz
         """
-        # Note: the default value min=2 guarantees that raising the generator
-        # to the random exponent r does not yield the generator itself or the
-        # group's neutral element (provided that the group's order is > 2)
         exponent = random_integer(min, self.__order)
         return mpz(exponent)
 
@@ -320,248 +317,247 @@ class ModPrimeSubgroup(Group):
 
 
 class ModPrimeCrypto(ElGamalCrypto):
-	"""
-	ElGamal systemtem over the group of r-residues mod p, p > 2 prime.
-	Defaults to r = 2, yielding the group of quadratic residues mod p
-	"""
+    """
+    ElGamal systemtem over the group of r-residues mod p, p > 2 prime.
+    Defaults to r = 2, yielding the group of quadratic residues mod p
+    """
 
-	MIN_MOD_SIZE = 2048
-	MIN_GEN_SIZE = 2000
+    MIN_MOD_SIZE = 2048
+    MIN_GEN_SIZE = 2000
 
-	__slots__ = (
-		'__group', '__GroupElement',
+    __slots__ = (
+        '__group', '__GroupElement',
 
-		# Group params included for mpz computations outside the group interface
-		'__modulus', '__order', '__generator'
-	)
+        # Group params included for mpz computations outside the group interface
+        '__modulus', '__order', '__generator'
+    )
 
 
-	def __init__(self, modulus, primitive, root_order=2,
-				 check_3mod4=True, prime_order=True, min_mod_size=None, min_gen_size=None):
-		"""
-		Assumes that the provided `primitive` g0 is indeed a primitive mod p (i.e., generates
-		the multiplicative group Z*_p) or, equivalently, it is a primitive (p - 1)-root of 1
-		(i.e., g0 ^ (p - 1) = 1 and g0 ^ k != 1 for all 0 < k < p - 1)
+    def __init__(self, modulus, primitive, root_order=2,
+        check_3mod4=True, prime_order=True, min_mod_size=None, min_gen_size=None):
+        """
+        Assumes that the provided `primitive` g0 is indeed a primitive mod p (i.e., generates
+        the multiplicative group Z*_p) or, equivalently, it is a primitive (p - 1)-root of 1
+        (i.e., g0 ^ (p - 1) = 1 and g0 ^ k != 1 for all 0 < k < p - 1)
 
-		:type modulus: int
-		:type primitive: int
-		:type root_order: int
-		:type check_3mod4: bool
-		:type prime_order: bool
-		:type min_mod_size: int
-		:type min_gen_size: int
-		"""
+        :type modulus: int
+        :type primitive: int
+        :type root_order: int
+        :type check_3mod4: bool
+        :type prime_order: bool
+        :type min_mod_size: int
+        :type min_gen_size: int
+        """
 
-		# Type conversion
-		modulus = mpz(modulus)                                   # p
-		primitive = ModPrimeElement(mpz(primitive), modulus)     # g0
-		root_order = mpz(root_order)                             # r
+        # Type conversion
+        modulus = mpz(modulus)                                   # p
+        primitive = ModPrimeElement(mpz(primitive), modulus)     # g0
+        root_order = mpz(root_order)                             # r
 
-		# Resolve group
-		try:
-			group = ModPrimeSubgroup(modulus, root_order)
-		except AlgebraError:
-			raise
+        # Resolve group
+        try:
+            group = ModPrimeSubgroup(modulus, root_order)
+        except AlgebraError:
+            raise
 
-		self.__group = group
-		self.__modulus = group.modulus
-		self.__order = group.order
+        self.__group = group
+        self.__modulus = group.modulus
+        self.__order = group.order
 
-		self.__GroupElement = ModPrimeElement
+        self.__GroupElement = ModPrimeElement
 
-		# Resolve generator
-		# Algebraic fact: given a primitive g0 of Z*_p, p > 2 smooth, and 1 < r < p - 1
-		# with r | p - 1, then g0 ^ r generates the q-subgroup of Z*_p, q = (p - 1)/r
-		generator = primitive ** root_order
+        # Resolve generator
+        # Algebraic fact: given a primitive g0 of Z*_p, p > 2 smooth, and 1 < r < p - 1
+        # with r | p - 1, then g0 ^ r generates the q-subgroup of Z*_p, q = (p - 1)/r
+        generator = primitive ** root_order
 
-		try:
-			self.__group.set_generator(generator)
-		except AlgebraError:
-			raise
-		else:
-			group = self.__group
+        try:
+            self.__group.set_generator(generator)
+        except AlgebraError:
+            raise
+        else:
+            group = self.__group
 
-		self.__generator = group.generator.value
+        self.__generator = group.generator.value
 
-		# System validation
+        # System validation
 
-		if check_3mod4 and modulus % 4 != 3:
-			e = 'Provided modulus is not 3 mod 4'
+        if check_3mod4 and modulus % 4 != 3:
+	           e = 'Provided modulus is not 3 mod 4'
 			raise WrongCryptoError(e)
 
-		if prime_order and not isPrime(group.order):
-			e = 'Order of the requested group is not prime'
-			raise WrongCryptoError(e)
+        if prime_order and not isPrime(group.order):
+            e = 'Order of the requested group is not prime'
+            raise WrongCryptoError(e)
 
-		MIN_MOD_SIZE = min_mod_size or self.__class__.MIN_MOD_SIZE
-		MIN_GEN_SIZE = min_gen_size or self.__class__.MIN_GEN_SIZE
+        MIN_MOD_SIZE = min_mod_size or self.__class__.MIN_MOD_SIZE
+        MIN_GEN_SIZE = min_gen_size or self.__class__.MIN_GEN_SIZE
 
-		if modulus.bit_length() < MIN_MOD_SIZE:
-			e = 'Provided modulus is < %d bits long' % MIN_MOD_SIZE
-			raise WeakCryptoError(e)
+        if modulus.bit_length() < MIN_MOD_SIZE:
+            e = 'Provided modulus is < %d bits long' % MIN_MOD_SIZE
+            raise WeakCryptoError(e)
 
-		if group.generator.bit_length < MIN_GEN_SIZE:
-			e = 'Generator is < %d bits long' % MIN_GEN_SIZE
-			raise WeakCryptoError(e)
-
-
-	# Cryptosystem
-
-	@property
-	def system(self):
-		"""
-		:rtype: dict
-		"""
-		p, q, g = self._parameters()
-
-		return {'modulus': int(p), 'order': int(q), 'generator': int(g)}
+        if group.generator.bit_length < MIN_GEN_SIZE:
+            e = 'Generator is < %d bits long' % MIN_GEN_SIZE
+            raise WeakCryptoError(e)
 
 
-	@property
-	def group(self):
-		"""
-		:rtype: ModPrimeSubgroup
-		"""
-		return self.__group
+    # Cryptosystem
+
+    @property
+    def system(self):
+        """
+        :rtype: dict
+        """
+        p, q, g = self._parameters()
+
+        return {'modulus': int(p), 'order': int(q), 'generator': int(g)}
 
 
-	@property
-	def GroupElement(self):
-		"""
-		:rtype: class
-		"""
-		return self.__GroupElement
+    @property
+    def group(self):
+        """
+        :rtype: ModPrimeSubgroup
+        """
+        return self.__group
 
 
-	def _parameters(self):
-		"""
-		Returns the modulus p, order q and fixed generator g of the
-		underlying group as a tuple of the form (mpz, mpz, mpz)
-
-		:rtype: tuple
-		"""
-		p = self.__modulus
-		q = self.__order
-		g = self.__generator
-		return p, q, g
+    @property
+    def GroupElement(self):
+        """
+        :rtype: class
+        """
+        return self.__GroupElement
 
 
-	# Elections API
+    def _parameters(self):
+        """
+        Returns the modulus p, order q and fixed generator g of the
+        underlying group as a tuple of the form (mpz, mpz, mpz)
 
-	def create_zeus_keypair(self, zeus_secret_key=None):
-		"""
-		Creates and returns a key pair for zeus
-
-		:type zeus_secret_key: mpz
-		:rtype: dict
-		"""
-		zeus_keypair = self.keygen(zeus_secret_key)
-		return zeus_keypair
-
-
-	def _extract_public_shares(self, trustees):
-		"""
-		Extracts public keys of the provided trustees as group elements
-		and returns them in a list
-
-		:type trustees: list[dict]
-		:rtype: list[ModPrimeElement]
-		"""
-		public_shares = [self._extract_value(public_key) for public_key in trustees]
-		return public_shares
+        :rtype: tuple
+        """
+        p = self.__modulus
+        q = self.__order
+        g = self.__generator
+        return p, q, g
 
 
-	def compute_election_public_key(self, trustees, zeus_keypair):
-		"""
-		Computes and returns the election public key
+    # Elections API
 
-		:type trustees: list[dict]
-		:type zeus_keypair: dict
-		:rtype: ModPrimeElement
-		"""
-		public_shares = self._extract_public_shares(trustees)
-		zeus_public_key = self._extract_public_value(zeus_keypair)
-		combined = self._combine_public_keys(zeus_public_key, public_shares)
-		election_public_key = self._set_public_key_from_element(combined)                    # proof: None
-		return election_public_key
+    def create_zeus_keypair(self, zeus_secret_key=None):
+        """
+        Creates and returns a key pair for zeus
+
+        :type zeus_secret_key: mpz
+        :rtype: dict
+        """
+        zeus_keypair = self.keygen(zeus_secret_key)
+        return zeus_keypair
 
 
-	def validate_election_public_key(self, election_public_key, trustees, zeus_keypair):
-		"""
-		:type election_public_key: dict
-		:type trustees: list[dict]
-		:type zeus_keypair: dict
-		:rtype: bool
-		"""
-		election_public_key = self._extract_value(election_public_key)
-		test_key = self.compute_election_public_key()
-		return election_public_key == self._extract_value(test_key)
+    def _extract_public_shares(self, trustees):
+        """
+        Extracts public keys of the provided trustees as group elements
+        and returns them in a list
+
+        :type trustees: list[dict]
+        :rtype: list[ModPrimeElement]
+        """
+        public_shares = [self._extract_value(public_key) for public_key in trustees]
+        return public_shares
 
 
-	def _encode_integer(self, integer):
-		"""
-		:type integer: int
-		:rtype: ModPrimeElement
-		"""
-		element = self.group.element_from_integer(integer)
-		return element
+    def compute_election_public_key(self, trustees, zeus_keypair):
+        """
+        Computes and returns the election public key
 
-	def _set_vote(self, voter, encrypted, fingerprint,
-				  audit_code=None, publish=None, voter_secret=None,
-				  previous=None, index=None, status=None, plaintext=None):
-		"""
-		:type voter:
-		:type encrypted: dict
-		:type fingerprint: bytes
-		:type audit_code:
-		:type publish:
-		:type voter_sercret:
-		:type previous:
-		:type index:
-		:type status:
-		:type plaintext: int
-		:rtype: dict
-		"""
-		vote = {
-			'voter': str(voter),
-			'encrypted': encrypted,
-			'fingerprint': hash_decode(fingerprint)
-		}
+        :type trustees: list[dict]
+        :type zeus_keypair: dict
+        :rtype: ModPrimeElement
+        """
+        public_shares = self._extract_public_shares(trustees)
+        zeus_public_key = self._extract_public_value(zeus_keypair)
+        combined = self._combine_public_keys(zeus_public_key, public_shares)
+        election_public_key = self._set_public_key_from_element(combined)                    # proof: None
+        return election_public_key
 
-		if audit_code:
-			vote['audit_code'] = int(audit_code)
-		if publish:
-			vote['voter_secret'] = str(voter_secret)    # str(int(voter_secret))
-		if previous:
-			vote['index'] = str(index)
-		if status:
-			vote['status'] = status
-		if plaintext:
-			vote['plaintext'] = str(plaintext)
 
-		return vote
+    def validate_election_public_key(self, election_public_key, trustees, zeus_keypair):
+        """
+        :type election_public_key: dict
+        :type trustees: list[dict]
+        :type zeus_keypair: dict
+        :rtype: bool
+        """
+        election_public_key = self._extract_value(election_public_key)
+        test_key = self.compute_election_public_key()
+        return election_public_key == self._extract_value(test_key)
 
-	def vote(self, election_public_key, voter, plaintext, audit_code=None):
-		"""
-		Generates and returns an encrypted vote from the encoded plaintext
 
-		:type election_public_key: dict
-		:type voter:
-		:type plaintext: int
-		:type audit_code:
-		:rtype: dict
-		"""
-		election_public_key = self._extract_value(election_public_key)
-		encoded_plaintext = self._encode_integer(plaintext)
-		ciphertext, randomness = self._encrypt_with_randomness(encoded_plaintext, election_public_key)
+    def _encode_integer(self, integer):
+        """
+        :type integer: int
+        :rtype: ModPrimeElement
+        """
+        element = self.group.element_from_integer(integer)
+        return element
 
-		proof = self._prove_encryption(ciphertext, randomness)
+    def _set_vote(self, voter, encrypted, fingerprint, audit_code=None, publish=None,
+        voter_secret=None, previous=None, index=None, status=None, plaintext=None):
+        """
+        :type voter:
+        :type encrypted: dict
+        :type fingerprint: bytes
+        :type audit_code:
+        :type publish:
+        :type voter_sercret:
+        :type previous:
+        :type index:
+        :type status:
+        :type plaintext: int
+        :rtype: dict
+        """
+        vote = {
+            'voter': str(voter)
+            'encrypted': encrypted,
+            'fingerprint': hash_decode(fingerprint)
+        }
 
-		encrypted = self._set_ciphertext_proof(ciphertext, proof)
-		fingerprint = self._make_fingerprint(encrypted)
+        if audit_code:
+            vote['audit_code'] = int(audit_code)
+        if publish:
+            vote['voter_secret'] = str(voter_secret)    # str(int(voter_secret))
+        if previous:
+            vote['index'] = str(index)
+        if status:
+            vote['status'] = status
+        if plaintext:
+            vote['plaintext'] = str(plaintext)
 
-		vote = self._set_vote(voter, encrypted, fingerprint, audit_code, publish, randomness)
-		return vote
+        return vote
+
+    def vote(self, election_public_key, voter, plaintext, audit_code=None):
+        """
+        Generates and returns an encrypted vote from the encoded plaintext
+
+        :type election_public_key: dict
+        :type voter:
+        :type plaintext: int
+        :type audit_code:
+        :rtype: dict
+        """
+        election_public_key = self._extract_value(election_public_key)
+        encoded_plaintext = self._encode_integer(plaintext)
+        ciphertext, randomness = self._encrypt_with_randomness(encoded_plaintext, election_public_key)
+
+        proof = self._prove_encryption(ciphertext, randomness)
+
+        encrypted = self._set_ciphertext_proof(ciphertext, proof)
+        fingerprint = self._make_fingerprint(encrypted)
+
+        vote = self._set_vote(voter, encrypted, fingerprint, audit_code, publish, randomness)
+        return vote
 
 
 	def _extract_vote(self, vote):
