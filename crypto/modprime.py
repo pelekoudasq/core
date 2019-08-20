@@ -537,6 +537,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return vote
 
+
     def vote(self, election_public_key, voter, plaintext, audit_code=None):
         """
         Generates and returns an encrypted vote from the encoded plaintext
@@ -560,290 +561,288 @@ class ModPrimeCrypto(ElGamalCrypto):
         return vote
 
 
-	def _extract_vote(self, vote):
-		"""
-		:type vote: dict
-		:rtype: dict
-		"""
-		voter = vote['voter']
-		encrypted = vote['encrypted']
-		fingerprint = hash_encode(vote['fingerprint'])
+    def _extract_vote(self, vote):
+        """
+        :type vote: dict
+        :rtype: dict
+        """
+        voter = vote['voter']
+        encrypted = vote['encrypted']
+        fingerprint = hash_encode(vote['fingerprint'])
 
-		audit_code = extract_value(vote, 'audit_code', int)
-		voter_secret = extract_value(vote, 'voter_secret', int)
+        audit_code = extract_value(vote, 'audit_code', int)
+        voter_secret = extract_value(vote, 'voter_secret', int)
 
-		previous = None
-		if 'previous' in vote.keys():
+        previous = None
+        if 'previous' in vote.keys():
 			previous = hash_encode(vote['previous'])
 
-		index = extract_value(vote, 'index', int)
-		status = extract_value(vote, 'status', str)
+        index = extract_value(vote, 'index', int)
+        status = extract_value(vote, 'status', str)
 
-		cast = partial(self.GroupElement, modulus=self.__modulus)
-		plaintext = extract_value(vote, 'plaintext', cast)
+        cast = partial(self.GroupElement, modulus=self.__modulus)
+        plaintext = extract_value(vote, 'plaintext', cast)
 
-		return voter, encrypted, fingerprint, audit_code,\
-			voter_secret, previous, index, status, plaintext
-
-
-	def validate_submitted_vote(self, vote):
-		"""
-		Checks if the vote's fingerprint is correct, returning the fingerprint
-		in this case; otherwise an exception gets raised.
-
-		:type vote: dict
-		:rtype: bytes
-		"""
-		_, encrypted, fingerprint, _, _, _, _, _, _ = self._extract_vote(vote)
-
-		if not self._verify_encryption(encrypted):
-			e = 'Invalid encryption proof'
-			raise InvalidVoteError(e)
-
-		if fingerprint != self._make_fingerprint(encrypted):
-			e = 'Invalid fingerprint'
-			raise InvalidVoteError(e)
-
-		return fingerprint
+        return voter, encrypted, fingerprint, audit_code,\
+            voter_secret, previous, index, status, plaintext
 
 
-	def sign_vote(self, vote, comments, election_public_key, zeus_keypair, trustees, choices):
-		"""
-		choices (candidates) format:
+    def validate_submitted_vote(self, vote):
+        """
+        Checks if the vote's fingerprint is correct, returning the fingerprint
+        in this case; otherwise an exception gets raised.
 
-			['Party-A: 0-2, 0', 'Party-A: Candidate-0000',
-	         'Party-B: generator0-2, 1', 'Party-B: Candidate-0001']
+        :type vote: dict
+        :rtype: bytes
+        """
+        _, encrypted, fingerprint, _, _, _, _, _, _ = self._extract_vote(vote)
 
-		:type vote: dict
-		:type comments:
-		:type election_public_key: dict
-		:type zeus_keypair: dict
-		:type trustees: list[dict]
-		:type choices: list[str]
-		:rtype:
-		"""
-		__p, __q, __g = self._parameters()
+        if not self._verify_encryption(encrypted):
+            e = 'Invalid encryption proof'
+            raise InvalidVoteError(e)
 
-		election_public_key = self._extract_value(election_public_key)
+        if fingerprint != self._make_fingerprint(encrypted):
+            e = 'Invalid fingerprint'
+            raise InvalidVoteError(e)
 
-		zeus_private_key, zeus_public_key = self._extract_keypair(zeus_kepairy)
-		zeus_public_key = self._extract_value(zeus_public_key)
+        return fingerprint
 
-		_, encrypted, fingerprint, _, _, previous, index, status, _ =\
-			self._extract_vote(vote)
 
-		alpha, beta, commitment, challenge, response =\
-			self._extract_fingerprint_params(encrypted)
+    def sign_vote(self, vote, comments, election_public_key, zeus_keypair, trustees, choices):
+        """
+        choices (candidates) format example:
 
-		trustees = [self._extract_value(trustee) for trustee in trustees]
+            ['Party-A: 0-2, 0', 'Party-A: Candidate-0000',
+            'Party-B: generator0-2, 1', 'Party-B: Candidate-0001']
 
-		m00 = status
-		m01 = '%s%s' % (V_FINGERPRINT, fingerprint)
-		m02 = '%s%s' % (V_INDEX, ('%d' % index) if index is not None else 'NONE')
-		m03 = '%s%s' % (V_PREVIOUS, (previous,)) 	# '%s%s' % (V_PREVIOUS, previous)
-		m04 = '%s%s' % (V_ELECTION, str(election_public_key))
-		m05 = '%s%s' % (V_ZEUS_PUBLIC, str(zeus_public_key))
-		m06 = '%s%s' % (V_TRUSTEES, ' '.join(str(_) for _ in trustees))
-		m07 = '%s%s' % (V_CANDIDATES, ' % '.join('%s' % _.encode('utf-8') for _ in choices))
-		m08 = '%s%s' % (V_MODULUS, str(__p))
-		m09 = '%s%s' % (V_ORDER, str(__q))
-		m10 = '%s%s' % (V_GENERATOR, str(__g))
-		m11 = '%s%s' % (V_ALPHA, str(alpha))
-		m12 = '%s%s' % (V_BETA, str(beta))
-		m13 = '%s%s' % (V_COMMITMENT, str(commitment))
-		m14 = '%s%s' % (V_CHALLENGE, str(challenge))
-		m15 = '%s%s' % (V_RESPONSE, str(response))
-		m16 = '%s%s' % (V_COMMENTS, (comments,))
+        :type vote: dict
+        :type comments:
+        :type election_public_key: dict
+        :type zeus_keypair: dict
+        :type trustees: list[dict]
+        :type choices: list[str]
+        :rtype:
+        """
+        __p, __q, __g = self._parameters()
 
-		message = '\n'.join((m00, m01, m02, m03, m04, m05, m06, m07,
-							 m08, m09, m10, m11, m12, m13, m14, m15, m16))
+        election_public_key = self._extract_value(election_public_key)
 
-		signed_message = self._sign_text_message(message, zeus_private_key)
-		message, exponent, c_1, c_2 = self._extract_signed_message(signed_message)
-		exponent, c_1, c_2 = str(exponent), str(c_1), str(c_2)
+        zeus_private_key, zeus_public_key = self._extract_keypair(zeus_kepairy)
+        zeus_public_key = self._extract_value(zeus_public_key)
 
-		vote_signature = message
-		vote_signature += '\n-----------------\n'
-		vote_signature += '%s\n%s\n%s\n' (exponent, c_1, c_2)
+        _, encrypted, fingerprint, _, _, previous, index, status, _ = self._extract_vote(vote)
 
-		return vote_signature
+        alpha, beta, commitment, challenge, response = self._extract_fingerprint_params(encrypted)
+
+        trustees = [self._extract_value(trustee) for trustee in trustees]
+
+        m00 = status
+        m01 = '%s%s' % (V_FINGERPRINT, fingerprint)
+        m02 = '%s%s' % (V_INDEX, ('%d' % index) if index is not None else 'NONE')
+        m03 = '%s%s' % (V_PREVIOUS, (previous,)) 	# '%s%s' % (V_PREVIOUS, previous)
+        m04 = '%s%s' % (V_ELECTION, str(election_public_key))
+        m05 = '%s%s' % (V_ZEUS_PUBLIC, str(zeus_public_key))
+        m06 = '%s%s' % (V_TRUSTEES, ' '.join(str(_) for _ in trustees))
+        m07 = '%s%s' % (V_CANDIDATES, ' % '.join('%s' % _.encode('utf-8') for _ in choices))
+        m08 = '%s%s' % (V_MODULUS, str(__p))
+        m09 = '%s%s' % (V_ORDER, str(__q))
+        m10 = '%s%s' % (V_GENERATOR, str(__g))
+        m11 = '%s%s' % (V_ALPHA, str(alpha))
+        m12 = '%s%s' % (V_BETA, str(beta))
+        m13 = '%s%s' % (V_COMMITMENT, str(commitment))
+        m14 = '%s%s' % (V_CHALLENGE, str(challenge))
+        m15 = '%s%s' % (V_RESPONSE, str(response))
+        m16 = '%s%s' % (V_COMMENTS, (comments,))
+
+        message = '\n'.join((m00, m01, m02, m03, m04, m05, m06, m07,
+            m08, m09, m10, m11, m12, m13, m14, m15, m16))
+
+        signed_message = self._sign_text_message(message, zeus_private_key)
+        message, exponent, c_1, c_2 = self._extract_signed_message(signed_message)
+        exponent, c_1, c_2 = str(exponent), str(c_1), str(c_2)
+
+        vote_signature = message
+        vote_signature += '\n-----------------\n'
+        vote_signature += '%s\n%s\n%s\n' (exponent, c_1, c_2)
+
+        return vote_signature
 
 
     def verify_vote_signature(self, vote_signature):
-		"""
-		Returns `True` if the signature is verified, otherwise raises exception
-		:type vote_signature: str
-		:rtype: bool
-		"""
-		message, _, exponent, c_1, c_2, _ = vote_signature.rsplit('\n', 5)
+        """
+        Returns `True` if the signature is verified, otherwise raises exception
+        :type vote_signature: str
+        :rtype: bool
+        """
+        message, _, exponent, c_1, c_2, _ = vote_signature.rsplit('\n', 5)
 
-        (m00, m01, m02, m03, m04, m05, m06, m07,
-	     m08, m09, m10, m11, m12, m13, m14, m15, m16) = message.split('\n', 16)
+        (m00, m01, m02, m03, m04, m05, m06, m07, m08, m09,
+            m10, m11, m12, m13, m14, m15, m16) = message.split('\n', 16)
 
-		# Check signature structure
+        # Check signature structure
 
-		if not ((m00.startswith(V_CAST_VOTE) or
-				m00.startswith(V_AUDIT_REQUEST) or
-				m00.startswith(V_PUBLIC_AUDIT) or
-				m00.startswith(V_PUBLIC_AUDIT_FAILED)) or
-		   not m01.startswith(V_FINGERPRINT) or
-		   not m02.startswith(V_INDEX) or
-		   not m03.startswith(V_PREVIOUS) or
-		   not m04.startswith(V_ELECTION) or
-		   not m05.startswith(V_ZEUS_PUBLIC) or
-		   not m06.startswith(V_TRUSTEES) or
-		   not m07.startswith(V_CANDIDATES) or
-		   not m08.startswith(V_MODULUS) or
-		   not m09.startswith(V_ORDER) or
-		   not m10.startswith(V_GENERATOR) or
-		   not m11.startswith(V_ALPHA) or
-		   not m12.startswith(V_BETA) or
-		   not m13.startswith(V_COMMITMENT) or
-		   not m14.startswith(V_CHALLENGE) or
-		   not m15.startswith(V_RESPONSE) or
-		   not m16.startswith(V_COMMENTS)):
-			e = 'Invalid vote signature structure'
-			raise InvalidSignatureError(e)
+        if not ((m00.startswith(V_CAST_VOTE) or
+            m00.startswith(V_AUDIT_REQUEST) or
+            m00.startswith(V_PUBLIC_AUDIT) or
+            m00.startswith(V_PUBLIC_AUDIT_FAILED)) or
+            not m01.startswith(V_FINGERPRINT) or
+            not m02.startswith(V_INDEX) or
+            not m03.startswith(V_PREVIOUS) or
+            not m04.startswith(V_ELECTION) or
+            not m05.startswith(V_ZEUS_PUBLIC) or
+            not m06.startswith(V_TRUSTEES) or
+            not m07.startswith(V_CANDIDATES) or
+            not m08.startswith(V_MODULUS) or
+            not m09.startswith(V_ORDER) or
+            not m10.startswith(V_GENERATOR) or
+            not m11.startswith(V_ALPHA) or
+            not m12.startswith(V_BETA) or
+            not m13.startswith(V_COMMITMENT) or
+            not m14.startswith(V_CHALLENGE) or
+            not m15.startswith(V_RESPONSE) or
+            not m16.startswith(V_COMMENTS)):
+            e = 'Invalid vote signature structure'
+            raise InvalidSignatureError(e)
 
-		# Extract data
+        # Extract data
 
-		status = m00
-		fingerprint = m01[len(V_FINGERPRINT):]
+        status = m00
+        fingerprint = m01[len(V_FINGERPRINT):]
 
-		index_str = m02[len(V_INDEX):]
-		if index_str == 'NONE':
-			index = None
-		elif index_str.isdigit():
-			index = int(index_str)
-		else:
-			e = "Invalid vote index '%s'" % index_str
-			raise InvalidSignatureError(e)
+        index_str = m02[len(V_INDEX):]
+        if index_str == 'NONE':
+            index = None
+        elif index_str.isdigit():
+            index = int(index_str)
+        else:
+            e = "Invalid vote index '%s'" % index_str
+            raise InvalidSignatureError(e)
 
-		previous = m03[len(V_PREVIOUS):]
+        previous = m03[len(V_PREVIOUS):]
 
-		zeus_public_key = mpz(m05[len(V_ZEUS_PUBLIC):])
-		zeus_public_key = self._set_public_key_from_value(zeus_public_key)
+        zeus_public_key = mpz(m05[len(V_ZEUS_PUBLIC):])
+        zeus_public_key = self._set_public_key_from_value(zeus_public_key)
 
-		_m06 = m06[len(V_TRUSTEES):]
-		trustess = [int(x) for _ in _m06.split(' ')] if _m06 else []
+        _m06 = m06[len(V_TRUSTEES):]
+        trustess = [int(x) for _ in _m06.split(' ')] if _m06 else []
 
-		_m07 = m07[len(V_CANDIDATES):]
-		candidates = _m07.split(' % ')
+        _m07 = m07[len(V_CANDIDATES):]
+        candidates = _m07.split(' % ')
 
-		modulus = mpz(m08[len(V_MODULUS):])
-		order = mpz(m09[len(V_ORDER):])
-		generator = mpz(m10[len(V_GENERATOR):])
+        modulus = mpz(m08[len(V_MODULUS):])
+        order = mpz(m09[len(V_ORDER):])
+        generator = mpz(m10[len(V_GENERATOR):])
 
-		alpha = mpz(m11[len(V_ALPHA):])
-		beta = mpz(m11[len(V_BETA):])
+        alpha = mpz(m11[len(V_ALPHA):])
+        beta = mpz(m11[len(V_BETA):])
 
-		commitment = mpz(m11[len(V_COMMITMENT):])
-		challenge = mpz(m11[len(V_CHALLENGE):])
-		response = mpz(m12[len(V_RESPONSE):])
+        commitment = mpz(m11[len(V_COMMITMENT):])
+        challenge = mpz(m11[len(V_CHALLENGE):])
+        response = mpz(m12[len(V_RESPONSE):])
 
-		comments = m16[len(V_COMMENTS):]
+        comments = m16[len(V_COMMENTS):]
 
-		# Retrieve signed message
+        # Retrieve signed message
 
-		exponent = mpz(exponent)
-		c_1 = mpz(c_1)
-		c_2 = mpz(c_2)
-		signed_message = self._set_signed_message(message,
-			signature=self._set_dsa_signature(exponent, c_1, c_2))
+        exponent = mpz(exponent)
+        c_1 = mpz(c_1)
+        c_2 = mpz(c_2)
+        signed_message = self._set_signed_message(message,
+            signature=self._set_dsa_signature(exponent, c_1, c_2))
 
 		# Validate signature or raise exception otherwise
 
-		if not self._verify_text_signature(signed_message, zeus_public_key):
-			e = 'Invalid vote signature'
-			raise InvalidSignatureError(e)
+        if not self._verify_text_signature(signed_message, zeus_public_key):
+            e = 'Invalid vote signature'
+            raise InvalidSignatureError(e)
 
-		# Verify encryption proof or raise exception otherwise
-		ciphertext = self._set_ciphertext(alpha, beta)
-		proof = self._set_schnorr_proof(commitment, challenge, response)
-		encrypted = self._set_ciphertext_proof(ciphertext, proof)
-		if index is not None and not self._verify_encryption(encrypted):
-			e = 'Invalid vote encryption'
-			raise InvalidEncryptionError(e)
+        # Verify encryption proof or raise exception otherwise
+        ciphertext = self._set_ciphertext(alpha, beta)
+        proof = self._set_schnorr_proof(commitment, challenge, response)
+        encrypted = self._set_ciphertext_proof(ciphertext, proof)
+        if index is not None and not self._verify_encryption(encrypted):
+            e = 'Invalid vote encryption'
+            raise InvalidEncryptionError(e)
 
-		return True
-
-
-	#TODO: implement
-	def verify_audit_votes(self, election_public, choices, votes=None, audit_reqs=None):
-		"""
-		:type election_public:
-		:type choices:
-		:type votes:
-		:type audit_reqs:
-		"""
-		pass
+        return True
 
 
-	def _set_factor(self, data, proof):
-		"""
-		:type data: ModPrimeElement
-		:type proof: dict
-		:rtype: dict
-		"""
-		factor = {'data': data.value, 'proof': proof}
-		return factor
+    #TODO: implement
+    def verify_audit_votes(self, election_public, choices, votes=None, audit_reqs=None):
+        """
+        :type election_public:
+        :type choices:
+        :type votes:
+        :type audit_reqs:
+        """
+        pass
 
 
-	def _extract_factor(self, factor):
-		"""
-		:type factor: dict
-		:rtype: tuple
-		"""
-		data = ModPrimeElement(factor['data'], self.__modulus)
-		proof = factor['proof']
-		return data, proof
+    def _set_factor(self, data, proof):
+        """
+        :type data: ModPrimeElement
+        :type proof: dict
+        :rtype: dict
+        """
+        factor = {'data': data.value, 'proof': proof}
+        return factor
 
 
-	def _set_trustee_factors(self, public, factors):
-		"""
-		:type public:
-		:type factors: list[dict]
-		:rtype: dict
-		"""
-		trustee_factors = {'public': public, 'factors': factors}
-		return trustee_factors
+    def _extract_factor(self, factor):
+        """
+        :type factor: dict
+        :rtype: tuple
+        """
+        data = ModPrimeElement(factor['data'], self.__modulus)
+        proof = factor['proof']
+        return data, proof
 
 
-	def _extract_trustee_factors(self, trustee_factors):
-		"""
-		:type trustee_factors:
-		:rtype: tuple
-		"""
-		public = trustee_factors['public']
-		factors = trustee_factors['factors']
-		return public, factors
+    def _set_trustee_factors(self, public, factors):
+        """
+        :type public:
+        :type factors: list[dict]
+        :rtype: dict
+        """
+        trustee_factors = {'public': public, 'factors': factors}
+        return trustee_factors
 
 
-	def _get_last_mix(mixes):
-		"""
-		"""
-		return mixes[-1]
+    def _extract_trustee_factors(self, trustee_factors):
+        """
+        :type trustee_factors:
+        :rtype: tuple
+        """
+        public = trustee_factors['public']
+        factors = trustee_factors['factors']
+        return public, factors
 
 
-	def _get_mixer_class(self, module):
-		"""
-		:type module: str
-		:rtype:
-		"""
-		module_name = importlib.import_module('zeus_crypto.mixnets.%s' % module)
-		_cls = getattr(module_name, module.capitalize())
-		return _clas
+    def _get_last_mix(mixes):
+        """
+        """
+        return mixes[-1]
 
 
-	def initialize_mixer(self, module, params, election_public_key):
-		"""
-		:type module: str
-		:type params: dict
-		:type election_public_key: dict
-		"""
-		public_key = self._extract_value(election_public_key)	# GroupElement
-		_cls = self._get_mixer_class(module)
-		return _cls(params, public_key)
+    def _get_mixer_class(self, module):
+        """
+        :type module: str
+        :rtype:
+        """
+        module_name = importlib.import_module('zeus_crypto.mixnets.%s' % module)
+        _cls = getattr(module_name, module.capitalize())
+        return _clas
+
+
+    def initialize_mixer(self, module, params, election_public_key):
+        """
+        :type module: str
+        :type params: dict
+        :type election_public_key: dict
+        """
+        public_key = self._extract_value(election_public_key)	# GroupElement
+        _cls = self._get_mixer_class(module)
+        return _cls(params, public_key)
 
 
 
