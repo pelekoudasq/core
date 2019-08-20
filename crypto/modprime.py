@@ -1690,16 +1690,16 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         alpha, beta = self._extract_ciphertext(ciphertext)
 
-        original = (alpha ** private_key).inverse * beta		# (alpha ^ x) ^ -1 * beta (modp)
+        original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
         return original
 
 
-	# TODO: complete (cannot see point of this function)
+    # TODO: complete (cannot see point of this function)
     def _decrypt_with_randomness(self, public_key, ciphertext, private_key):
         """
-		:type public_key: dict
-		:type ciphertext: dict
-		:type private_key: mpz
+        :type public_key: dict
+        :type ciphertext: dict
+        :type private_key: mpz
         """
         public_key = self._extract_value(public_key)
         _, beta = self._extract_ciphertext(ciphertext)
