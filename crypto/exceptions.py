@@ -27,10 +27,15 @@ class InvalidVoteError(BaseException):
     """
     pass
 
-class InvalidSignatureError(BaseException):
+class InvalidStructureError(BaseException):
     """
     Raised when a submitted signature does not have the expected format
-    or cannot be verified under the attached public key
+    """
+    pass
+
+class InvalidSignatureError(BaseException):
+    """
+    Raised when a submitted signature cannot be verified under the attached public key
     """
     pass
 

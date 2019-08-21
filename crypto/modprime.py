@@ -7,7 +7,8 @@ import importlib
 from .elgamal import ElGamalCrypto
 from .algebra import Group, GroupElement
 from .exceptions import AlgebraError, WrongCryptoError, WeakCryptoError,\
-    InvalidVoteError, InvalidSignatureError, InvalidEncryptionError
+    InvalidVoteError, InvalidStructureError, InvalidSignatureError,\
+    InvalidEncryptionError
 from .utils import int_from_bytes, hash_nums, hash_texts, random_integer,\
     hash_encode, hash_decode, extract_value
 
@@ -34,8 +35,11 @@ class ModPrimeElement(GroupElement):
         self.__modulus = modulus
 
         # Set here modular inverse (costly to compute everytime)
-        self.__inverse = invert(self.__value, self.__modulus)
-
+        try:
+            self.__inverse = invert(self.__value, self.__modulus)
+        except ZeroDivisionError:
+            self.__inverse = None
+        # self.__inverse = invert(self.__value, self.__modulus)
 
     @property
     def value(self):
@@ -353,18 +357,19 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type modulus: int
         :type primitive: int
         :type root_order: int
-        :type check_3mod4: bool
         :type prime_order: bool
         :type min_mod_size: int
         :type min_gen_size: int
         """
 
         # Type conversion
+
         modulus = mpz(modulus)                                   # p
         primitive = ModPrimeElement(mpz(primitive), modulus)     # g0
         root_order = mpz(root_order)                             # r
 
         # Resolve group
+
         try:
             group = ModPrimeSubgroup(modulus, root_order)
         except AlgebraError:
@@ -377,6 +382,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         self.__GroupElement = ModPrimeElement
 
         # Resolve generator
+
         # Algebraic fact: given a primitive g0 of Z*_p, p > 2 smooth, and 1 < r < p - 1
         # with r | p - 1, then g0 ^ r generates the q-subgroup of Z*_p, q = (p - 1)/r
         generator = primitive ** root_order
@@ -426,23 +432,6 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return {'modulus': int(p), 'order': int(q), 'generator': int(g)}
 
-
-    @property
-    def group(self):
-        """
-        :rtype: ModPrimeSubgroup
-        """
-        return self.__group
-
-
-    @property
-    def GroupElement(self):
-        """
-        :rtype: class
-        """
-        return self.__GroupElement
-
-
     def _parameters(self):
         """
         Returns the modulus p, order q and fixed generator g of the
@@ -454,6 +443,20 @@ class ModPrimeCrypto(ElGamalCrypto):
         q = self.__order
         g = self.__generator
         return p, q, g
+
+    @property
+    def group(self):
+        """
+        :rtype: ModPrimeSubgroup
+        """
+        return self.__group
+
+    @property
+    def GroupElement(self):
+        """
+        :rtype: class
+        """
+        return self.__GroupElement
 
 
     # Elections API
@@ -468,6 +471,40 @@ class ModPrimeCrypto(ElGamalCrypto):
         zeus_keypair = self.keygen(zeus_secret_key)
         return zeus_keypair
 
+    def generate_trustees(self, nr_trustees):
+        """
+        :type nr_trustees: int
+        :rtype: list[dict]
+        """
+        keypairs = [self.keygen() for _ in range(nr_trustees)]
+        trustees = [self._extract_public(keypair) for keypair in keypairs]
+        return trustees
+
+    def compute_election_key(self, trustees, zeus_keypair):
+        """
+        Computes and returns the election public key
+
+        :type trustees: list[dict]
+        :type zeus_keypair: dict
+        :rtype: ModPrimeElement
+        """
+        public_shares = self._extract_public_shares(trustees)
+        zeus_public_key = self._extract_public_value(zeus_keypair)
+        combined = self._combine_public_keys(zeus_public_key, public_shares)
+        election_key = self._set_public_key_from_element(combined)
+        return election_key
+
+    def validate_election_key(self, election_key, trustees, zeus_keypair):
+        """
+        :type election_key: dict
+        :type trustees: list[dict]
+        :type zeus_keypair: dict
+        :rtype: bool
+        """
+        election_key = self._extract_value(election_key)
+        test_key = self.compute_election_key(trustees, zeus_keypair)
+        return election_key == self._extract_value(test_key)
+
 
     def _extract_public_shares(self, trustees):
         """
@@ -479,33 +516,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         public_shares = [self._extract_value(public_key) for public_key in trustees]
         return public_shares
-
-
-    def compute_election_public_key(self, trustees, zeus_keypair):
-        """
-        Computes and returns the election public key
-
-        :type trustees: list[dict]
-        :type zeus_keypair: dict
-        :rtype: ModPrimeElement
-        """
-        public_shares = self._extract_public_shares(trustees)
-        zeus_public_key = self._extract_public_value(zeus_keypair)
-        combined = self._combine_public_keys(zeus_public_key, public_shares)
-        election_public_key = self._set_public_key_from_element(combined)                    # proof: None
-        return election_public_key
-
-
-    def validate_election_public_key(self, election_public_key, trustees, zeus_keypair):
-        """
-        :type election_public_key: dict
-        :type trustees: list[dict]
-        :type zeus_keypair: dict
-        :rtype: bool
-        """
-        election_public_key = self._extract_value(election_public_key)
-        test_key = self.compute_election_public_key()
-        return election_public_key == self._extract_value(test_key)
 
 
     def _encode_integer(self, integer):
@@ -551,19 +561,21 @@ class ModPrimeCrypto(ElGamalCrypto):
         return vote
 
 
-    def vote(self, election_public_key, voter, plaintext, audit_code=None):
+    def vote(self, election_key, voter, plaintext,
+                audit_code=None, publish=None):
         """
         Generates and returns an encrypted vote from the encoded plaintext
 
-        :type election_public_key: dict
+        :type election_key: dict
         :type voter:
         :type plaintext: int
         :type audit_code:
+        :publish: None
         :rtype: dict
         """
-        election_public_key = self._extract_value(election_public_key)
+        election_key = self._extract_value(election_key)
         encoded_plaintext = self._encode_integer(plaintext)
-        ciphertext, randomness = self._encrypt_with_randomness(encoded_plaintext, election_public_key)
+        ciphertext, randomness = self._encrypt_with_randomness(encoded_plaintext, election_key)
 
         proof = self._prove_encryption(ciphertext, randomness)
 
@@ -621,16 +633,16 @@ class ModPrimeCrypto(ElGamalCrypto):
         return fingerprint
 
 
-    def sign_vote(self, vote, comments, election_public_key, zeus_keypair, trustees, choices):
+    def sign_vote(self, vote, comments, election_key, zeus_keypair, trustees, choices):
         """
         choices (candidates) format example:
 
             ['Party-A: 0-2, 0', 'Party-A: Candidate-0000',
-            'Party-B: generator0-2, 1', 'Party-B: Can            didate-0001']
+            'Party-B: generator0-2, 1', 'Party-B: Candidate-0001']
 
         :type vote: dict
         :type comments:
-        :type election_public_key: dict
+        :type election_key: dict
         :type zeus_keypair: dict
         :type trustees: list[dict]
         :type choices: list[str]
@@ -638,9 +650,9 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         __p, __q, __g = self._parameters()
 
-        election_public_key = self._extract_value(election_public_key)
+        election_key = self._extract_value(election_key)
 
-        zeus_private_key, zeus_public_key = self._extract_keypair(zeus_kepairy)
+        zeus_private_key, zeus_public_key = self._extract_keypair(zeus_keypair)
         zeus_public_key = self._extract_value(zeus_public_key)
 
         _, encrypted, fingerprint, _, _, previous, index, status, _ = self._extract_vote(vote)
@@ -649,11 +661,11 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         trustees = [self._extract_value(trustee) for trustee in trustees]
 
-        m00 = status
+        m00 = status if status is not None else 'NONE'
         m01 = '%s%s' % (V_FINGERPRINT, fingerprint)
         m02 = '%s%s' % (V_INDEX, ('%d' % index) if index is not None else 'NONE')
         m03 = '%s%s' % (V_PREVIOUS, (previous,)) 	# '%s%s' % (V_PREVIOUS, previous)
-        m04 = '%s%s' % (V_ELECTION, str(election_public_key))
+        m04 = '%s%s' % (V_ELECTION, str(election_key))
         m05 = '%s%s' % (V_ZEUS_PUBLIC, str(zeus_public_key))
         m06 = '%s%s' % (V_TRUSTEES, ' '.join(str(_) for _ in trustees))
         m07 = '%s%s' % (V_CANDIDATES, ' % '.join('%s' % _.encode('utf-8') for _ in choices))
@@ -667,16 +679,16 @@ class ModPrimeCrypto(ElGamalCrypto):
         m15 = '%s%s' % (V_RESPONSE, str(response))
         m16 = '%s%s' % (V_COMMENTS, (comments,))
 
-        message = '\n'.join((m00, m01, m02, m03, m04, m05, m06, m07,
+        message = '\n'.join((m00, m01, m02, m03, m04, m05, m06, m07,\
             m08, m09, m10, m11, m12, m13, m14, m15, m16))
 
-        signed_message = self._sign_text_message(message, zeus_private_key)
+        signed_message = self.sign_text_message(message, zeus_private_key)
         message, exponent, c_1, c_2 = self._extract_signed_message(signed_message)
         exponent, c_1, c_2 = str(exponent), str(c_1), str(c_2)
 
         vote_signature = message
         vote_signature += '\n-----------------\n'
-        vote_signature += '%s\n%s\n%s\n' (exponent, c_1, c_2)
+        vote_signature += '%s\n%s\n%s\n' % (exponent, c_1, c_2)
 
         return vote_signature
 
@@ -684,6 +696,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     def verify_vote_signature(self, vote_signature):
         """
         Returns `True` if the signature is verified, otherwise raises exception
+
         :type vote_signature: str
         :rtype: bool
         """
@@ -697,7 +710,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         if not ((m00.startswith(V_CAST_VOTE) or
             m00.startswith(V_AUDIT_REQUEST) or
             m00.startswith(V_PUBLIC_AUDIT) or
-            m00.startswith(V_PUBLIC_AUDIT_FAILED)) or
+            m00.startswith(V_PUBLIC_AUDIT_FAILED) or
+            m00.startswith('NONE')) or
             not m01.startswith(V_FINGERPRINT) or
             not m02.startswith(V_INDEX) or
             not m03.startswith(V_PREVIOUS) or
@@ -715,7 +729,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             not m15.startswith(V_RESPONSE) or
             not m16.startswith(V_COMMENTS)):
             e = 'Invalid vote signature structure'
-            raise InvalidSignatureError(e)
+            raise InvalidStructureError(e)
 
         # Extract data
 
@@ -737,7 +751,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         zeus_public_key = self._set_public_key_from_value(zeus_public_key)
 
         _m06 = m06[len(V_TRUSTEES):]
-        trustess = [int(x) for _ in _m06.split(' ')] if _m06 else []
+        trustess = [int(_) for _ in _m06.split(' ')] if _m06 else []
 
         _m07 = m07[len(V_CANDIDATES):]
         candidates = _m07.split(' % ')
@@ -746,8 +760,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         order = mpz(m09[len(V_ORDER):])
         generator = mpz(m10[len(V_GENERATOR):])
 
-        alpha = mpz(m11[len(V_ALPHA):])
-        beta = mpz(m11[len(V_BETA):])
+        alpha = ModPrimeElement(mpz(m11[len(V_ALPHA):]), self.__modulus)
+        beta = ModPrimeElement(mpz(m11[len(V_BETA):]), self.__modulus)
 
         commitment = mpz(m11[len(V_COMMITMENT):])
         challenge = mpz(m11[len(V_CHALLENGE):])
@@ -764,7 +778,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             signature=self._set_dsa_signature(exponent, c_1, c_2))
 
         # Validate signature or raise exception otherwise
-        if not self._verify_text_signature(signed_message, zeus_public_key):
+        if not self.verify_text_signature(signed_message, zeus_public_key):
             e = 'Invalid vote signature'
             raise InvalidSignatureError(e)
 
@@ -772,16 +786,17 @@ class ModPrimeCrypto(ElGamalCrypto):
         ciphertext = self._set_ciphertext(alpha, beta)
         proof = self._set_schnorr_proof(commitment, challenge, response)
         encrypted = self._set_ciphertext_proof(ciphertext, proof)
-        if index is not None and not self._verify_encryption(encrypted):
+        # if index is not None and not self._verify_encryption(encrypted):
+        if (index is not None and not self._verify_encryption(encrypted)):
             e = 'Invalid vote encryption'
             raise InvalidEncryptionError(e)
 
         return True
 
 
-    def verify_audit_votes(self, election_public_key, choices, votes=None, audit_reqs=None):
+    def verify_audit_votes(self, election_key, choices, votes=None, audit_reqs=None):
         """
-        :type election_public_key: dict
+        :type election_key: dict
         :type choices:
         :type votes:
         :type audit_reqs:
@@ -811,7 +826,7 @@ class ModPrimeCrypto(ElGamalCrypto):
                 failed.append(vote)
                 continue
 
-            encoded = self._decrypt_with_randomness(election_public_key,
+            encoded = self._decrypt_with_randomness(election_key,
                 ciphertext, voter_secret)
 
             if encoded.value > max_encoded.value:
@@ -878,37 +893,37 @@ class ModPrimeCrypto(ElGamalCrypto):
         return _clas
 
 
-    def initialize_mixer(self, module, params, election_public_key):
+    def initialize_mixer(self, module, params, election_key):
         """
         :type module: str
         :type params: dict
-        :type election_public_key: dict
+        :type election_key: dict
         """
-        public_key = self._extract_value(election_public_key)	# GroupElement
+        public_key = self._extract_value(election_key)	# GroupElement
         _cls = self._get_mixer_class(module)
         return _cls(params, public_key)
 
 
 
 
-	# Key management
+    # Key management
 
-	###############################################################
-	#                                                             #
-	#    By keypair is meant a dictionary of the form             #
-	#                                                             #
-	#    {                                                        #
-	#        'private': mpz,                                      #
-	#        'public': {                                          #
-	#            'value': ModPrimeElement,                        #
-	#            'proof': ...                                     #
-	#        }                                                    #
-	#    }                                                        #
-	#                                                             #
-	#   where tha value for the key `proof` is either `None` or   #
-	#   a Schnorr proof                                           #
-	#                                                             #
-	###############################################################
+    ###############################################################
+    #                                                             #
+    #    By keypair is meant a dictionary of the form             #
+    #                                                             #
+    #    {                                                        #
+    #        'private': mpz,                                      #
+    #        'public': {                                          #
+    #            'value': ModPrimeElement,                        #
+    #            'proof': ...                                     #
+    #        }                                                    #
+    #    }                                                        #
+    #                                                             #
+    #   where tha value for the key `proof` is either `None` or   #
+    #   a Schnorr proof                                           #
+    #                                                             #
+    ###############################################################
 
 
     def _set_public_key_from_element(self, element, proof=None):
@@ -928,7 +943,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: dict
         """
         public_key = {
-            'value': ModPrimeElement(value, self.__p),
+            'value': ModPrimeElement(value, self.__modulus),
             'proof': proof
         }
         return public_key
@@ -944,39 +959,39 @@ class ModPrimeCrypto(ElGamalCrypto):
         return keypair
 
 
-    def _extract_keypair(self, key):
+    def _extract_keypair(self, keypair):
         """
         Returns a tuple with the private and public part of the provided key in
         the form of a numerical value (mpz) and a dict respectively
 
-        :type key: dict
+        :type keypair: dict
         :rtype: tuple
         """
-        return key['private'], key['public']
+        return keypair['private'], keypair['public']
 
 
-    def _extract_private(self, key):
+    def _extract_private(self, keypair):
         """
-        :type key: dict
+        :type keypair: dict
         :rtype: mpz
         """
-        return key['private']
+        return keypair['private']
 
 
-    def _extract_public(self, key):
+    def _extract_public(self, keypair):
         """
-        :type: key
+        :type: keypair
         :rtype: dict
         """
-        return key['public']
+        return keypair['public']
 
 
-    def _extract_public_value(self, key):
+    def _extract_public_value(self, keypair):
         """
-        :type key: dict
+        :type keypair: dict
         :rtype: ModPrimeElement
         """
-        return key['public']['value']
+        return keypair['public']['value']
 
 
     def _extract_value(self, public_key):
@@ -1098,7 +1113,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         return {'message': message, 'signature': signature}
 
 
-
     def _extract_message_signature(self, signed_message):
         """
         :type signed_message: dict
@@ -1107,7 +1121,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         message = signed_message['message']
         signature = signed_message['signature']
         return message, signature
-
 
 
     def _extract_signed_message(self, signed_message):

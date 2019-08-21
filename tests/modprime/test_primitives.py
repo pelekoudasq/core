@@ -313,7 +313,7 @@ def test_chaum_pedersen_protocol(system, ddh, z, _bool):
     valid = system._chaum_pedersen_verify(ddh, proof)
 
     assert valid is _bool
-    
+
 
 # El-Gamal encryption
 
@@ -383,3 +383,5 @@ def test_encryption_with_randomness_and_proof(system, element, public_key, priva
     proof = system._prove_encryption(ciphertext, randomness)
     ciphertext_proof = system._set_ciphertext_proof(ciphertext, proof)
     verified = system._verify_encryption(ciphertext_proof)
+
+    assert verified
