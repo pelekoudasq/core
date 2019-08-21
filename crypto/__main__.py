@@ -1,6 +1,6 @@
 from crypto import ModPrimeCrypto, _2048_PRIME, _2048_PRIMITIVE, _2048_KEY, _2048_DDH,\
-                                   _4096_PRIME, _4096_PRIMITIVE, _4096_KEY, _4096_DDH,\
-                                   ModPrimeElement
+                                   _4096_PRIME, _4096_PRIMITIVE, _4096_KEY, _4096_DDH
+from crypto.modprime import ModPrimeElement 
 
 p   = _4096_PRIME # _2048_PRIME
 g0  = _4096_PRIMITIVE # _2048_PRIMITIVE

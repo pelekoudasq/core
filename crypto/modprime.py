@@ -36,6 +36,7 @@ class ModPrimeElement(GroupElement):
         # Set here modular inverse (costly to compute everytime)
         self.__inverse = invert(self.__value, self.__modulus)
 
+
     @property
     def value(self):
         """
@@ -57,12 +58,14 @@ class ModPrimeElement(GroupElement):
         """
         return self.__class__(value=self.__inverse, modulus=self.__modulus)
 
+
     @property
     def bit_length(self):
         """
         :rtype: int
         """
         return self.__value.bit_length()
+
 
     def __repr__(self):
         """
@@ -85,6 +88,7 @@ class ModPrimeElement(GroupElement):
         else:
             return self.value == other
 
+
     def __mul__(self, other):
         """
         :type other: ModPrimeElement
@@ -97,8 +101,8 @@ class ModPrimeElement(GroupElement):
         :type exp: mpz
         :rtype: ModPrimeElement
         """
-        # # result = self.__value ** exp % self.__modulus ---> "...outrageous exponent"
-        # Use gmpy2.powmod instead in order to avoid overflow in mpz type
+        # ~ result = self.__value ** exp % self.__modulus ---> "...outrageous exponent"
+        # ~ Use gmpy2.powmod instead in order to avoid overflow in mpz type
         result = powmod(self.__value, exp, self.__modulus)
         return self.__class__(value=result, modulus=self.__modulus)
 
@@ -140,13 +144,13 @@ class ModPrimeSubgroup(Group):
             raise AlgebraError(e)
 
         if root_order <= 0 or root_order >= modulus:
-            e = 'Provided order of unit-root is not in the allowed range'
+            e = 'Provided order of unit root is not in the allowed range'
             raise AlgebraError(e)
 
         order, s = divmod(modulus - 1, root_order)
 
         if s != 0:
-            e = 'Provided order of unit-root does not divide the multiplicative group\'s order'
+            e = 'Provided order of unit root does not divide the multiplicative group\'s order'
             raise AlgebraError(e)
 
         self.__modulus = modulus
@@ -165,6 +169,7 @@ class ModPrimeSubgroup(Group):
         :rtype: str
         """
         return hash(repr(self))
+
 
     @property
     def modulus(self):
@@ -191,13 +196,6 @@ class ModPrimeSubgroup(Group):
             e = 'No generator has yet been specified for this group'
             raise AlgebraError(e)
 
-    @property
-    def Element(self):
-        """
-        :rtype: class
-        """
-        return self.__Element
-
     def parameters(self):
         """
         """
@@ -206,6 +204,15 @@ class ModPrimeSubgroup(Group):
         g = self.__generator.value
 
         return p, q, g
+
+
+    @property
+    def Element(self):
+        """
+        :rtype: class
+        """
+        return self.__Element
+
 
     def set_generator(self, element):
         """
@@ -219,6 +226,7 @@ class ModPrimeSubgroup(Group):
         :rtype: ModPrimeElement
         """
         return self.__generator ** exponent
+
 
     def add_exponents(self, *args):
         """
@@ -250,12 +258,21 @@ class ModPrimeSubgroup(Group):
 
         return exponent
 
+
     def random_element(self):
         """
         :rtype: ModPrimeElement
         """
         random_exp = self.random_exponent()
         return self.__generator ** random_exp
+
+    def element_from_texts(self, *texts):
+        """
+        :type *texts: str
+        :rtype: ModPrimeElement
+        """
+        exp = self.exponent_from_texts(*texts)
+        return self.generate(exp)
 
     def element_from_integer(self, integer):
         """
@@ -278,14 +295,6 @@ class ModPrimeSubgroup(Group):
         return self.Element(value=integer, modulus=self.__modulus)
 
 
-    def element_from_texts(self, *texts):
-        """
-        :type *texts: str
-        :rtype: ModPrimeElement
-        """
-        exp = self.exponent_from_texts(*texts)
-        return self.generate(exp)
-
     def fiatshamir(self, *elements):
         """
         The output of this method is only involved in exponent operations
@@ -296,7 +305,6 @@ class ModPrimeSubgroup(Group):
 
         p, q, g = self.parameters()
 
-        # Convert to mpz if ModPrimeElement
         elements = [x.value if isinstance(x, ModPrimeElement) else x for x in elements]
 
         digest = hash_nums(p, q, g, *elements)
@@ -304,6 +312,7 @@ class ModPrimeSubgroup(Group):
         output = self.generate(reduced).value
 
         return output       # g ^ ( H( p | g | q | elements)  modq )  modp
+
 
     def contains(self, element):
         """
@@ -334,8 +343,8 @@ class ModPrimeCrypto(ElGamalCrypto):
     )
 
 
-    def __init__(self, modulus, primitive, root_order=2,
-        check_3mod4=True, prime_order=True, min_mod_size=None, min_gen_size=None):
+    def __init__(self, modulus, primitive, root_order=2, prime_order=True,
+            min_mod_size=None, min_gen_size=None):
         """
         Assumes that the provided `primitive` g0 is indeed a primitive mod p (i.e., generates
         the multiplicative group Z*_p) or, equivalently, it is a primitive (p - 1)-root of 1
@@ -383,7 +392,10 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # System validation
 
-        if check_3mod4 and modulus % 4 != 3:
+        if root_order==2 and modulus % 4 != 3:
+            # Algebraic fact: the condition p = 3 mod 4 guarantees direct
+            # solvability of the congruence x ^ 2 = a (mod p), a in Z*_p,
+            # allowing for efficient verification of quadratic residues
             e = 'Provided modulus is not 3 mod 4'
             raise WrongCryptoError(e)
 

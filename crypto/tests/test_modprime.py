@@ -13,7 +13,7 @@ _2048_SYSTEM = ModPrimeCrypto(modulus=_2048_PRIME, primitive=_2048_PRIMITIVE)
 _4096_SYSTEM = ModPrimeCrypto(modulus=_4096_PRIME, primitive=_4096_PRIMITIVE)
 
 
-# ----------------------------- Underlying algebra -----------------------------
+# Underlying algebra
 
 _original_inverse_modulus = [
     (1, 1, 2),
@@ -47,7 +47,6 @@ def test_AlgebraError_in_ModPrimeSubgroup_Construction(modulus, root_order):
         ModPrimeSubgroup(modulus, root_order)
 
 
-
 _modulus_rootorder_order = [
     (3, 1, 2), (3, 2, 1),
     (5, 1, 4), (5, 2, 2), (5, 4, 1),
@@ -63,9 +62,6 @@ def test_ModPrimeSubgroup_Construction(modulus, root_order, order):
     group = ModPrimeSubgroup(modulus, root_order)
 
     assert (group.modulus, group.order) == (modulus, order)
-
-
-# -------------------------------- External API --------------------------------
 
 
 # Key generation and validation
@@ -118,6 +114,50 @@ def test_validate_public_key(system):
 
 # Digital signatures
 
+_system_exponent_key__bool = [
+    (
+        _2048_SYSTEM,
+        239384877347538475938475384987497493874593847593875,
+        _2048_KEY,
+        _2048_PUBLIC,
+        True
+    ),
+    (
+        _2048_SYSTEM,
+        239384877347538475938475384987497493874593847593875,
+        _2048_KEY - 1,
+        _2048_PUBLIC,
+        False                                                # Wrong private key
+    ),
+    (
+        _4096_SYSTEM,
+        919228301823987238476870928301982103978254287481928123817398172931839120,
+        _4096_KEY,
+        _4096_PUBLIC,
+        True
+    ),
+    (
+        _4096_SYSTEM,
+        919228301823987238476870928301982103978254287481928123817398172931839120,
+        _4096_KEY - 1,
+        _4096_PUBLIC,
+        False                                                # Wrong private key
+    ),
+]
+
+@pytest.mark.parametrize(
+    'system, exponent, private_key, public_key, _bool', _system_exponent_key__bool)
+def test_dsa_signature(system, exponent, private_key, public_key, _bool):
+
+    private_key = mpz(private_key)
+    public_key = ModPrimeElement(value=public_key, modulus=system.group.modulus)
+
+    signature = system._dsa_signature(exponent, private_key)
+    verified = system._dsa_verify(exponent, signature, public_key)
+
+    assert verified is _bool
+
+
 _system_message_key__bool = [
     (
         _2048_SYSTEM,
@@ -166,12 +206,6 @@ def test_text_message_signature(system, message, private_key, public_key, _bool)
     verified = system.verify_text_signature(signed_message, public_key)
 
     assert verified is _bool
-
-
-# Encryption/Decryption
-
-
-# -------------------------------- Internal API --------------------------------
 
 
 # Schnorr protocol
@@ -279,52 +313,7 @@ def test_chaum_pedersen_protocol(system, ddh, z, _bool):
     valid = system._chaum_pedersen_verify(ddh, proof)
 
     assert valid is _bool
-
-
-# Digital Signature Algorithm
-
-_system_exponent_key__bool = [
-    (
-        _2048_SYSTEM,
-        239384877347538475938475384987497493874593847593875,
-        _2048_KEY,
-        _2048_PUBLIC,
-        True
-    ),
-    (
-        _2048_SYSTEM,
-        239384877347538475938475384987497493874593847593875,
-        _2048_KEY - 1,
-        _2048_PUBLIC,
-        False                                                # Wrong private key
-    ),
-    (
-        _4096_SYSTEM,
-        919228301823987238476870928301982103978254287481928123817398172931839120,
-        _4096_KEY,
-        _4096_PUBLIC,
-        True
-    ),
-    (
-        _4096_SYSTEM,
-        919228301823987238476870928301982103978254287481928123817398172931839120,
-        _4096_KEY - 1,
-        _4096_PUBLIC,
-        False                                                # Wrong private key
-    ),
-]
-
-@pytest.mark.parametrize(
-    'system, exponent, private_key, public_key, _bool', _system_exponent_key__bool)
-def test_dsa_signature(system, exponent, private_key, public_key, _bool):
-
-    private_key = mpz(private_key)
-    public_key = ModPrimeElement(value=public_key, modulus=system.group.modulus)
-
-    signature = system._dsa_signature(exponent, private_key)
-    verified = system._dsa_verify(exponent, signature, public_key)
-
-    assert verified is _bool
+    
 
 # El-Gamal encryption
 

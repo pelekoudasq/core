@@ -76,7 +76,7 @@ original = system._decrypt(ciphertext, private_key)
 ## Tests
 
 ```shell
-pytest tests/
+pytest crypto/
 ```
 
 ## Run example
