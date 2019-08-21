@@ -1095,9 +1095,9 @@ class ModPrimeCrypto(ElGamalCrypto):
     #        'message': str,                                            #
     #        'signature': {                                             #
     #            'exponent': mpz,                                       #
-    #		     'commitments': {                                       #
-    #		 		'c_1': mpz,                                         #
-    #				'c_2': mpz                                          #
+    #            'commitments': {                                       #
+    #               'c_1': mpz,                                         #
+    #               'c_2': mpz                                          #
     #        }                                                          #
     #    }                                                              #
     #                                                                   #
@@ -1197,11 +1197,11 @@ class ModPrimeCrypto(ElGamalCrypto):
     #    By DSA-signature is meant a dictionary of the form    #
     #                                                          #
     # 	{                                                      #
-    # 		'exponent': mpz,                                   #
-    # 		'commitments': {                                   #
-    # 			'c_1': mpz,                                    #
-    # 			'c_2': mpz                                     #
-    # 		}                                                  #
+    #       'exponent': mpz,                                   #
+    #       'commitments': {                                   #
+    #           'c_1': mpz,                                    #
+    #           'c_2': mpz                                     #
+    #       }                                                  #
     # 	}                                                      #
     #                                                          #
     ############################################################
