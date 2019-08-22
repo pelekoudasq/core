@@ -19,11 +19,11 @@ PLAINTEXT_CEIL = 2 ** 512
 def make_voters(nr_voters):
     return ['%x' % random_integer(2, VOTER_KEY_CEIL) for _ in range(nr_voters)]
 
-def make_corrupted_public_key():
+def make_corrupted_public_key(system):
     corrupted_keypair = system.keygen()
     return system._extract_public(corrupted_keypair)
 
-def make_vote(voter, invalid=False):
+def make_vote(voter, system, election_key, invalid=False):
     plaintext = random_integer(2, PLAINTEXT_CEIL)
     vote = system.vote(election_key, voter, plaintext)
     if invalid:
@@ -129,19 +129,19 @@ def corrupt_implicit_signature(vote_signature, private_key, system):
 
     return corrupted_signature
 
+choices = [
+    'Party-A: 0-2, 0',
+    'Party-A: Candidate-0000',
+    'Party-B: generator0-2, 1',
+    'Party-B:l Candidate-0001'
+    'Party-C:l Candidate-0x00'
+]
 
 if __name__=='__main__':
 
-    print('\n------------------- Vote Signing Test Session -------------------\n')
+    print('\n--------------------- Voting Test Session ---------------------\n')
 
     voters = make_voters(10)
-    choices = [
-        'Party-A: 0-2, 0',
-        'Party-A: Candidate-0000',
-        'Party-B: generator0-2, 1',
-        'Party-B:l Candidate-0001'
-        'Party-C:l Candidate-0x00'
-    ]
 
     system = ModPrimeCrypto(_4096_PRIME, _4096_PRIMITIVE)
 
@@ -152,7 +152,7 @@ if __name__=='__main__':
     trustees = system.generate_trustees(7)
     election_key = system.compute_election_key(trustees, zeus_keypair)
 
-    # Election key generation and validation
+    # Validation of keys
     print('Validation of keys\n')
 
     valid = system.validate_election_key(election_key, trustees, zeus_keypair)
@@ -170,7 +170,7 @@ if __name__=='__main__':
         print(' - Corrupted zeus failed to be detected')
 
     corrupted_trustees = trustees[:]
-    corrupted_trustees[-1] = make_corrupted_public_key()
+    corrupted_trustees[-1] = make_corrupted_public_key(system)
     corrupted_key_2 = system.compute_election_key(corrupted_trustees, zeus_keypair)
     invalid_2 = system.validate_election_key(corrupted_key_2, trustees, zeus_keypair)
     if not invalid_2:
@@ -184,11 +184,11 @@ if __name__=='__main__':
     votes = []
 
     for voter in voters[:8]:                        # 8 first votes valid
-        vote = make_vote(voter)
+        vote = make_vote(voter, system, election_key)
         votes.append(vote)
 
     for voter in voters[-2:]:                       # 2 last votes invalid
-        vote = make_vote(voter, invalid=True)
+        vote = make_vote(voter, system, election_key, invalid=True)
         votes.append(vote)
 
     # Validate submitted votes
@@ -227,7 +227,8 @@ if __name__=='__main__':
             % (i, vote['fingerprint']) for i in range(nr_comments)]
 
         if i == 0:
-            # Tamper signature by altering proof encryption
+            # Corrupt signature by tempering proof encryption;
+            # will raise InvalidEncryptionError
             vote_signature = make_corrupted_signature_vote(system, vote,
                     comments, election_key, zeus_keypair, trustees, choices)
         else:
@@ -251,7 +252,7 @@ if __name__=='__main__':
     print('Vote signatures validation\n')
 
     verified_signatures = []
-    invalid_signatures = []
+    non_verified_signatures = []
 
     for i in range(len(vote_signatures)):
         signature = vote_signatures[i]
@@ -261,19 +262,19 @@ if __name__=='__main__':
         except InvalidEncryptionError:
             if i == 0:
                 print(' + Invalid encryption proof successfully detected')
-                invalid_signatures.append(signature)
+                non_verified_signatures.append(signature)
             else:
                 print(' - Valid encryption proof erroneously invalidated')
         except InvalidStructureError:
             if i == 1:
                 print(' + Invalid signature structure successfully detected')
-                invalid_signatures.append(signature)
+                non_verified_signatures.append(signature)
             else:
                 print(' - Valid signature structure erroneously invalidated')
         except InvalidSignatureError:
             if i == 2:
                 print(' + Invalid inscribed signature successfully detected')
-                invalid_signatures.append(signature)
+                non_verified_signatures.append(signature)
             else:
                 print(' - Valid inscribed signature erroneously invalidated')
         else:
@@ -283,5 +284,5 @@ if __name__=='__main__':
             else:
                 print(' - Invalid vote signature failed to be detected')
 
-    print('\nVote signing session complete: all tests passed\n')
+    print('\nVoting session complete: all tests passed\n')
     sys.exit(0)

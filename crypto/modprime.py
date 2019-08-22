@@ -35,11 +35,11 @@ class ModPrimeElement(GroupElement):
         self.__modulus = modulus
 
         # Set here modular inverse (costly to compute everytime)
-        try:
-            self.__inverse = invert(self.__value, self.__modulus)
-        except ZeroDivisionError:
-            self.__inverse = None
-        # self.__inverse = invert(self.__value, self.__modulus)
+        # try:
+        #     self.__inverse = invert(self.__value, self.__modulus)
+        # except ZeroDivisionError:
+        #     self.__inverse = None
+        self.__inverse = invert(self.__value, self.__modulus)
 
     @property
     def value(self):

@@ -78,6 +78,16 @@ def test_AssertionError_in_gamma_encoding_max(nr_candidates, max_choices):
 
 # encode_selection
 
+__AssertionError_in_encode_selection = [
+    ([0, 1], 0), ([0, 1], 1)]
+
+@pytest.mark.parametrize('selection, nr_candidates',
+    __AssertionError_in_encode_selection)
+def test_encode_selection(selection, nr_candidates):
+    with pytest.raises(AssertionError):
+        encode_selection(selection, nr_candidates)
+
+
 __selection__nr_candidates__result = [
     ([0], None, 1), ([0], 10, 1),
     ([0, 1], None, 4), ([0, 1], 10, 12),
@@ -90,12 +100,3 @@ __selection__nr_candidates__result = [
 def test_encode_selection(selection, nr_candidates, result):
     encoding = encode_selection(selection, nr_candidates)
     assert result == encoding
-
-__AssertionError_in_encode_selection = [
-    ([0, 1], 0), ([0, 1], 1)]
-
-# @pytest.mark.parametrize('selection, nr_candidates',
-#     __AssertionError_in_encode_selection)
-# def test_encode_selection(selection, nr_candidates):
-#     with pytest.raises(AssertionError):
-#         encode_selection(selection, nr_candidates)
