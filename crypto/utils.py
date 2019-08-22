@@ -4,14 +4,33 @@ from gmpy2 import mpz
 
 _random_generator_file = Random.new()
 
+def random_integer(min, max):
+    """
+    min (mpz or int): inclusive lower bound
+    max (mpz or int): exclusive upper bound
+    Returns: mpz
+    """
+
+    range = max - min
+    nr_bits = max.bit_length()
+    nr_bytes = int((nr_bits - 1) / 8) + 1
+    random_bytes = _random_generator_file.read(nr_bytes)
+    num = int_from_bytes(random_bytes)
+    shift = num.bit_length() - nr_bits
+    if shift > 0:
+        num >>= shift
+    if num >= max:
+        num -= max
+    return mpz(num) + min
+
 # Returns the integer represented in LSB by the provided string's UTF-8 encoding
 int_from_bytes = lambda _bytes: int.from_bytes(_bytes, byteorder='little')
-# int_from_bytes = lambda _bytes: mpz(int.from_bytes(_bytes, byteorder='little'))
 
 hash_encode = lambda string: string.encode(errors='surrogateescape')
 hash_decode = lambda hashed: hashed.decode(errors='surrogateescape')
 
-# Returns the SHA256-digest of the concatenation of the provided numbers' hexadecimal representations
+# Returns the SHA256-digest of the concatenation of
+# the provided numbers' hexadecimal representations
 # Note: Works exactly the same with mpz arguments
 hash_nums = lambda *nums: sha256((''.join('%x:' % _ for _ in nums)).encode()).digest()
 
@@ -31,25 +50,6 @@ def extract_value(dictionary, key, cast, default=None):
 	        return None
 	    value = cast(dictionary[key])
 	return value
-
-def random_integer(min, max):
-    """
-    min (mpz or int): inclusive lower bound
-    max (mpz or int): exclusive upper bound
-    Returns: mpz
-    """
-
-    range = max - min
-    nr_bits = max.bit_length()
-    nr_bytes = int((nr_bits - 1) / 8) + 1
-    random_bytes = _random_generator_file.read(nr_bytes)
-    num = int_from_bytes(random_bytes)
-    shift = num.bit_length() - nr_bits
-    if shift > 0:
-        num >>= shift
-    if num >= max:
-        num -= max
-    return mpz(num) + min
 
 # def hash_nums(*args):
 #     """

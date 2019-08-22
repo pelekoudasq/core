@@ -60,14 +60,14 @@ def test_validate_public_key(system):
 _system_exponent_key__bool = [
     (
         _2048_SYSTEM,
-        239384877347538475938475384987497493874593847593875,
+        239384877347538475938475384987497929929846663728917735493874593847593875,
         _2048_KEY,
         _2048_PUBLIC,
         True
     ),
     (
         _2048_SYSTEM,
-        239384877347538475938475384987497493874593847593875,
+        239384877347538475938475384987497929929846663728917735493874593847593875,
         _2048_KEY - 1,
         _2048_PUBLIC,
         False                                                # Wrong private key
@@ -175,7 +175,7 @@ _system_secret_public_extras__bool = [
         _2048_KEY,
         _2048_PUBLIC,
         [0, 7, 11, 666],
-        [1, 7, 11, 666],                                          # Wrong extras
+        [1, 7, 11, 666],                                       # Wrong extras
         False
     ),
     (
@@ -199,7 +199,7 @@ _system_secret_public_extras__bool = [
         _2048_KEY,
         _2048_PUBLIC,
         [0, 7, 11, 666],
-        [1, 7, 11, 666],                                          # Wrong extras
+        [1, 7, 11, 666],                                       # Wrong extras
         False
     ),
 ]
@@ -294,7 +294,7 @@ def test_encryption_decryption(system, element, public_key, private_key):
 
 @pytest.mark.parametrize(
     'system, element, public_key, private_key', _system_element_key)
-def test_encryption_proof(system, element, public_key, private_key):
+def test_valid_encryption_proof(system, element, public_key, private_key):
 
     __p = system.group.modulus
 
@@ -310,6 +310,32 @@ def test_encryption_proof(system, element, public_key, private_key):
     verified = system._verify_encryption(ciphertext_proof)
 
     assert verified
+
+@pytest.mark.parametrize(
+    'system, element, public_key, private_key', _system_element_key)
+def test_invalid_encryption_proof(system, element, public_key, private_key):
+
+    __p = system.group.modulus
+
+    # Type conversions
+    element = ModPrimeElement(element, __p)
+    public_key = ModPrimeElement(public_key, __p)
+
+    # Ecnryption/Proof validation
+
+    randomness = system.group.random_exponent()
+    ciphertext = system._encrypt(element, public_key, randomness)
+
+    # Corrupt ciphertext by tampering alpha
+    alpha, beta = system._extract_ciphertext(ciphertext)
+    alpha = ModPrimeElement(alpha.value + 1, system.group.modulus)
+    corrupted_ciphertext = system._set_ciphertext(alpha, beta)
+
+    proof = system._prove_encryption(ciphertext, randomness)
+    ciphertext_proof = system._set_ciphertext_proof(corrupted_ciphertext, proof)
+    verified = system._verify_encryption(ciphertext_proof)
+
+    assert not verified
 
 @pytest.mark.parametrize(
     'system, element, public_key, private_key', _system_element_key)

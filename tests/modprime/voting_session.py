@@ -1,3 +1,6 @@
+"""
+Exits with 1 if any of the checks fails; othewise terminates with 0 (only pluses)
+"""
 import sys
 from time import sleep
 
@@ -13,7 +16,7 @@ from helpers import (make_voters, make_corrupted_public_key, make_vote,
 def _exit(message, code=1):
     print(message)
     print('\nVoting session incomplete: CHECK FAILED\n')
-    sys.exit(1)
+    sys.exit(code)
 
 if __name__=='__main__':
 

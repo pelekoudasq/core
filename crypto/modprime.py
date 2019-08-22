@@ -1,6 +1,6 @@
 import Crypto
 from Crypto.Util.number import isPrime
-from gmpy2 import mpz, mpq, powmod, invert, mul, add, f_mod, qdiv
+from gmpy2 import mpz, powmod, invert, mul, add, f_mod, qdiv
 from functools import partial
 import importlib
 
@@ -1672,18 +1672,23 @@ class ModPrimeCrypto(ElGamalCrypto):
         return ciphertext, randomness
 
 
-    def _prove_encryption(self, ciphertext, randomness):
+    def _prove_encryption(self, ciphertext, randomness, proof_method=None):
         """
-        Generates (Schnorr) proof-of-knowledge of the `randomness` r used in the
-        encryption yielding the given ElGamal-ciphertext `ciphertext`. Returned
-        proof has the form of a Schnorr proof
+        Generates according to the provided (zero-knowledge) `proof_method` a
+        proof-of-knowledge of the `randomness` r involved in the encryption
+        yielding the given ElGamal-ciphertext `ciphertext`
+
+        If no proof-method is provided, then Schnorr-proof is applied by default
 
         :type ciphertext: dict
-        :type original: ModPrimeElement
+        :type randomness: mpz
+        :type proof_method: function
         :rtype: dict
         """
         alpha, beta = self._extract_ciphertext(ciphertext)
-        proof = self._schnorr_proof(randomness, alpha, beta)
+        if proof_method is None:
+            proof_method = self._schnorr_proof
+        proof = proof_method(randomness, alpha, beta)
 
         return proof
 
