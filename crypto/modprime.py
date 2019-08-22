@@ -6,17 +6,16 @@ import importlib
 
 from .elgamal import ElGamalCrypto
 from .algebra import Group, GroupElement
-from .exceptions import AlgebraError, WrongCryptoError, WeakCryptoError,\
-    InvalidVoteError, InvalidStructureError, InvalidSignatureError,\
-    InvalidEncryptionError
-from .utils import int_from_bytes, hash_nums, hash_texts, random_integer,\
-    hash_encode, hash_decode, extract_value
+from .exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
+    InvalidVoteError, InvalidStructureError, InvalidSignatureError,
+    InvalidEncryptionError)
+from .utils import (int_from_bytes, hash_nums, hash_texts, random_integer,
+    hash_encode, hash_decode, extract_value)
 
-from .constants import V_FINGERPRINT,\
-    V_PREVIOUS, V_ELECTION, V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES,\
-    V_MODULUS, V_GENERATOR, V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT,\
-    V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX, V_CAST_VOTE,\
-    V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED
+from .constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION, V_ZEUS_PUBLIC,
+    V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER, V_ALPHA, V_BETA,
+    V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX, V_CAST_VOTE,
+    V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED)
 
 
 class ModPrimeElement(GroupElement):
@@ -35,11 +34,11 @@ class ModPrimeElement(GroupElement):
         self.__modulus = modulus
 
         # Set here modular inverse (costly to compute everytime)
+        self.__inverse = invert(self.__value, self.__modulus)
         # try:
         #     self.__inverse = invert(self.__value, self.__modulus)
         # except ZeroDivisionError:
         #     self.__inverse = None
-        self.__inverse = invert(self.__value, self.__modulus)
 
     @property
     def value(self):
@@ -1699,6 +1698,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
         alpha, beta = self._extract_ciphertext(ciphertext)
+        # alpha = ModPrimeElement(alpha.value + 1, self.__modulus)
         verified = self._schnorr_verify(proof, alpha, beta)
 
         return verified
@@ -1708,6 +1708,9 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         Decrypts the provided ElGamal-ciphertext `ciphertext` under the provided
         `private_key` and returns the original element
+
+        NOTE: this function is not used by zeus; it is included for
+              completeness of the cryptossytem and testing purposes
 
         :type ciphertext: dict
         :type private_key: mpz
