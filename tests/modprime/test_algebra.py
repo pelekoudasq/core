@@ -93,4 +93,4 @@ __element__decoded = [
 
 @pytest.mark.parametrize('element, decoded', __element__decoded)
 def test_decoding(element, decoded):
-    assert decoded == Q_RES_11_GROUP.decode_element(element)
+    assert decoded == Q_RES_11_GROUP.decode_with_randomness(element)

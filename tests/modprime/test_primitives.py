@@ -381,8 +381,7 @@ def test_decryption_with_decryptor(system, element, public_key, private_key):
 
 # mod 11 setup
 
-from .constants import (Q_RES_11_SYSTEM,
-    _00_, _01_, _02_, _03_, _04_, _05_, _06_, _07_, _08_, _09_, _10_)
+from .constants import Q_RES_11_SYSTEM
 
 system = Q_RES_11_SYSTEM
 group = system.group
@@ -390,7 +389,7 @@ modulus = group.modulus                    # p
 
 __ciphertext__public__secret__decoded = []
 
-for _ in range(100):
+for _ in range(10):
 
     beta = group.random_element()
     public = group.random_element()

@@ -38,8 +38,7 @@ class ModPrimeElement(GroupElement):
         try:
             self.__inverse = invert(self.__value, self.__modulus)
         except ZeroDivisionError:
-            # Set no inverse if it doesn't exist
-            pass
+            pass                               # Set nothing if it doesn't exist
 
     @property
     def value(self):
@@ -387,7 +386,7 @@ class ModPrimeSubgroup(Group):
 
         return encoded
 
-    def decode_element(self, encoded):
+    def decode_with_randomness(self, encoded):
         """
         Given a mod p element with value z, it returns the element
 
@@ -495,7 +494,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             raise WrongCryptoError(e)
 
         if not allow_weakness:
-            
+
             MIN_MOD_SIZE = min_mod_size or self.__class__.MIN_MOD_SIZE
             MIN_GEN_SIZE = min_gen_size or self.__class__.MIN_GEN_SIZE
 
@@ -1940,5 +1939,5 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         encoded = (public ** secret).inverse * beta             # (y ^ x) ^ -1 * beta (modp)
 
-        decoded = self.group.decode_element(encoded)
+        decoded = self.group.decode_with_randomness(encoded)
         return decoded
