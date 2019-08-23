@@ -1029,7 +1029,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         __group = self.__group
 
         if private_key is None:
-            private_key = __group.random_exponent()
+            private_key = __group.random_exponent(min=3)
 
         elif not 1 < private_key < self.__order:
             e = 'Provided private key exceeds the allowed range'
