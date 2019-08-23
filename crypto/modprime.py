@@ -136,6 +136,13 @@ class ModPrimeElement(GroupElement):
         return self.__class__(result, __modulus)
 
 
+    def clone(self):
+        """
+        :rtype: ModPrimeElement
+        """
+        return self.__class__(self.__value, self.__modulus)
+
+
     def contained_in(self, group):
         """
         Checks if the element is contained the provided subgroup of Z*_p
@@ -380,7 +387,7 @@ class ModPrimeSubgroup(Group):
 
         return encoded
 
-    def decode_with_randomness(self, encoded):
+    def decode_element(self, encoded):
         """
         Given a mod p element with value z, it returns the element
 
@@ -396,14 +403,11 @@ class ModPrimeSubgroup(Group):
         :type element: ModPrimeElement
         :rtype: int
         """
-        decoded = ModPrimeElement(encoded.value, self.__modulus)
+        decoded = encoded.clone()
 
         if not decoded.contained_in(self):
             decoded.mirror_value()
         decoded.reduce_value()
-
-        # decoded = int(encoded.value) - 1
-        # return decoded
 
         return decoded
 
@@ -419,13 +423,14 @@ class ModPrimeCrypto(ElGamalCrypto):
 
 
     __slots__ = ('__group', '__GroupElement',
+
         # ~ Group params included for mpz computations
         # ~ outside the group interface
         '__modulus', '__order', '__generator')
 
 
     def __init__(self, modulus, primitive, root_order=2, prime_order=True,
-            min_mod_size=None, min_gen_size=None):
+            min_mod_size=None, min_gen_size=None, allow_weakness=False):
         """
         Assumes the provided `primitive` g0 to be a primitive mod p, i.e.,
         a generator of the multiplicative group Z*_p or, equivalently, a
@@ -439,6 +444,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type prime_order: bool
         :type min_mod_size: int
         :type min_gen_size: int
+        :type allow_weakness: bool
         """
 
         # Type conversion
@@ -488,16 +494,18 @@ class ModPrimeCrypto(ElGamalCrypto):
             e = 'Order of the requested group is not prime'
             raise WrongCryptoError(e)
 
-        MIN_MOD_SIZE = min_mod_size or self.__class__.MIN_MOD_SIZE
-        MIN_GEN_SIZE = min_gen_size or self.__class__.MIN_GEN_SIZE
+        if not allow_weakness:
+            
+            MIN_MOD_SIZE = min_mod_size or self.__class__.MIN_MOD_SIZE
+            MIN_GEN_SIZE = min_gen_size or self.__class__.MIN_GEN_SIZE
 
-        if modulus.bit_length() < MIN_MOD_SIZE:
-            e = 'Provided modulus is < %d bits long' % MIN_MOD_SIZE
-            raise WeakCryptoError(e)
+            if modulus.bit_length() < MIN_MOD_SIZE:
+                e = 'Provided modulus is < %d bits long' % MIN_MOD_SIZE
+                raise WeakCryptoError(e)
 
-        if group.generator.bit_length < MIN_GEN_SIZE:
-            e = 'Generator is < %d bits long' % MIN_GEN_SIZE
-            raise WeakCryptoError(e)
+            if group.generator.bit_length < MIN_GEN_SIZE:
+                e = 'Generator is < %d bits long' % MIN_GEN_SIZE
+                raise WeakCryptoError(e)
 
 
     # Cryptosystem
@@ -1032,7 +1040,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         module_name = importlib.import_module('zeus_crypto.mixnets.%s' % module)
         _cls = getattr(module_name, module.capitalize())
-        return _clas
+        return _cls
 
 
     def initialize_mixer(self, module, params, election_key):
@@ -1044,8 +1052,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         public_key = self._extract_value(election_key)	# GroupElement
         _cls = self._get_mixer_class(module)
         return _cls(params, public_key)
-
-
 
 
     # Key management
@@ -1907,38 +1913,32 @@ class ModPrimeCrypto(ElGamalCrypto):
         return encoded
 
 
-    # def _decrypt_with_randomness(self, ciphertext, public, secret):
-    #     """
-    #     Given the ElGamal-ciphertext `ciphertext`
-    #
-    #     {'alpha': a, 'beta': b},
-    #
-    #     a group element `public` y and an exponent `secret` x, computes and
-    #     returns the element
-    #
-    #     (y ^ x) ^ -1 * b - 1 (mod p)
-    #
-    #     if (y ^ x) ^ -1 * b happens to be contained in the cryptosystem's
-    #     underlying group; otherwise the element
-    #
-    #     (-(y ^ x) ^ -1 (mod p)) * b - 1 (mod p)
-    #
-    #     is returned
-    #
-    #     :type public: ModPrimeElement
-    #     :type ciphertext: dict
-    #     :type secret: mpz
-    #     :rtype: ModPrimeElement
-    #
-    #     .. note:: Given y within the cryptosystem's underlying gorup, it is
-    #     equivalent to decryption with decryptor y ^ x, specializing thus to
-    #     standard ElGamal encryption if y = a and the secret x is the private
-    #     key used at encryption
-    #     """
-    #     _, beta = self._extract_ciphertext(ciphertext)
-    #
-    #     # public = self._extract_value(public)
-    #     encoded = (public ** secret).inverse * beta             # (y ^ x) ^ -1 * beta (modp)
-    #
-    #     decoded = self.group.decode_with_randomness(encoded)
-    #     return decoded
+    def _decrypt_with_randomness(self, ciphertext, public, secret):
+        """
+        Given the ElGamal-ciphertext `ciphertext`
+
+        {'alpha': a, 'beta': b},
+
+        a group element `public` y and an exponent `secret` x, computes and
+        returns the element
+
+        (y ^ x) ^ -1 * b - 1 (mod p)
+
+        if (y ^ x) ^ -1 * b happens to be contained in the cryptosystem's
+        underlying group; otherwise the element
+
+        (-(y ^ x) ^ -1 * b (mod p)) - 1 (mod p)
+
+        is returned
+
+        :type public: ModPrimeElement
+        :type ciphertext: dict
+        :type secret: mpz
+        :rtype: ModPrimeElement
+        """
+        _, beta = self._extract_ciphertext(ciphertext)
+
+        encoded = (public ** secret).inverse * beta             # (y ^ x) ^ -1 * beta (modp)
+
+        decoded = self.group.decode_element(encoded)
+        return decoded

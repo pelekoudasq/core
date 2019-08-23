@@ -26,8 +26,8 @@ def make_vote(voter, system, election_key, invalid=False):
 def make_corrupted_signature_vote(system, vote, comments, election_key,
                             zeus_keypair, trustees, choices):
     """
-    Purpose of this function is to create a corrupted vote signature, such that
-    InvalidEncryptionError gets raised upon validation.
+    Creates a corrupted vote signature, such that InvalidEncryptionError
+    gets raised upon validation.
     """
     __p, __q, __g = system._parameters()
 

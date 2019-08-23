@@ -1,6 +1,6 @@
 import pytest
 
-from gmpy2 import mpz
+from gmpy2 import mpz, invert
 
 from crypto.constants import (_2048_KEY, _2048_PUBLIC, _2048_DDH,
                               _4096_KEY, _4096_PUBLIC, _4096_DDH)
@@ -378,26 +378,50 @@ def test_decryption_with_decryptor(system, element, public_key, private_key):
 
     assert element == decrypted
 
-# @pytest.mark.parametrize(
-#     'system, element, public_key, private_key', _system_element_key)
-# def test_decryption_with_randomness(system, element, public_key, private_key):
-#
-#     __p = system.group.modulus
-#
-#     # Type conversions
-#     element = ModPrimeElement(element, __p)
-#     public_key = ModPrimeElement(public_key, __p)
-#     private_key = mpz(private_key)
-#
-#     # Ecnryption
-#     ciphertext = system._encrypt(element, public_key)
-#
-#     # ~ Decrypt with y = a and x equal to encryption key (specializes
-#     # ~ to standard ElGamal decryption for testing purposes)
-#     alpha, _ = system._extract_ciphertext(ciphertext)
-#     decrypted = system._decrypt_with_randomness(ciphertext, alpha, private_key)
-#
-#     print(element)
-#     print(decrypted)
-#
-#     assert element == decrypted
+
+# mod 11 setup
+
+from .constants import (Q_RES_11_SYSTEM,
+    _00_, _01_, _02_, _03_, _04_, _05_, _06_, _07_, _08_, _09_, _10_)
+
+system = Q_RES_11_SYSTEM
+group = system.group
+modulus = group.modulus                    # p
+
+__ciphertext__public__secret__decoded = []
+
+for _ in range(100):
+
+    beta = group.random_element()
+    public = group.random_element()
+    secret = group.random_exponent()
+
+    ciphertext = {
+        'alpha': group.random_element(),
+        'beta': beta
+    }
+
+    encoded = (public ** secret).inverse * beta
+
+    b = beta.value
+    y = public.value
+    x = secret
+
+    if group.contains(encoded):
+        # (y ^ x) ^ -1 * b - 1 (mod p)
+        decoded = ((invert(y ** x, modulus) * b) % modulus - 1) % modulus
+    else:
+        # (-(y ^ x) ^ -1 * b (mod p)) - 1 (mod p)
+        decoded = (-(invert(y ** x, modulus) * b) % modulus - 1) % modulus
+
+    decoded = ModPrimeElement(decoded, modulus)
+
+    __ciphertext__public__secret__decoded.append(
+        (ciphertext, public, secret, decoded))
+
+
+@pytest.mark.parametrize('ciphertext, public, secret, decoded',
+    __ciphertext__public__secret__decoded)
+def test_decryption_with_randomness(ciphertext, public, secret, decoded):
+    assert decoded == \
+        system._decrypt_with_randomness(ciphertext, public, secret)
