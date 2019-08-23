@@ -59,7 +59,7 @@ class ModPrimeElement(GroupElement):
         """
         :rtype: ModPrimeElement
         """
-        return self.__class__(value=self.__inverse, modulus=self.__modulus)
+        return self.__class__(self.__inverse, self.__modulus)
 
 
     @property
@@ -479,6 +479,16 @@ class ModPrimeCrypto(ElGamalCrypto):
         trustees = [self._extract_public(keypair) for keypair in keypairs]
         return trustees
 
+    def _reprove_trustee(self, trustee_keypair):
+        """
+        :type trustee_keypair: dict
+        :rtype: dict
+        """
+        private_key, public_key = self._extract_keypair(trustee_keypair)
+        public_key = self._extract_value(public_key)
+        proof = self._schnorr_proof(private_key, public_key)
+        return proof
+
     def compute_election_key(self, trustees, zeus_keypair):
         """
         Computes and returns the election public key
@@ -874,6 +884,59 @@ class ModPrimeCrypto(ElGamalCrypto):
         public = trustee_factors['public']
         factors = trustee_factors['factors']
         return public, factors
+
+
+    def _compute_decryption_factors(self, secret, ciphers):
+        pass # -> elgamal.py
+
+
+    def _verify_decryption_factors(self, public, ciphers, factors):
+        pass # --> elgamal.py
+
+
+    def _combine_decryption_factors(self, factor_collection):
+        pass # --> elgamal.py
+
+
+
+
+    def compute_zeus_factors(self, mixed_ballots, secret):
+        """
+        :type mixed_ballots: list
+        :type secret: str
+        """
+        secret = mpz(secret)
+        return self._compute_decryption_factors(secret, mixed_ballots)
+
+    def validate_trustee_factors(self, trustee_public, trustee_factors, mixed_ballots):
+        """
+        If not True, raises Error
+
+        :type trustee_public:
+        :type trustee_factors:
+        :type mixed_ballots: list
+        :rtype: bool
+        """
+        pass # ---> crypto.py
+
+    def decrypt_ballots(self, mixed_ballots, zeus_factors, trustee_factors):
+        pass # -> crypto
+
+    def validate_decrypting(self, mixed_ballots, public_shares, zeus_factors,
+            trustees_factors, zeus_public):
+        pass # -> crypto.py
+
+
+    def convert_mixes_to_elements(self, mixes):
+        """
+        """
+        pass # --> elgamal.py
+
+
+    def convert_mixes(self, mixes):
+        """
+        """
+        pass # --> elgamal.py
 
 
     def _get_last_mix(mixes):
@@ -1662,10 +1725,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type randomness: mpz
         :rtype: tuple
         """
-        __group = self.__group
-
         if randomness is None:
-            randomness = __group.random_exponent()
+            randomness = self.__group.random_exponent()
 
         ciphertext = self._encrypt(element, public_key, randomness)
 
@@ -1711,20 +1772,39 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def _decrypt(self, ciphertext, private_key):
         """
+        Standard ElGamal encryption
+
         Decrypts the provided ElGamal-ciphertext `ciphertext` under the provided
         `private_key` and returns the original element
-
-        NOTE: this function is not used by zeus; it is included for
-              completeness of the cryptossytem and testing purposes
 
         :type ciphertext: dict
         :type private_key: mpz
         :rtype: ModPrimeElement
+
+        .. note:: this function is not used by zeus; it is here included
+        for completeness of the cryptossytem and testing purposes
         """
         alpha, beta = self._extract_ciphertext(ciphertext)
 
         original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
         return original
+
+
+    def _decrypt_with_decryptor(self, ciphertext, decryptor):
+        """
+        :type ciphertext: dict
+        :type decryptor: ModPrimeElement
+        :rtype: ModPrimeElement
+
+        .. note:: specializes to standard ElGamal decryption if the decryptor
+        is chosen to be a ^ x, where x is the private key used at ecnryption
+        """
+        _, beta = self._extract_ciphertext(ciphertext)
+
+        decryptor = decryptor.inverse                           # decryptor ^ -1 * beta
+        encoded = decryptor * beta
+
+        return encoded
 
 
     # TODO: complete (cannot see point of this function)

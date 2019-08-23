@@ -54,6 +54,6 @@ def compute_mix_challenge(cipher_mix):
     return challenge
 
 # test
-from constants import cipher_mix
-if __name__=='__main__':
-    print(compute_mix_challenge(cipher_mix))
+# from constants import cipher_mix
+# if __name__=='__main__':
+#     print(compute_mix_challenge(cipher_mix))

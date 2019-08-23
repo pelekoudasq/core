@@ -294,6 +294,29 @@ def test_encryption_decryption(system, element, public_key, private_key):
 
 @pytest.mark.parametrize(
     'system, element, public_key, private_key', _system_element_key)
+def test_decryption_with_decryptor(system, element, public_key, private_key):
+
+    __p = system.group.modulus
+
+    # Type conversions
+    element = ModPrimeElement(element, __p)
+    public_key = ModPrimeElement(public_key, __p)
+    private_key = mpz(private_key)
+
+    # Ecnryption
+    ciphertext = system._encrypt(element, public_key)
+
+    # ~ Decrypt with decryptor alpha ^ x (defaults to standard
+    # ~ ElGamal decryption for testing purposes)
+    alpha, _ = system._extract_ciphertext(ciphertext)
+    decryptor = alpha ** private_key
+    decrypted = system._decrypt_with_decryptor(ciphertext, decryptor)
+
+    assert element == decrypted
+
+
+@pytest.mark.parametrize(
+    'system, element, public_key, private_key', _system_element_key)
 def test_valid_encryption_proof(system, element, public_key, private_key):
 
     __p = system.group.modulus
