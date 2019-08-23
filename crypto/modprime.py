@@ -25,7 +25,6 @@ class ModPrimeElement(GroupElement):
 
     __slots__ = ('__value', '__modulus', '__inverse')
 
-
     def __init__(self, value, modulus):
         """
         :type value: mpz
@@ -39,6 +38,7 @@ class ModPrimeElement(GroupElement):
             self.__inverse = invert(self.__value, self.__modulus)
         except ZeroDivisionError:
             pass                               # Set nothing if it doesn't exist
+
 
     @property
     def value(self):
@@ -129,7 +129,8 @@ class ModPrimeElement(GroupElement):
         :rtype: ModPrimeElement
         """
         __modulus = self.__modulus
-        # ~ result = self.__value ** exp % self.__modulus ---> "...outrageous exponent"
+
+        # ~ result = self.__value ** exp % __modulus ---> "...outrageous exponent"
         # ~ Use gmpy2.powmod instead in order to avoid overflow in mpz type
         result = powmod(self.__value, exp, __modulus)
         return self.__class__(result, __modulus)
@@ -168,7 +169,6 @@ class ModPrimeSubgroup(Group):
 
 
     __slots__ = ('__modulus', '__order', '__generator', '__Element')
-
 
     def __init__(self, modulus, root_order=2):
         """
@@ -494,7 +494,6 @@ class ModPrimeCrypto(ElGamalCrypto):
             raise WrongCryptoError(e)
 
         if not allow_weakness:
-
             MIN_MOD_SIZE = min_mod_size or self.__class__.MIN_MOD_SIZE
             MIN_GEN_SIZE = min_gen_size or self.__class__.MIN_GEN_SIZE
 
