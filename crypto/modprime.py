@@ -25,20 +25,21 @@ class ModPrimeElement(GroupElement):
 
     __slots__ = ('__value', '__modulus', '__inverse')
 
+
     def __init__(self, value, modulus):
         """
         :type value: mpz
         :type modulus: mpz
         """
-        self.__value = value
+        self.__value = value % modulus
         self.__modulus = modulus
 
         # Set here modular inverse (costly to compute everytime)
-        self.__inverse = invert(self.__value, self.__modulus)
-        # try:
-        #     self.__inverse = invert(self.__value, self.__modulus)
-        # except ZeroDivisionError:
-        #     self.__inverse = None
+        try:
+            self.__inverse = invert(self.__value, self.__modulus)
+        except ZeroDivisionError:
+            # Set no inverse if it doesn't exist
+            pass
 
     @property
     def value(self):
@@ -46,6 +47,29 @@ class ModPrimeElement(GroupElement):
         :rtype: mpz
         """
         return self.__value
+
+    def reset_value(self, value):
+        """
+        :type value: mpz
+        """
+        self.__value = value % self.__modulus
+
+    def reduce_value(self, difference=1):
+        """
+        Reduces modp the value of the element
+
+        :type difference: int
+        """
+        self.__value = (self.__value - difference) % self.__modulus
+
+    def mirror_value(self):
+        """
+        Reflects mod p the value of the element, i.e., if the element's
+        initial value is z, then after mirroring it is equal to
+
+        -z (mod p)
+        """
+        self.__value = - self.__value % self.__modulus
 
     @property
     def modulus(self):
@@ -89,29 +113,33 @@ class ModPrimeElement(GroupElement):
         if isinstance(other, self.__class__):
             return self.__value == other.value
         else:
-            return self.value == other
+            return self.__value == other
 
 
     def __mul__(self, other):
         """
         :type other: ModPrimeElement
         """
-        result = self.__value * other.value % self.__modulus
-        return self.__class__(value=result, modulus=self.__modulus)
+        __modulus = self.__modulus
+        result = self.__value * other.value % __modulus
+        return self.__class__(result, __modulus)
 
     def __pow__(self, exp):
         """
         :type exp: mpz
         :rtype: ModPrimeElement
         """
+        __modulus = self.__modulus
         # ~ result = self.__value ** exp % self.__modulus ---> "...outrageous exponent"
         # ~ Use gmpy2.powmod instead in order to avoid overflow in mpz type
-        result = powmod(self.__value, exp, self.__modulus)
-        return self.__class__(value=result, modulus=self.__modulus)
+        result = powmod(self.__value, exp, __modulus)
+        return self.__class__(result, __modulus)
 
 
     def contained_in(self, group):
         """
+        Checks if the element is contained the provided subgroup of Z*_p
+
         :type: Group
         :rtype: bool
         """
@@ -132,12 +160,15 @@ class ModPrimeSubgroup(Group):
     E.g., the default value r = 2 yields the group of quadratic residues modp
     """
 
+
     __slots__ = ('__modulus', '__order', '__generator', '__Element')
+
 
     def __init__(self, modulus, root_order=2):
         """
         :type modulus: mpz
         :type root_order: mpz
+        :generator: ModPrimeElement
         """
         modulus = modulus
         root_order = root_order
@@ -158,6 +189,7 @@ class ModPrimeSubgroup(Group):
 
         self.__modulus = modulus
         self.__order = order
+
         self.__Element = ModPrimeElement
 
 
@@ -196,7 +228,7 @@ class ModPrimeSubgroup(Group):
         try:
             return self.__generator
         except AttributeError:
-            e = 'No generator has yet been specified for this group'
+            e = 'No generator has been yet specified for this group'
             raise AlgebraError(e)
 
     def parameters(self):
@@ -205,7 +237,6 @@ class ModPrimeSubgroup(Group):
         p = self.__modulus
         q = self.__order
         g = self.__generator.value
-
         return p, q, g
 
 
@@ -217,11 +248,15 @@ class ModPrimeSubgroup(Group):
         return self.__Element
 
 
-    def set_generator(self, element):
+    def set_generator(self, generator):
         """
-        :type element: ModPrimeElement
+        :type generator: ModPrimeElement or mpz
         """
-        self.__generator = element
+        Element = self.Element
+        if isinstance(generator, Element):
+            self.__generator = generator
+        else:
+            self.__generator = Element(generator, self.__modulus)
 
     def generate(self, exponent):
         """
@@ -252,12 +287,12 @@ class ModPrimeSubgroup(Group):
         :type *texts: str
         :rtype: mpz
         """
-        p, q, g = self.parameters()
+        __p, __q, __g = self.parameters()
 
-        hashed_params = hash_nums(p, q, g).hex()
+        hashed_params = hash_nums(__p, __q, __g).hex()
         hashed_texts = hash_texts(hashed_params, *texts)
         exponent = int_from_bytes(hashed_texts)
-        exponent = f_mod(exponent, self.__order)
+        exponent = f_mod(exponent, __q)
 
         return exponent
 
@@ -277,26 +312,6 @@ class ModPrimeSubgroup(Group):
         exp = self.exponent_from_texts(*texts)
         return self.generate(exp)
 
-    def element_from_integer(self, integer):
-        """
-        Provided integer must be < q - 1
-
-        :type integer: int
-        :rtype: ModPrimeElement
-        """
-        integer += 1
-        if integer >= self.__order:
-            e = 'Provided integer is too large'
-            raise AlgebraError(e)
-
-        integer = mpz(integer)
-
-        legendre = powmod(integer, self.__order, self.__modulus)
-        if legendre != 1:
-            integer = - integer % self.__modulus
-
-        return self.Element(value=integer, modulus=self.__modulus)
-
 
     def fiatshamir(self, *elements):
         """
@@ -306,11 +321,11 @@ class ModPrimeSubgroup(Group):
         :rtype: mpz
         """
 
-        p, q, g = self.parameters()
+        __p, __q, __g = self.parameters()
 
-        elements = [x.value if isinstance(x, ModPrimeElement) else x for x in elements]
+        elements = (_.value if isinstance(_, ModPrimeElement) else _ for _ in elements)
 
-        digest = hash_nums(p, q, g, *elements)
+        digest = hash_nums(__p, __q, __g, *elements)
         reduced = int_from_bytes(digest)
         output = self.generate(reduced).value
 
@@ -319,6 +334,8 @@ class ModPrimeSubgroup(Group):
 
     def contains(self, element):
         """
+        Checks if the group contains the provided element of Z*_p
+
         :type element: GroupElement
         :rtype: bool
         """
@@ -329,29 +346,92 @@ class ModPrimeSubgroup(Group):
         return False
 
 
+    def encode_integer(self, integer):
+        """
+        Encodes the provided `integer` x from the range 0 < x + 1 < q - 1
+        as a modp element with the value
+
+        (x + 1) mod p
+
+        if this happens to be r-residue modp, otherwise with the mirror value
+
+        - (x + 1) mod p
+
+        .. raises:: AlgebraError if x is not in the specified range
+
+        :type integer: int
+        :rtype: ModPrimeElement
+
+        .. note:: The result of this encoding is not necessarilly contained
+        in the present group, even after mirroring its value modp
+        """
+        __modulus, __order, _ = self.parameters()
+
+        integer += 1
+        if not 0 < integer < __order:
+            e = 'Provided integer is not in the allowed range'
+            raise AlgebraError(e)
+
+        value = mpz(integer)
+
+        encoded = self.Element(value, __modulus)
+        if not self.contains(encoded):
+            encoded.mirror_value()
+
+        return encoded
+
+    def decode_with_randomness(self, encoded):
+        """
+        Given a mod p element with value z, it returns the element
+
+        z - 1 (mod p)
+
+        if z happens to be contained in the present subgroup;
+        otherwise the element
+
+        (-z (mod p)) - 1 (mod p)
+
+        is returned
+
+        :type element: ModPrimeElement
+        :rtype: int
+        """
+        decoded = ModPrimeElement(encoded.value, self.__modulus)
+
+        if not decoded.contained_in(self):
+            decoded.mirror_value()
+        decoded.reduce_value()
+
+        # decoded = int(encoded.value) - 1
+        # return decoded
+
+        return decoded
+
+
 class ModPrimeCrypto(ElGamalCrypto):
     """
-    ElGamal systemtem over the group of r-residues mod p, p > 2 prime.
+    ElGamal cryptosystem over the group of r-residues mod p, p > 2 prime.
     Defaults to r = 2, yielding the group of quadratic residues mod p
     """
 
     MIN_MOD_SIZE = 2048
     MIN_GEN_SIZE = 2000
 
-    __slots__ = (
-        '__group', '__GroupElement',
 
-        # Group params included for mpz computations outside the group interface
-        '__modulus', '__order', '__generator'
-    )
+    __slots__ = ('__group', '__GroupElement',
+        # ~ Group params included for mpz computations
+        # ~ outside the group interface
+        '__modulus', '__order', '__generator')
 
 
     def __init__(self, modulus, primitive, root_order=2, prime_order=True,
             min_mod_size=None, min_gen_size=None):
         """
-        Assumes that the provided `primitive` g0 is indeed a primitive mod p (i.e., generates
-        the multiplicative group Z*_p) or, equivalently, it is a primitive (p - 1)-root of 1
-        (i.e., g0 ^ (p - 1) = 1 and g0 ^ k != 1 for all 0 < k < p - 1)
+        Assumes the provided `primitive` g0 to be a primitive mod p, i.e.,
+        a generator of the multiplicative group Z*_p or, equivalently, a
+        primitive (p - 1)-root of 1, i.e.,
+
+        g0 ^ (p - 1) = 1 and g0 ^ k != 1 for all 0 < k < p - 1
 
         :type modulus: int
         :type primitive: int
@@ -532,11 +612,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type integer: int
         :rtype: ModPrimeElement
         """
-        element = self.group.element_from_integer(integer)
+        element = self.group.encode_integer(integer)
         return element
 
     def _set_vote(self, voter, encrypted, fingerprint, audit_code=None, publish=None,
-        voter_secret=None, previous=None, index=None, status=None, plaintext=None):
+            voter_secret=None, previous=None, index=None, status=None, plaintext=None):
         """
         :type voter:
         :type encrypted: dict
@@ -1614,7 +1694,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return u ** response == u_commitment * (w ** challenge)
 
 
-    # El-Gamal encryption
+    # El-Gamal encryption and decryption
 
     ################################################################
     #                                                              #
@@ -1689,6 +1769,8 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def _encrypt(self, element, public_key, randomness=None):
         """
+        ElGamal encryption
+
         Computes and returns the ElGamal-ciphertext
 
         {
@@ -1747,6 +1829,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: dict
         """
         alpha, beta = self._extract_ciphertext(ciphertext)
+
         if proof_method is None:
             proof_method = self._schnorr_proof
         proof = proof_method(randomness, alpha, beta)
@@ -1754,28 +1837,36 @@ class ModPrimeCrypto(ElGamalCrypto):
         return proof
 
 
-    def _verify_encryption(self, ciphertext_proof):
+    def _verify_encryption(self, ciphertext_proof, verification_method=None):
         """
-        Verifies proof-of-knowledge of randomness used in the encryption yielding
-        the provided ElGamal ciphertext
+        Verifies proof-of-knowledge of the  randomness used in
+        the encryption yielding the provided ElGamal-ciphertext
 
         :type ciphertext_proof: dict
         :rtype: bool
         """
         ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
         alpha, beta = self._extract_ciphertext(ciphertext)
-        # alpha = ModPrimeElement(alpha.value + 1, self.__modulus)
-        verified = self._schnorr_verify(proof, alpha, beta)
+
+        if verification_method is None:
+            verification_method = self._schnorr_verify
+
+        verified = verification_method(proof, alpha, beta)
 
         return verified
 
 
     def _decrypt(self, ciphertext, private_key):
         """
-        Standard ElGamal encryption
+        Standard ElGamal decryption
 
-        Decrypts the provided ElGamal-ciphertext `ciphertext` under the provided
-        `private_key` and returns the original element
+        Decrypts the provided ElGamal-ciphertext `ciphertext`
+
+        {'alpha': a, 'beta': b}
+
+        under the provided `private_key` x, returning the original element
+
+        (a ^ x) ^ -1 * b
 
         :type ciphertext: dict
         :type private_key: mpz
@@ -1787,11 +1878,20 @@ class ModPrimeCrypto(ElGamalCrypto):
         alpha, beta = self._extract_ciphertext(ciphertext)
 
         original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
+
         return original
 
 
     def _decrypt_with_decryptor(self, ciphertext, decryptor):
         """
+        Given the El-Gamal-ciphertext `ciphertext`
+
+        {'alpha': a, 'beta': b}
+
+        and `decryptor` d, computes and returns the element
+
+        d ^ -1 * b
+
         :type ciphertext: dict
         :type decryptor: ModPrimeElement
         :rtype: ModPrimeElement
@@ -1801,23 +1901,44 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         _, beta = self._extract_ciphertext(ciphertext)
 
-        decryptor = decryptor.inverse                           # decryptor ^ -1 * beta
+        decryptor = decryptor.inverse                           # decryptor ^ -1 * beta (modp)
         encoded = decryptor * beta
 
         return encoded
 
 
-    # TODO: complete (cannot see point of this function)
-    def _decrypt_with_randomness(self, public_key, ciphertext, private_key):
-        """
-        :type public_key: dict
-        :type ciphertext: dict
-        :type private_key: mpz
-        """
-        public_key = self._extract_value(public_key)
-        _, beta = self._extract_ciphertext(ciphertext)
-
-        encoded = (public_key ** private_key).inverse * beta    # (y ^ x) ^ -1 * beta (modp)
-        if encoded.value >= self.group.order: # ?
-            pass # ?
-        return encoded
+    # def _decrypt_with_randomness(self, ciphertext, public, secret):
+    #     """
+    #     Given the ElGamal-ciphertext `ciphertext`
+    #
+    #     {'alpha': a, 'beta': b},
+    #
+    #     a group element `public` y and an exponent `secret` x, computes and
+    #     returns the element
+    #
+    #     (y ^ x) ^ -1 * b - 1 (mod p)
+    #
+    #     if (y ^ x) ^ -1 * b happens to be contained in the cryptosystem's
+    #     underlying group; otherwise the element
+    #
+    #     (-(y ^ x) ^ -1 (mod p)) * b - 1 (mod p)
+    #
+    #     is returned
+    #
+    #     :type public: ModPrimeElement
+    #     :type ciphertext: dict
+    #     :type secret: mpz
+    #     :rtype: ModPrimeElement
+    #
+    #     .. note:: Given y within the cryptosystem's underlying gorup, it is
+    #     equivalent to decryption with decryptor y ^ x, specializing thus to
+    #     standard ElGamal encryption if y = a and the secret x is the private
+    #     key used at encryption
+    #     """
+    #     _, beta = self._extract_ciphertext(ciphertext)
+    #
+    #     # public = self._extract_value(public)
+    #     encoded = (public ** secret).inverse * beta             # (y ^ x) ^ -1 * beta (modp)
+    #
+    #     decoded = self.group.decode_with_randomness(encoded)
+    #     return decoded
