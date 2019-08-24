@@ -931,6 +931,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return missing, failed
 
+    # Mixing?
 
     def _set_factor(self, data, proof):
         """
@@ -973,18 +974,95 @@ class ModPrimeCrypto(ElGamalCrypto):
 
 
     def _compute_decryption_factors(self, secret, ciphers):
-        pass # -> elgamal.py
+        """
+        Uses the provided `secret` x to construct a DDH tuple for each of the
+        provided `ciphers` and generate proof-of-knowledge that the
+        constructed tuple is DDH
+
+        Returns a list of these proofs along with the last member of the
+        corresponding DDH
+
+        For each ciphertext
+
+        {'alpha': a, 'beta': b}
+
+        from the provided `ciphers`, supposing that
+
+        a = g ^ r (modp)
+
+        as the result of ElGamal-encryption, generate a proof-of-knowledge
+        (Schnorr-proof) s that the tuple
+
+                g ^ x (modp), g ^ r (modp), g ^ (x * r) modp
+
+        is DDH. Return the list of pairs (s, g ^ (x * r) modp)
+
+        :type secret: mpz
+        :type ciphers: list
+        :rtype: list
+        """
+        public = self.group.generate(secret)                        # g ^ x         (mod p)
+
+        factors = []
+        append = factors.append
+        for cipher in ciphers:
+
+            alpha, _ = self._extract_ciphertext(cipher)             # g ^ r         (mod p)
+            data = alpha * secret                                   # g ^ (x * r)   (mod p)
+
+            ddh = (alpha, public, data)
+
+            proof = self._chaum_pedersen_proof(ddh, secret)
+            factor = self._set_factor(data, proof)
+            append(factor)
+
+        return factors
 
 
     def _verify_decryption_factors(self, public, ciphers, factors):
-        pass # --> elgamal.py
+        """
+        Returns `True` iff all the provided cipher-factor pairs are
+        successfully verified under the provided `public` y
+
+        .. note:: `False` is returned if the number of ciphers is unequal
+        to the number of factors
+
+        For each ciphertext
+
+        {'alpha': a, 'beta': ...}
+
+        from the provided `ciphers` and corresponding factor
+
+        {'data': c, 'proof': s}
+
+        from the provided `factors`, the current cipher-factor pair will be
+        verified iff the (Shnorr-proof) s proves knowledge that the tuple
+
+        (a, y, c)
+
+        is a DDH
+
+        :type public: ModPrimeElement
+        :type ciphers: list
+        :type factors: list
+        :rtype: bool
+        """
+        if len(ciphers) != len(factors):
+            return False
+
+        for cipher, factor in zip(ciphers, factors):
+            alpha, _ = self._extract_ciphertext(cipher)
+            data, proof = self._extract_factor(factor)
+
+            ddh = (alpha, public, data)
+            if not self._chaum_pedersen_verify(ddh, proof):
+                return False
+
+        return True
 
 
     def _combine_decryption_factors(self, factor_collection):
         pass # --> elgamal.py
-
-
-
 
     def compute_zeus_factors(self, mixed_ballots, secret):
         """
@@ -1067,7 +1145,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     #    }                                                        #
     #                                                             #
     #   where tha value for the key `proof` is either `None` or   #
-    #   a Schnorr proof                                           #
+    #   a Schnorr-proof                                           #
     #                                                             #
     ###############################################################
 
@@ -1454,7 +1532,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     ############################################################
     #                                                          #
-    #    By Schnorr proof is meant a dictionary of the form    #
+    #    By Schnorr-proof is meant a dictionary of the form    #
     #                                                          #
     #    {                                                     #
     #       'commitment': ModPrimeElement                      #
@@ -1496,7 +1574,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         Implementation of Schnorr protocol from the prover's side (non-interactive)
 
-        Returns proof-of-knowldge (Schnorr proof) of the discrete logarithm x (`secret`)
+        Returns proof-of-knowldge (Schnorr-proof) of the discrete logarithm x (`secret`)
         of y (`public`), with `*extras` being used in the Fiat-Shamir heuristic
 
         :type secret: mpz
@@ -1525,7 +1603,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         Implementation of Schnorr protocol from the verifier's side (non-interactive)
 
-        Validates the demonstrated Schnorr proof-of-knowledge (`proof`) of the discrete
+        Validates the demonstrated (Schnorr) proof-of-knowledge `proof` of the discrete
         logarithm of y (`public`), with `*extras` assumed to have been used in the
         Fiat-Shamir heuristic
 
@@ -1604,7 +1682,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
 
         Returns zero-knowledge proof (Chaum-Pedersen proof) that the provided 3-ple `ddh`
-        is a DDH with respect to the generator g of the systemtem's underlying group,
+        is a DDH with respect to the generator g of the cryptosystem's underlying group,
         i.e., of the form
 
                         (g ^ x modp, g ^ z modp, g ^ (x * z) modp)
