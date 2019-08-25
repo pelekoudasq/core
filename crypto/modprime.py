@@ -670,7 +670,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         election_key = self._extract_value(election_key)
         encoded_plaintext = self._encode_integer(plaintext)
         ciphertext, randomness = self._encrypt(encoded_plaintext, election_key,
-            get_randomness=True)
+            get_secret=True)
 
         proof = self._prove_encryption(ciphertext, randomness)
 
@@ -1851,7 +1851,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return fingerprint
 
 
-    def _encrypt(self, element, public_key, randomness=None, get_randomness=False):
+    def _encrypt(self, element, public_key, randomness=None, get_secret=False):
         """
         ElGamal encryption
 
@@ -1868,7 +1868,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type element: ModPrimeElement
         :type public_key: ModPrimeElement
         :type randomness: mpz
-        :type get_randomness: bool
+        :type get_secret: bool
         :rtype: dict
         """
         __group = self.__group
@@ -1881,12 +1881,12 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         ciphertext = self._set_ciphertext(alpha, beta)
 
-        if get_randomness:
+        if get_secret:
             return ciphertext, randomness
         return ciphertext
 
 
-    def reencrypt(self, ciphertext, public_key, randomness=None, get_randomness=False):
+    def reencrypt(self, ciphertext, public_key, randomness=None, get_secret=False):
         """
         Re-encryption of ElGamal-ciphertexts
 
@@ -1921,7 +1921,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type ciphertext: dict
         :type public_key: ModPrimeElement
         :type randomness: mpz
-        :type get_randomness: bool
+        :type get_secret: bool
         :rtype: dict or tuple
         """
         __group = self.__group
@@ -1931,13 +1931,13 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         alpha, beta = self._extract_ciphertext(ciphertext)
 
-        alpha = alpha * __group.generate(randomness)                # a * g ^ x
-        beta = beta * public_key ** randomness                      # b * y ^ x
+        alpha = alpha * __group.generate(randomness)                # a * g ^ r
+        beta = beta * public_key ** randomness                      # b * y ^ r
 
         ciphertext = self._set_ciphertext(alpha, beta)
 
-        if get_randomness:
-            ciphertext, _randomness
+        if get_secret:
+            return ciphertext, randomness
         return ciphertext
 
 

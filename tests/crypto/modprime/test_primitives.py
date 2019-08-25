@@ -349,7 +349,7 @@ def test_encryption_with_randomness_and_proof(system, element, public_key, priva
     public_key = ModPrimeElement(public_key, __p)
 
     # Encryption/Proof validation
-    ciphertext, randomness = system._encrypt(element, public_key, get_randomness=True)
+    ciphertext, randomness = system._encrypt(element, public_key, get_secret=True)
     proof = system._prove_encryption(ciphertext, randomness)
     ciphertext_proof = system._set_ciphertext_proof(ciphertext, proof)
     verified = system._verify_encryption(ciphertext_proof)
