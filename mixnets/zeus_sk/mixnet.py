@@ -40,9 +40,55 @@ class Zeus_SK(Mixnet):
         """
         return cryptosystem.__class__ in cls.supported_crypto
 
-    @property
-    def election_key(self):
-        return self.__election_key
+def reencrypt(self, ciphertext, public_key, randomness):
+    return self.__cryptosystem.reencrypt(ciphertext, public_key, randomness)
 
-    def reencrypt(self, ciphertext, public_key, randomness):
-        return self.__cryptosystem.reencrypt(ciphertext, public_key, randomness)
+
+    def prepare_mix(self, cipher_collection):
+        """
+        :type cipher_collection:
+        :rtype:
+        """
+        pass
+
+
+    def extract_mix(self, mixed_collection):
+        """
+        Assumes a dictionary of the form
+
+        {
+            'mixed_ciphers': list[tuple],
+            'original_ciphers': list[tuple],
+            'proof': ...
+        }
+
+        :type mixed_collection: dict
+        :rtype: dict
+        """
+        system = self.__cryptosystem
+
+        mixed_ciphers = [self.__cryptosystem._set_ciphertext(alpha, beta)
+            for (alpha, beta) in mixed_collection['mixed_ciphers']]
+
+        original_ciphers = [self.__cryptosystem._set_ciphertext(alpha, beta)
+            for (alpha, beta) in mixed_collection['original_ciphers']]
+
+        proof = mixed_collection['proof']
+
+        modulus, order, generator = system.parameters()
+
+        mix = {}
+
+        mix['modulus'] = modulus,
+        mix['order'] = order,
+        mix['generator'] = generator,
+        mix['public'] = self.__election_key,
+        mix['mixed_ciphers'] = mixed_ciphers,
+        mix['original_ciphers'] = original_ciphers,
+        mix['proof'] = proof
+
+        return mix
+
+
+    def _shuffle_ciphers(ciphers, teller=None, report_thres=128, async_channel=None):
+        pass

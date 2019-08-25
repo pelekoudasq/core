@@ -1,13 +1,12 @@
 import pytest
 
-from crypto.utils import random_integer
-from crypto.exceptions import (InvalidVoteError, InvalidStructureError,
-    InvalidSignatureError, InvalidEncryptionError)
-
 from .constants import choices, _2048_SYSTEM, _4096_SYSTEM
 from .helpers import (make_voters, make_corrupted_public_key, make_vote,
     make_corrupted_signature_vote, corrupt_signature_structure,
     corrupt_implicit_signature)
+from crypto.exceptions import (InvalidVoteError, InvalidStructureError,
+    InvalidSignatureError, InvalidEncryptionError)
+from utils import random_integer
 
 # For each cryptosystem, prepare election, voters and votes
 

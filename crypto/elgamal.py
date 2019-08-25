@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 from functools import partial
 
 from .exceptions import WrongCryptoError, WeakCryptoError
-from .utils import extract_value, hash_encode, hash_decode
+from utils import extract_value, hash_encode, hash_decode
 
 
 class ElGamalCrypto(object, metaclass=ABCMeta):
@@ -16,7 +16,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def system(self):
+    def parameters(self):
         """
         Returns a dictionary with the systemtem's parameters
         """

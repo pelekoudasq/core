@@ -10,13 +10,6 @@ def _get_term(n, k):
     if k >= n:
         return 1
 
-    # if n in _terms:
-    #     t = _terms[n]
-    #     if k in t:
-    #         return t[k]
-    # else:
-    #     t = {n: 1}
-    #     _terms[n] = t
     try:
         t = _terms[n]
     except KeyError:
@@ -79,13 +72,6 @@ def _get_factor(b, n):
     if n <= 1:
         return 1
 
-    # if b in _factors:
-    #     t = _factors[b]
-    #     if n in t:
-    #         return t[n]
-    # else:
-    #     t = {1: 1}
-    #     _factors[b] = t
     try:
         t = _factors[b]
     except KeyError:

@@ -4,7 +4,7 @@ Exits with 1 if any of the checks fails; othewise terminates with 0 (only pluses
 import sys
 from time import sleep
 
-from crypto.utils import random_integer
+from utils import random_integer
 from crypto.exceptions import (InvalidVoteError, InvalidStructureError,
     InvalidSignatureError, InvalidEncryptionError)
 

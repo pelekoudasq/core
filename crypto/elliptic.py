@@ -3,7 +3,7 @@ from Crypto.Util.number import isPrime
 
 from .elgamal import ElGamalCrypto
 from .exceptions import WrongCryptoError, WeakCryptoError
-from .utils import int_from_bytes, hash_nums, random_integer
+from utils import int_from_bytes, hash_nums, random_integer
 
 
 class EllipticCrypto(ElGamalCrypto):

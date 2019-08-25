@@ -1,10 +1,10 @@
 from crypto.modprime import ModPrimeElement
-from crypto.utils import random_integer
 from crypto.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION,
     V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR,
     V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE,
     V_COMMENTS, V_INDEX, V_CAST_VOTE, V_AUDIT_REQUEST, V_PUBLIC_AUDIT,
     V_PUBLIC_AUDIT_FAILED)
+from utils import random_integer
 
 VOTER_KEY_CEIL = 2 ** 256
 PLAINTEXT_CEIL = 2 ** 512

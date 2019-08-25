@@ -1,7 +1,7 @@
 import pytest
 
-from utils.gamma_encoding import _get_choice_params, gamma_encode, \
-    gamma_encoding_max, encode_selection
+from utils.gamma_encoding import (_get_choice_params, gamma_encode,
+    gamma_encoding_max, encode_selection)
 
 
 # _get_choice_params

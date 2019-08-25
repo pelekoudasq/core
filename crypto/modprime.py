@@ -9,13 +9,12 @@ from .algebra import Group, GroupElement
 from .exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
     InvalidVoteError, InvalidStructureError, InvalidSignatureError,
     InvalidEncryptionError)
-from .utils import (int_from_bytes, hash_nums, hash_texts, random_integer,
-    hash_encode, hash_decode, extract_value)
-
 from .constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION, V_ZEUS_PUBLIC,
     V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER, V_ALPHA, V_BETA,
     V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX, V_CAST_VOTE,
     V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED)
+from utils import (int_from_bytes, hash_nums, hash_texts, random_integer,
+    hash_encode, hash_decode, extract_value)
 
 
 class ModPrimeElement(GroupElement):
@@ -509,7 +508,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     # Cryptosystem
 
     @property
-    def system(self):
+    def parameters(self):
         """
         :rtype: dict
         """
