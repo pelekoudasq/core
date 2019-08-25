@@ -28,12 +28,11 @@ class Zeus_SK(Mixnet):
             raise WrongCryptoError(e)
 
         self.__cryptosystem = cryptosystem
-        self.__reencrypt = cryptosystem.reencrypt
 
         self.__nr_rounds = nr_rounds
         self.__nr_mixes = nr_rounds
 
-        self.__election_key = cryptosystem._extract_value(election_key)
+        self.__election_key = self.__cryptosystem._extract_value(election_key)
 
     @classmethod
     def supports_cryptosystem(cls, cryptosystem):

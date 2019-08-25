@@ -670,7 +670,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         election_key = self._extract_value(election_key)
         encoded_plaintext = self._encode_integer(plaintext)
-        ciphertext, randomness = self._encrypt_with_randomness(encoded_plaintext, election_key)
+        ciphertext, randomness = self._encrypt(encoded_plaintext, election_key,
+            get_randomness=True)
 
         proof = self._prove_encryption(ciphertext, randomness)
 
@@ -1851,7 +1852,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return fingerprint
 
 
-    def _encrypt(self, element, public_key, randomness=None):
+    def _encrypt(self, element, public_key, randomness=None, get_randomness=False):
         """
         ElGamal encryption
 
@@ -1868,6 +1869,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type element: ModPrimeElement
         :type public_key: ModPrimeElement
         :type randomness: mpz
+        :type get_randomness: bool
         :rtype: dict
         """
         __group = self.__group
@@ -1879,13 +1881,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         beta = element * public_key ** randomness       # m * y ^ r (modp)
 
         ciphertext = self._set_ciphertext(alpha, beta)
-        #
-        # if get...:
-        #     return ciphertext, randomness
+
+        if get_randomness:
+            return ciphertext, randomness
         return ciphertext
 
 
-    def reencrypt(self, ciphertext, public_key, randomness=None):
+    def reencrypt(self, ciphertext, public_key, randomness=None, get_randomness=False):
         """
         Re-encryption of ElGamal-ciphertexts
 
@@ -1920,14 +1922,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type ciphertext: dict
         :type public_key: ModPrimeElement
         :type randomness: mpz
+        :type get_randomness: bool
         :rtype: dict or tuple
         """
         __group = self.__group
 
         if randomness is None:
-            _randomness = __group.random_exponent(min=3)
-        else:
-            _randomness = randomness
+            randomness = __group.random_exponent(min=3)
 
         alpha, beta = self._extract_ciphertext(ciphertext)
 
@@ -1936,24 +1937,9 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         ciphertext = self._set_ciphertext(alpha, beta)
 
-        if randomness is None:
+        if get_randomness:
             ciphertext, _randomness
         return ciphertext
-
-
-    def _encrypt_with_randomness(self, element, public_key, randomness=None):
-        """
-        :type element: ModPrimeElement
-        :type public_key: ModPrimeElement
-        :type randomness: mpz
-        :rtype: tuple
-        """
-        if randomness is None:
-            randomness = self.__group.random_exponent()
-
-        ciphertext = self._encrypt(element, public_key, randomness)
-
-        return ciphertext, randomness
 
 
     def _prove_encryption(self, ciphertext, randomness, proof_method=None):

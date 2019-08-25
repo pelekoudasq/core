@@ -8,7 +8,7 @@ from crypto.utils import random_integer
 from crypto.exceptions import (InvalidVoteError, InvalidStructureError,
     InvalidSignatureError, InvalidEncryptionError)
 
-from constants import _2048_SYSTEM, _4096_SYSTEM
+from tests.crypto.modprime.constants import _2048_SYSTEM, _4096_SYSTEM
 
 def _exit(message, code=1):
     print(message)

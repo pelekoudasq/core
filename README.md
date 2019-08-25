@@ -10,5 +10,6 @@ pytest tests/
 and
 
 ```shell
-python3 tests/modprime/vote_signing.py
+python3 sessions/primitives.py
+python3 sessions/voting.py
 ```
