@@ -581,7 +581,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         :type trustees: list[dict]
         :type zeus_keypair: dict
-        :rtype: ModPrimeElement
+        :rtype: dict
         """
         public_shares = self._extract_public_shares(trustees)
         zeus_public_key = self._extract_public_value(zeus_keypair)
@@ -976,7 +976,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     def _compute_decryption_factors(self, secret, ciphers):
         """
         Uses the provided `secret` x to construct a DDH tuple for each of the
-        provided `ciphers` and generate proof-of-knowledge that the
+        provided `ciphers` and generates proof-of-knowledge that the
         constructed tuple is DDH
 
         Returns a list of these proofs along with the last member of the
@@ -995,7 +995,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
                 g ^ x (modp), g ^ r (modp), g ^ (x * r) modp
 
-        is DDH. Return the list of pairs (s, g ^ (x * r) modp)
+        is DDH and return the list of pairs (s, g ^ (x * r) modp)
 
         :type secret: mpz
         :type ciphers: list
@@ -1220,10 +1220,10 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def _extract_value(self, public_key):
         """
-        :type public_key: dict
+        :type public_key: dict or ModPrimeElement
         :rtype: ModPrimeElement
         """
-        return public_key['value']
+        return public_key['value'] if type(public_key) is dict else public_key
 
 
     def _combine_public_keys(self, initial, public_keys):
@@ -1722,16 +1722,18 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
 
-        Validates the demonstrated zero-knowledge `proof` that the provided 3-ple `ddh` is a
-        DDH with respect to the generator g of the systemtem's underlying group, i.e., of
+        Verifies that the demonstrated `proof` proves knowledge that the provided 3-ple `ddh`
+        is a DDH with respect to the generator g of the systemtem's underlying group, i.e., of
         the form
+
                                 (u, v, g ^ (x * z) modp)
 
-        where u = g ^ x modp, v = g ^ z modp with 0 <= x, z < q
+
+        where u = g ^ x (modp), v = g ^ z (modp) with 0 <= x, z < q
 
         The provided `ddh` is of the form
 
-                    [ModPrimeElement, ModPrimeElement, ModPrimeElement]
+                    (ModPrimeElement, ModPrimeElement, ModPrimeElement)
 
         and the provided `proof` of the form
 
@@ -1870,8 +1872,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         __group = self.__group
 
-        __p, __q, _ = self._parameters()
-
         if randomness is None:
             randomness = __group.random_exponent()
 
@@ -1879,6 +1879,65 @@ class ModPrimeCrypto(ElGamalCrypto):
         beta = element * public_key ** randomness       # m * y ^ r (modp)
 
         ciphertext = self._set_ciphertext(alpha, beta)
+        #
+        # if get...:
+        #     return ciphertext, randomness
+        return ciphertext
+
+
+    def reencrypt(self, ciphertext, public_key, randomness=None):
+        """
+        Re-encryption of ElGamal-ciphertexts
+
+        Given the ElGamal-ciphertext `ciphertext`
+
+        {'alpha': a, 'beta': b}
+
+        and an element `public_key` y, computes and returns the ElGamal-ciphertext
+
+        {
+            'alpha': a * g ^ r      (modp)
+            'beta': b * y ^ r       (modp)
+        }
+
+        .. note:: (Special case of same public key) Given the ElGamal encryption
+
+        {
+            'alpha': g ^ r_0        (modp)
+            'beta': m * y ^ r_0     (modp)
+        }
+
+        of an original message m under the public key y, re-encrypting n times under
+        the same key y and successive randomnesses r_1, ..., r_n yields
+
+        {
+            'alpha': g ^ (r_0 + r_1 + ... + r_n)        (modp)
+            'beta': m * y ^ (r_0 + r_1 + ... + r_n)     (modp)
+        }
+
+        i.e., is equivalent to encrypting once with randomness r_0 + r_1 + ... + r_n
+
+        :type ciphertext: dict
+        :type public_key: ModPrimeElement
+        :type randomness: mpz
+        :rtype: dict or tuple
+        """
+        __group = self.__group
+
+        if randomness is None:
+            _randomness = __group.random_exponent(min=3)
+        else:
+            _randomness = randomness
+
+        alpha, beta = self._extract_ciphertext(ciphertext)
+
+        alpha = alpha * __group.generate(randomness)                # a * g ^ x
+        beta = beta * public_key ** randomness                      # b * y ^ x
+
+        ciphertext = self._set_ciphertext(alpha, beta)
+
+        if randomness is None:
+            ciphertext, _randomness
         return ciphertext
 
 

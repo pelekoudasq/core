@@ -5,6 +5,7 @@ from .constants import (_2048_PRIME, _2048_PRIMITIVE, _2048_ORDER, _2048_GENERAT
 
 from .modprime import ModPrimeCrypto
 from .elliptic import EllipticCrypto
+from .exceptions import WrongCryptoError
 
 __all__ = (
 
