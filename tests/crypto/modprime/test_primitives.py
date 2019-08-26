@@ -5,8 +5,9 @@ from gmpy2 import mpz, invert
 from crypto.constants import (_2048_KEY, _2048_PUBLIC, _2048_DDH,
                               _4096_KEY, _4096_PUBLIC, _4096_DDH)
 from crypto.modprime import ModPrimeElement
+from utils.random import random_integer
 
-from tests.constants import _2048_SYSTEM, _4096_SYSTEM
+from tests.constants import (RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM)
 
 
 # Key generation and validation
@@ -340,7 +341,7 @@ def test_invalid_encryption_proof(system, element, public_key, private_key):
 
 @pytest.mark.parametrize(
     'system, element, public_key, private_key', _system_element_key)
-def test_encryption_with_randomness_and_proof(system, element, public_key, private_key):
+def test_encryption_with_secret_and_proof(system, element, public_key, private_key):
 
     __p = system.group.modulus
 
@@ -383,8 +384,7 @@ def test_decryption_with_decryptor(system, element, public_key, private_key):
 
 from tests.constants import RES11_SYSTEM
 
-system = RES11_SYSTEM
-group = system.group
+group = RES11_SYSTEM.group
 modulus = group.modulus                    # p
 
 __ciphertext__public__secret__decoded = []
@@ -423,4 +423,34 @@ for _ in range(10):
     __ciphertext__public__secret__decoded)
 def test_decryption_with_randomness(ciphertext, public, secret, decoded):
     assert decoded == \
-        system._decrypt_with_randomness(ciphertext, public, secret)
+        RES11_SYSTEM._decrypt_with_randomness(ciphertext, public, secret)
+
+
+# Re-encryption
+
+__system__element__public_key__randoms = []
+
+for (system, public_key) in (
+        (RES11_SYSTEM, RES11_SYSTEM.group.random_element()),
+        (_2048_SYSTEM, ModPrimeElement(mpz(_2048_PUBLIC), _2048_SYSTEM.group.modulus)),
+        (_4096_SYSTEM, ModPrimeElement(mpz(_4096_PUBLIC), _4096_SYSTEM.group.modulus)),
+):
+    group = system.group
+
+    element = group.random_element()
+    randoms = [group.random_exponent() for _ in range(random_integer(1, 12))]
+
+    __system__element__public_key__randoms.append(
+        (system, element, public_key, randoms))
+
+@pytest.mark.parametrize('system, element, public_key, randoms',
+    __system__element__public_key__randoms)
+def test__reencrypt(system, element, public_key, randoms):
+
+    final = system._encrypt(element, public_key, randomness=sum(randoms))
+
+    __ciphertext = system._encrypt(element, public_key, randomness=randoms[0])
+    for random in randoms[1:]:
+        __ciphertext = system._reencrypt(__ciphertext, public_key, randomness=random)
+
+    assert __ciphertext == final

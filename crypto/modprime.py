@@ -1917,9 +1917,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         return ciphertext
 
 
-    def reencrypt(self, ciphertext, public_key, randomness=None, get_secret=False):
+    def _reencrypt(self, ciphertext, public_key, randomness=None, get_secret=False):
         """
         Re-encryption of ElGamal-ciphertexts
+
+        .. note:: This function is not used by zeus. It is here included for
+        testing and explanatory purposes. For actual use see the homonymous
+        mixnet method instead.
 
         Given the ElGamal-ciphertext `ciphertext`
 
