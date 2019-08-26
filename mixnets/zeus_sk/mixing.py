@@ -1,7 +1,11 @@
 from itertools import chain
 from hashlib import sha256
+from Crypto import Random
+
 ALPHA = 0
 BETA  = 1
+
+MIN_MIX_ROUNDS = 1
 
 def compute_mix_challenge(cipher_mix):
     """
@@ -27,3 +31,19 @@ def compute_mix_challenge(cipher_mix):
 
     challenge = hasher.hexdigest()
     return challenge
+
+# def _mix_ciphers(ciphers_to_mix, nr_rounds, teller=_teller, nr_parallel=0):
+#     """
+#     :type ciphers_to_mix: dict
+#     """
+#     p = ciphers_to_mix['modulus']
+#     q = ciphers_to_mix['order']
+#     g = ciphers_to_mix['generator']
+#
+#     y = ciphers_to_mix['public']
+#
+#     original_ciphers = ciphers_to_mix['mixed_ciphers']
+#     nr_ciphers = len(original_ciphers)
+#
+#     if nr_parallel > 0:
+#         Random.atfork()

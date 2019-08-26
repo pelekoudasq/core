@@ -196,6 +196,7 @@ class ModPrimeSubgroup(Group):
         self.__order = order
 
         self.__Element = ModPrimeElement
+        self.__unit = mpz(1)
 
 
     def __repr__(self):
@@ -251,6 +252,15 @@ class ModPrimeSubgroup(Group):
         :rtype: class
         """
         return self.__Element
+
+    def unit(self):
+        """
+        Returns the unit element of the group (i.e., the neutral
+        element with respect to the group operation)
+
+        :rtype: ModPrimeElement
+        """
+        return self.Element(self.__unit, self.__modulus)
 
 
     def set_generator(self, generator):
@@ -493,13 +503,13 @@ class ModPrimeCrypto(ElGamalCrypto):
             raise WrongCryptoError(e)
 
         if not allow_weakness:
-            MIN_MOD_SIZE = min_mod_size or self.__class__.MIN_MOD_SIZE
-            MIN_GEN_SIZE = min_gen_size or self.__class__.MIN_GEN_SIZE
 
+            MIN_MOD_SIZE = min_mod_size or self.__class__.MIN_MOD_SIZE
             if modulus.bit_length() < MIN_MOD_SIZE:
                 e = 'Provided modulus is < %d bits long' % MIN_MOD_SIZE
                 raise WeakCryptoError(e)
 
+            MIN_GEN_SIZE = min_gen_size or self.__class__.MIN_GEN_SIZE
             if group.generator.bit_length < MIN_GEN_SIZE:
                 e = 'Generator is < %d bits long' % MIN_GEN_SIZE
                 raise WeakCryptoError(e)
@@ -1061,8 +1071,23 @@ class ModPrimeCrypto(ElGamalCrypto):
         return True
 
 
-    def _combine_decryption_factors(self, factor_collection):
-        pass # --> elgamal.py
+    def _combine_decryption_factors(self, factors):
+        """
+        :type factors: list
+        :rtype:
+        """
+        if not factors:
+            return 0
+
+        master_factors = []
+
+        # append = master_factors.append
+        # for trustees_factor in zip(*factors):
+        #     master_factor = self.__group.unit()
+
+        return master_factors
+
+
 
     def compute_zeus_factors(self, mixed_ballots, secret):
         """

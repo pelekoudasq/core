@@ -11,7 +11,7 @@ class Zeus_SK(Mixnet):
 
     supported_crypto = (ModPrimeCrypto,)
 
-    __slots__ = ('__cryptosystem', '__nr_rounds', '__nr_mixes', '__election_key')
+    __slots__ = ('__cryptosystem', '__group', '__nr_rounds', '__nr_mixes', '__election_key')
 
     def __init__(self, config, election_key):
         """
@@ -27,10 +27,11 @@ class Zeus_SK(Mixnet):
             raise MixnetError(e)
 
         if not self.supports_cryptosystem(cryptosystem):
-            e = 'Provided crypto type is not supported by Zeus SK'
+            e = 'Provided crypto type is not supported by Zeus SK mixnet'
             raise WrongCryptoError(e)
 
         self.__cryptosystem = cryptosystem
+        self.__group = self.__cryptosystem.group
 
         self.__nr_rounds = nr_rounds
         self.__nr_mixes = nr_rounds
@@ -40,7 +41,7 @@ class Zeus_SK(Mixnet):
     @classmethod
     def supports_cryptosystem(cls, cryptosystem):
         """
-        :type cryptosystem: 
+        :type cryptosystem:
         :rtype: bool
         """
         return cryptosystem.__class__ in cls.supported_crypto
@@ -61,7 +62,7 @@ class Zeus_SK(Mixnet):
         :get_secret: bool
         :rtype: (ModPrimeElement, ModPrimeElement[, mpz])
         """
-        __group = self.__cryptosystem.group
+        __group = self.__group
 
         if randomness is None:
             randomness = __group.random_exponent(min=3)
@@ -109,9 +110,6 @@ class Zeus_SK(Mixnet):
                 count = 0
 
         return mixed_ciphers, mixed_offsets, mixed_randoms
-
-
-
 
 
     # def prepare_mix(self, cipher_collection):
