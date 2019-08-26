@@ -69,6 +69,12 @@ class ModPrimeElement(GroupElement):
         """
         self.__value = - self.__value % self.__modulus
 
+    def to_integer(self):
+        """
+        :rtype: int
+        """
+        return int(self.__value)
+
     @property
     def modulus(self):
         """
@@ -2052,8 +2058,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         _, beta = self._extract_ciphertext(ciphertext)
 
-        decryptor = decryptor.inverse                           # decryptor ^ -1 * beta (modp)
-        encoded = decryptor * beta
+        encoded = decryptor.inverse * beta                      # decryptor ^ -1 * beta (modp)
 
         return encoded
 

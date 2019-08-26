@@ -58,10 +58,10 @@ def test_ModPrimeSubgroup_Construction(modulus, root_order, order):
 
 # mod 11 setup
 
-from .constants import (Q_RES_11_GROUP,
+from tests.constants import (RES11_GROUP,
     _00_, _01_, _02_, _03_, _04_, _05_, _06_, _07_, _08_, _09_, _10_)
 
-Q_RES_11_GROUP.set_generator(3)
+RES11_GROUP.set_generator(3)
 
 __elements = [_01_, _02_, _03_, _04_, _05_, _06_, _07_, _08_, _09_, _10_]
 __residues = [_01_, _03_, _04_, _05_, _09_]
@@ -70,16 +70,16 @@ __residues = [_01_, _03_, _04_, _05_, _09_]
 @pytest.mark.parametrize('element', __elements)
 def test_contains(element):
     if element in __residues:
-        assert Q_RES_11_GROUP.contains(element)
+        assert RES11_GROUP.contains(element)
     else:
-        assert not Q_RES_11_GROUP.contains(element)
+        assert not RES11_GROUP.contains(element)
 
 @pytest.mark.parametrize('element', __elements)
 def test_contained_in(element):
     if element in __residues:
-        assert element.contained_in(Q_RES_11_GROUP)
+        assert element.contained_in(RES11_GROUP)
     else:
-        assert not element.contained_in(Q_RES_11_GROUP)
+        assert not element.contained_in(RES11_GROUP)
 
 
 __element__decoded = [
@@ -93,4 +93,4 @@ __element__decoded = [
 
 @pytest.mark.parametrize('element, decoded', __element__decoded)
 def test_decoding(element, decoded):
-    assert decoded == Q_RES_11_GROUP.decode_with_randomness(element)
+    assert decoded == RES11_GROUP.decode_with_randomness(element)

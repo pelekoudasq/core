@@ -6,7 +6,7 @@ from crypto.constants import (_2048_KEY, _2048_PUBLIC, _2048_DDH,
                               _4096_KEY, _4096_PUBLIC, _4096_DDH)
 from crypto.modprime import ModPrimeElement
 
-from .constants import _2048_SYSTEM, _4096_SYSTEM
+from tests.constants import _2048_SYSTEM, _4096_SYSTEM
 
 
 # Key generation and validation
@@ -381,9 +381,9 @@ def test_decryption_with_decryptor(system, element, public_key, private_key):
 
 # mod 11 setup
 
-from .constants import Q_RES_11_SYSTEM
+from tests.constants import RES11_SYSTEM
 
-system = Q_RES_11_SYSTEM
+system = RES11_SYSTEM
 group = system.group
 modulus = group.modulus                    # p
 
