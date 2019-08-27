@@ -36,11 +36,9 @@ MIXES = 20
 if __name__=='__main__':
 
     print('\n----------------- Zeus SK Mixing Test Session -----------------\n')
+    sleep(1)
 
-    print('Making Sako-Killian mixnet')
-    sleep(.5)
-
-    cryptosystem = RES11_SYSTEM #_4096_SYSTEM
+    cryptosystem = _4096_SYSTEM
     election_key = cryptosystem._extract_public(cryptosystem.keygen())
 
     mixnet = Zeus_SK({
@@ -51,24 +49,27 @@ if __name__=='__main__':
 
     ciphers = _make_ciphers(cryptosystem)
 
-    # Shuffling
-    from mixnets.zeus_sk.mixer import shuffle_ciphers
-
-    # print('Shuffling ciphers')
-    # sleep(.5)
-    # public = cryptosystem._extract_value(election_key)
-    # mixed_ciphers, mixed_offsets, mixed_randoms = \
-    #     mixnet._shuffle_ciphers(ciphers, public)
-    # # mixed_ciphers, mixed_offsets, mixed_randoms = \
-    # #     shuffle_ciphers(ciphers, public, mixnet._reencrypt)
-
-    # Mixing
-    from mixnets.zeus_sk.mixer import mix_ciphers
+    # Synchronous Mixing
+    print('Doing synchronous mixing')
+    sleep(1)
     ciphers_to_mix = _make_ciphers_to_mix(cryptosystem)
-    print(ciphers_to_mix)
-    cipher_mix = mix_ciphers(ciphers_to_mix, mixnet._reencrypt)
-    print(cipher_mix)
+    try:
+        cipher_mix = mixnet.mix_ciphers(ciphers_to_mix, nr_rounds=12)
+    except:
+        _exit(' - Sync mixing failed to be performed')
+    else:
+        print(' + Sync mixing successfully performed')
 
+    # Asynchronous Mixing
+    print('\nDoing asynchronous mixing\n')
+    sleep(1)
+    ciphers_to_mix = _make_ciphers_to_mix(cryptosystem)
+    try:
+        cipher_mix = mixnet.mix_ciphers(ciphers_to_mix, nr_rounds=12, nr_parallel=2)
+    except:
+        _exit(' - Async mixing failed to be performed')
+    else:
+        print(' + Async mixing successfully performed')
 
 
     print('\nMixing session complete: ALL CHECKS PASSED\n')

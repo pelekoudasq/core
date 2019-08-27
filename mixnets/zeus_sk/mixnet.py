@@ -3,6 +3,12 @@ from gmpy2 import mpz
 from ..abstracts import Mixnet, MixnetError
 from crypto import ModPrimeCrypto, ModPrimeElement, WrongCryptoError
 from utils import random_permutation
+from utils.async import AsyncController
+from utils.teller import _teller
+from utils.binutils import bit_iterator
+from .utils import shuffle_ciphers, compute_mix_challenge, verify_mix_round
+
+MIN_MIX_ROUNDS = 1
 
 
 class Zeus_SK(Mixnet):
@@ -200,39 +206,121 @@ class Zeus_SK(Mixnet):
         return res
 
 
-
-    def _shuffle_ciphers(self, ciphers, public,
-                teller=None, report_thres=128, async_channel=None):
+    def mix_ciphers(self, ciphers_to_mix, nr_rounds=MIN_MIX_ROUNDS,
+            teller=_teller, nr_parallel=0):
         """
-        Reencrypts the provided `ciphers` under the given key `public` and
-        returns a random permutation of the new ciphers, along with the
-        list of indices encoding this permutation and the randomnesses
-        used for re-encryption in the original order
+        {
+            'modulus': mpz,
+            'order': mpz,
+            'generator': mpz,
+            'public': ModPrimeElement
+            'original_ciphers': ...
+            'mixed_ciphers': list[(ModPrimeElement, ModPrimeElement)]
+            ...
+        }
 
-        :type ciphers: list[(ModPrimeElement, ModPrimeElement)]
-        :rtype: (list(ModPrimeElement, ModPrimeElement), list[int], list[mpz])
+        {
+            'modulus': mpz,
+            'order': mpz,
+            'generator': mpz,
+            'public': ModPrimeElement,
+            'original_ciphers': list[(ModPrimeElement, ModPrimeElement)]
+            'mixed_ciphers': list[(ModPrimeElement, ModPrimeElement)]
+            'proof': {
+                'cipher_collections':,
+                'offset_collections':,
+                'random_collections':
+                'challenge': str
+            }
+        }
+
+        :type ciphers_to_mix: dict
+        :rtype: dict
         """
-        nr_ciphers = len(ciphers)
-        mixed_offsets = random_permutation(nr_ciphers)
+        encrypt_func = self._reencrypt
 
-        mixed_ciphers = [None] * nr_ciphers
-        mixed_randoms = [None] * nr_ciphers
-        count = 0
-        for i in range(nr_ciphers):
+        modulus = ciphers_to_mix['modulus']
+        order = ciphers_to_mix['order']
+        generator = ciphers_to_mix['generator']
+        public = ciphers_to_mix['public']
+        original_ciphers = ciphers_to_mix['mixed_ciphers']
 
-            alpha, beta = ciphers[i]
-            alpha, beta, secret = self._reencrypt(alpha, beta, public, get_secret=True)
+        nr_ciphers = len(original_ciphers)
 
-            mixed_randoms[i] = secret
-            j = mixed_offsets[i]
-            mixed_ciphers[j] = (alpha, beta)
+        if nr_parallel > 0:
+            Random.atfork()
+            _async = AsyncController(parallel=nr_parallel)
+            async_shuffle_ciphers = _async.make_async(shuffle_ciphers)
 
-            count += 1
-            if teller:
-                teller.advance(count)
-            if async_channel:
-                async_channel.send_shared(count, wait=1)
-            if count >= report_thres:
+        teller.task('Mixing %d ciphers for %d rounds' % (nr_ciphers, nr_rounds))
+
+        cipher_mix = {}
+        cipher_mix['modulus'] = modulus
+        cipher_mix['order'] = order
+        cipher_mix['generator'] = generator
+        cipher_mix['public'] = public
+        cipher_mix['original_ciphers'] = original_ciphers
+
+        with teller.task('Producing final mixed ciphers'):
+            mixed_ciphers, mixed_offsets, mixed_randoms = \
+                shuffle_ciphers(original_ciphers, public, encrypt_func, teller=teller)
+            cipher_mix['mixed_ciphers'] = mixed_ciphers
+
+        total = nr_ciphers * nr_rounds
+        with teller.task('Producing ciphers for proof', total=total):
+            if nr_parallel > 0:
+                channels = [async_shuffle_ciphers(original_ciphers, public, encrypt_func,
+                                teller=teller) for _ in range(nr_rounds)]
                 count = 0
+                while count < total:
+                    nr = _async.receive_shared()
+                    teller.advance(nr)
+                    count += nr
 
-        return mixed_ciphers, mixed_offsets, mixed_randoms
+                collections = [channel.receive(wait=1) for channel in channels]
+                _async.shutdown()
+            else:
+                collections = [shuffle_ciphers(original_ciphers, public, encrypt_func, teller=teller)
+                    for _ in range(nr_rounds)]
+
+            unzipped = [list(x) for x in zip(*collections)]
+            cipher_collections, offset_collections, random_collections = unzipped
+            cipher_mix['proof'] = {
+                'cipher_collections': cipher_collections,
+                'offset_collections': offset_collections,
+                'random_collections': random_collections
+            }
+
+        with teller.task('Producing cryptographic hash challenge'):
+            challenge = compute_mix_challenge(cipher_mix)
+            cipher_mix['proof']['challenge'] = challenge
+
+        bits = bit_iterator(int(challenge, 16))
+        with teller.task('Answering according to challenge', total=nr_rounds):
+            for i, bit in zip(range(nr_rounds), bits):
+                ciphers = cipher_collections[i]
+                offsets = offset_collections[i]
+                randoms = random_collections[i]
+
+                if bit == 0:
+                    pass              # Do nothing, just publish offsets and randoms
+                elif bit == 1:
+                    new_offsets = [None] * nr_ciphers
+                    new_randoms = [None] * nr_ciphers
+
+                    for j in range(nr_ciphers):
+                        k = offsets[j]
+                        new_offsets[k] = mixed_offsets[j]
+                        new_randoms[k] = (mixed_randoms[j] - randoms[j]) % order
+
+                    offset_collections[i] = new_offsets
+                    random_collections[i] = new_randoms
+
+                    del offsets, randoms
+                else:
+                    e = 'This should be impossible. Something is broken'
+                    raise AssertionError(e)
+                teller.advance()
+
+        teller.finish('Mixing')
+        return cipher_mix
