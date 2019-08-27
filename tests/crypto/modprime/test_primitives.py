@@ -385,7 +385,7 @@ def test_decryption_with_decryptor(system, element, public_key, private_key):
 from tests.constants import RES11_SYSTEM
 
 group = RES11_SYSTEM.group
-modulus = group.modulus                    # p
+modulus = group.modulus                    
 
 __ciphertext__public__secret__decoded = []
 
@@ -430,14 +430,11 @@ def test_decryption_with_randomness(ciphertext, public, secret, decoded):
 
 __system__element__public_key__randoms = []
 
-for (system, public_key) in (
-        (RES11_SYSTEM, RES11_SYSTEM.group.random_element()),
-        (_2048_SYSTEM, ModPrimeElement(mpz(_2048_PUBLIC), _2048_SYSTEM.group.modulus)),
-        (_4096_SYSTEM, ModPrimeElement(mpz(_4096_PUBLIC), _4096_SYSTEM.group.modulus)),
-):
+for system in (RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM):
     group = system.group
 
     element = group.random_element()
+    public_key = group.random_element()
     randoms = [group.random_exponent() for _ in range(random_integer(1, 12))]
 
     __system__element__public_key__randoms.append(

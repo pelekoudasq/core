@@ -104,9 +104,8 @@ class Zeus_SK(Mixnet):
         Assuming `cipher_collection` to be a dictionary of the form
 
         {
-            ...,
-            'original_ciphers': [{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],
-            ['mixed_ciphers': [{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],]
+            'original_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],
+            ['mixed_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],]
             ['proof': ...]
             ...
         }
@@ -118,8 +117,8 @@ class Zeus_SK(Mixnet):
             'order': mpz,
             'generator': mpz,
             'public': ModPrimeElement,
-            'original_ciphers': [(ModPrimeElement, ModPrimeElement)],
-            'mixed_ciphers': [(ModPrimeElement, ModPrimeElement)],
+            'original_ciphers': list[(ModPrimeElement, ModPrimeElement)],
+            'mixed_ciphers': list[(ModPrimeElement, ModPrimeElement)],
             ['proof': ...]
         }
 
@@ -161,9 +160,8 @@ class Zeus_SK(Mixnet):
         Assuming `mixed_collection` to be a dictionary of the form
 
         {
-            ...,
-            'original_ciphers': [(ModPrimeElement, ModPrimeElement)],
-            'mixed_ciphers': [(ModPrimeElement, ModPrimeElement)],
+            'original_ciphers': list[(ModPrimeElement, ModPrimeElement)],
+            'mixed_ciphers': list[(ModPrimeElement, ModPrimeElement)],
             'proof': ...,
             ...
         }
@@ -175,8 +173,8 @@ class Zeus_SK(Mixnet):
             'order': mpz,
             'generator': mpz,
             'public': ModPrimeElement,
-            'original_ciphers': [{'alpha': ModPrimeElement, 'beta': ModPrimeElement}]
-            'mixed_ciphers': [{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],
+            'original_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}]
+            'mixed_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],
             'proof': ...
         }
 
@@ -238,48 +236,3 @@ class Zeus_SK(Mixnet):
                 count = 0
 
         return mixed_ciphers, mixed_offsets, mixed_randoms
-
-
-    # def prepare_mix(self, cipher_collection):
-    #     """
-    #     :type cipher_collection:
-    #     :rtype:
-    #     """
-    #     pass
-    #
-    # def extract_mix(self, mixed_collection):
-    #     """
-    #     Assumes a dictionary of the form
-    #
-    #     {
-    #         'mixed_ciphers': list[tuple],
-    #         'original_ciphers': list[tuple],
-    #         'proof': ...
-    #     }
-    #
-    #     :type mixed_collection: dict
-    #     :rtype: dict
-    #     """
-    #     system = self.__cryptosystem
-    #
-    #     mixed_ciphers = [self.__cryptosystem._set_ciphertext(alpha, beta)
-    #         for (alpha, beta) in mixed_collection['mixed_ciphers']]
-    #
-    #     original_ciphers = [self.__cryptosystem._set_ciphertext(alpha, beta)
-    #         for (alpha, beta) in mixed_collection['original_ciphers']]
-    #
-    #     proof = mixed_collection['proof']
-    #
-    #     modulus, order, generator = system.parameters()
-    #
-    #     mix = {}
-    #
-    #     mix['modulus'] = modulus,
-    #     mix['order'] = order,
-    #     mix['generator'] = generator,
-    #     mix['public'] = self.__election_key,
-    #     mix['mixed_ciphers'] = mixed_ciphers,
-    #     mix['original_ciphers'] = original_ciphers,
-    #     mix['proof'] = proof
-    #
-    #     return mix

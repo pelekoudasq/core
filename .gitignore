@@ -3,4 +3,4 @@
 *.pyc
 *save*
 notes
-.coverage
+*coverage*
