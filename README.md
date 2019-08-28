@@ -10,6 +10,7 @@ pytest tests/
 and
 
 ```shell
-python3 sessions/primitives.py
-python3 sessions/voting.py
+python3 sessions/modprime/primitives.py
+python3 sessions/modprime/voting.py
+python3 sessions/zeus_sk.py
 ```
