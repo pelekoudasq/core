@@ -2,10 +2,26 @@ from itertools import chain
 from hashlib import sha256
 from Crypto import Random
 
-# from utils.async import AsyncController
+from utils.random import random_permutation
 
 ALPHA = 0
 BETA  = 1
+
+class RoundNotVerifiedError(BaseException):
+    """
+    Raised when a mix round fails to be verified
+    """
+    pass
+
+def _raise_RoundNotVerifiedError(round_nr, cipher_nr, bit):
+    """
+    :type round_nr: int
+    :type cipher_nr: int
+    :type bit: int
+    """
+    e = 'MIXING VERIFICATION FAILED AT ROUND %d CIPHER %d bit %d' % (
+            round_nr, cipher_nr, bit)
+    raise RoundNotVerifiedError(e)
 
 
 def compute_mix_challenge(cipher_mix):
@@ -33,11 +49,9 @@ def compute_mix_challenge(cipher_mix):
     challenge = hasher.hexdigest()
     return challenge
 
-from utils.random import random_permutation
 
-
-def shuffle_ciphers(ciphers, public, encrypt_func, mixed_offsets=None,
-            teller=None, report_thres=128, async_channel=None):
+def shuffle_ciphers(ciphers, public, encrypt_func, teller=None,
+            report_thres=128, async_channel=None):
     """
     Reencrypts the provided `ciphers` under the given key `public` and returns a random
     permutation of the new ciphers, along with the list of indices encoding this
@@ -49,8 +63,7 @@ def shuffle_ciphers(ciphers, public, encrypt_func, mixed_offsets=None,
     :rtype: (list[(ModPrimeElement, ModPrimeElement)], list[int], list[mpz])
     """
     nr_ciphers = len(ciphers)
-    if mixed_offsets is None:
-        mixed_offsets = random_permutation(nr_ciphers)
+    mixed_offsets = random_permutation(nr_ciphers)
 
     mixed_ciphers = [None] * nr_ciphers
     mixed_randoms = [None] * nr_ciphers
@@ -75,27 +88,13 @@ def shuffle_ciphers(ciphers, public, encrypt_func, mixed_offsets=None,
     return mixed_ciphers, mixed_offsets, mixed_randoms
 
 
-class MixVerificationError(BaseException):
-    """
-    Raised when a mix round fails to be verified
-    """
-    pass
-
-def _raise_MixVerificationError(round_nr, cipher_nr, bit):
-    """
-    :type round_nr: int
-    :type cipher_nr: int
-    :type bit: int
-    """
-    e = 'MIXING VERIFICATION FAILED AT ROUND %d CIPHER %d bit %d' % (
-            round_nr, cipher_nr, bit)
-    raise MixVerificationError(e)
-
-
 def verify_mix_round(round_nr, bit, original_ciphers, mixed_ciphers,
         ciphers, offsets, randoms, encrypt_func, public,
         teller=None, report_thres=128, async_channel=None):
     """
+    Returns True if the round is successfully verified, otherwise raises
+    `RoundNotVerifiedError`
+
     :type round_nr: int
     :type bit: int
     :type original_ciphers: list[(ModPrimeElement, ModPrimeElement)]
@@ -108,32 +107,33 @@ def verify_mix_round(round_nr, bit, original_ciphers, mixed_ciphers,
     :type teller:
     :type report_thres: int
     :type async_channel:
+    :rtype: bool
     """
     nr_ciphers = len(original_ciphers)
 
     if bit == 0:
-        primary_ciphers = original_ciphers
-        secondary_ciphers = ciphers
+        preimages = original_ciphers
+        images = ciphers
     elif bit == 1:
-        primary_ciphers = ciphers
-        secondary_ciphers = mixed_ciphers
+        preimages = ciphers
+        images = mixed_ciphers
     else:
         e = 'This should be impossible. Something is broken'
         raise AssertionError(e)
 
     count = 0
     for j in range(nr_ciphers):
-        primary_cipher = primary_ciphers[j]
-        random = randoms[j]
+        preimage = preimages[j]
         offset = offsets[j]
+        random = randoms[j]
 
-        alpha = primary_cipher[ALPHA]
-        beta = primary_cipher[BETA]
+        alpha = preimage[ALPHA]
+        beta = preimage[BETA]
         new_alpha, new_beta = encrypt_func(alpha, beta, public, randomness=random)
 
-        secondary_cipher = secondary_ciphers[offset]
-        if new_alpha != secondary_cipher[ALPHA] or new_beta != secondary_cipher[BETA]:
-            _raise_MixVerificationError(round_nr=round_nr, cipher_nr=j, bit=bit)
+        image = images[offset]
+        if new_alpha != image[ALPHA] or new_beta != image[BETA]:
+            _raise_RoundNotVerifiedError(round_nr=round_nr, cipher_nr=j, bit=bit)
 
         count += 1
         if count >= report_thres:

@@ -6,9 +6,16 @@ from utils import random_permutation
 from utils.async import AsyncController
 from utils.teller import _teller
 from utils.binutils import bit_iterator
-from .utils import shuffle_ciphers, compute_mix_challenge, verify_mix_round
+from .utils import (shuffle_ciphers, compute_mix_challenge,
+    RoundNotVerifiedError, verify_mix_round)
 
 MIN_MIX_ROUNDS = 1
+
+class MixNotVerifiedError(BaseException):
+    """
+    Raised when a cipher-mix fails to be verified
+    """
+    pass
 
 
 class Zeus_SK(Mixnet):
@@ -198,13 +205,15 @@ class Zeus_SK(Mixnet):
         res['generator'] = self.__generator
         res['public'] = self.__election_key
 
-        for KEY in ('original_ciphers', 'mixed_ciphers',):
-            res[KEY] = [{'alpha': c[0], 'beta': c[1]} for c in mixed_collection[KEY]]
+        for key in ('original_ciphers', 'mixed_ciphers',):
+            res[key] = [{'alpha': c[0], 'beta': c[1]} for c in mixed_collection[key]]
 
         res['proof'] = mixed_collection['proof']
 
         return res
 
+
+    # Core
 
     def mix_ciphers(self, ciphers_to_mix, nr_rounds=MIN_MIX_ROUNDS,
             teller=_teller, nr_parallel=0):
@@ -237,38 +246,42 @@ class Zeus_SK(Mixnet):
         :type ciphers_to_mix: dict
         :rtype: dict
         """
-        encrypt_func = self._reencrypt
-
-        modulus = ciphers_to_mix['modulus']
-        order = ciphers_to_mix['order']
-        generator = ciphers_to_mix['generator']
-        public = ciphers_to_mix['public']
+        cipher_mix = {}
+        order = self.__order# ciphers_to_mix['order']
+        public = self.__election_key #ciphers_to_mix['public']
         original_ciphers = ciphers_to_mix['mixed_ciphers']
 
+        # Set some data
+
+        cipher_mix['modulus'] = self.__modulus# ciphers_to_mix['modulus']
+        cipher_mix['order'] = order
+        cipher_mix['generator'] = self.__generator #ciphers_to_mix['generator']
+        cipher_mix['public'] = public
+        cipher_mix['original_ciphers'] = original_ciphers
+        cipher_mix['proof'] = {}
+
+        proof = cipher_mix['proof']
         nr_ciphers = len(original_ciphers)
 
-        if nr_parallel > 0:
-            Random.atfork()
-            _async = AsyncController(parallel=nr_parallel)
-            async_shuffle_ciphers = _async.make_async(shuffle_ciphers)
+        # Proceed to mixing
 
         teller.task('Mixing %d ciphers for %d rounds' % (nr_ciphers, nr_rounds))
 
-        cipher_mix = {}
-        cipher_mix['modulus'] = modulus
-        cipher_mix['order'] = order
-        cipher_mix['generator'] = generator
-        cipher_mix['public'] = public
-        cipher_mix['original_ciphers'] = original_ciphers
-
+        encrypt_func = self._reencrypt
         with teller.task('Producing final mixed ciphers'):
-            mixed_ciphers, mixed_offsets, mixed_randoms = \
-                shuffle_ciphers(original_ciphers, public, encrypt_func, teller=teller)
+            mixed_ciphers, mixed_offsets, mixed_randoms = shuffle_ciphers(
+                original_ciphers, public, encrypt_func, teller=teller)
             cipher_mix['mixed_ciphers'] = mixed_ciphers
 
         total = nr_ciphers * nr_rounds
         with teller.task('Producing ciphers for proof', total=total):
+            _async = None
             if nr_parallel > 0:
+                Random.atfork()
+                _async = AsyncController(parallel=nr_parallel)
+                async_shuffle_ciphers = _async.make_async(shuffle_ciphers)
+
+            if _async:
                 channels = [async_shuffle_ciphers(original_ciphers, public, encrypt_func,
                                 teller=teller) for _ in range(nr_rounds)]
                 count = 0
@@ -285,18 +298,18 @@ class Zeus_SK(Mixnet):
 
             unzipped = [list(x) for x in zip(*collections)]
             cipher_collections, offset_collections, random_collections = unzipped
-            cipher_mix['proof'] = {
-                'cipher_collections': cipher_collections,
-                'offset_collections': offset_collections,
-                'random_collections': random_collections
-            }
+            proof['cipher_collections'] = cipher_collections
+            proof['offset_collections'] = offset_collections
+            proof['random_collections'] = random_collections
 
+        # Produce challenge
         with teller.task('Producing cryptographic hash challenge'):
             challenge = compute_mix_challenge(cipher_mix)
-            cipher_mix['proof']['challenge'] = challenge
+            proof['challenge'] = challenge
 
+        # Modify collections according to challenge
         bits = bit_iterator(int(challenge, 16))
-        with teller.task('Answering according to challenge', total=nr_rounds):
+        with teller.task('Making collections according to challenge', total=nr_rounds):
             for i, bit in zip(range(nr_rounds), bits):
                 ciphers = cipher_collections[i]
                 offsets = offset_collections[i]
@@ -324,3 +337,120 @@ class Zeus_SK(Mixnet):
 
         teller.finish('Mixing')
         return cipher_mix
+
+
+    def verify_cipher_mix(self, cipher_mix, teller=_teller, min_rounds=None, nr_parallel=0):
+        """
+        {
+            'modulus': mpz,
+            'order': mpz,
+            'generator': mpz,
+            'public': ModPrimeElement,
+            'original_ciphers': list[(ModPrimeElement, ModPrimeElement)]
+            'mixed_ciphers': list[(ModPrimeElement, ModPrimeElement)]
+            'proof': {
+                'cipher_collections':,
+                'offset_collections':,
+                'random_collections':
+                'challenge': str
+            }
+        }
+
+        :type cipher_mix: dict
+        :type teller:
+        :type min_rounds: int
+        :type nr_parallel: int
+        """
+        try:
+            modulus = cipher_mix['modulus']
+            order = cipher_mix['order']
+            generator = cipher_mix['generator']
+            public = cipher_mix['public']
+            original_ciphers = cipher_mix['original_ciphers']
+            mixed_ciphers = cipher_mix['mixed_ciphers']
+            proof = cipher_mix['proof']
+        except KeyError as error:
+            e = 'Invalid mix format: \'%s\' missing' % error.args[0]
+            raise MixNotVerifiedError(e)
+
+        try:
+            cipher_collections = proof['cipher_collections']
+            offset_collections = proof['offset_collections']
+            random_collections = proof['random_collections']
+            challenge = proof['challenge']
+        except KeyError as error:
+            e = 'Malformed proof provided: \'%s\' missing' % error.args[0]
+            raise MixNotVerifiedError(e)
+
+        nr_ciphers = len(original_ciphers)
+        nr_rounds = len(cipher_collections)
+
+        # Validate challenge
+        if challenge != compute_mix_challenge(cipher_mix):
+            e = 'Invalid challenge'
+            raise MixNotVerifiedError(e)
+
+        teller.task('Verifying mixing of %d ciphers for %d rounds'
+            % (nr_ciphers, nr_rounds))
+
+        # Check rounds lower boundary
+        if min_rounds is not None and nr_rounds < min_rounds:
+            e = 'Invalid mix: rounds fewer than required: %d < %d' % (
+                    nr_rounds, min_rounds)
+            raise MixNotVerifiedError(e)
+
+        # Check collections lengths
+        if (len(offset_collections) != nr_rounds or
+            len(random_collections) != nr_rounds):
+            e = 'Invlid mix format: collections not of the same size'
+            raise MixNotVerifiedError(e)
+
+        # Verify mix rounds
+        total = nr_rounds * nr_ciphers
+        with teller.task('Verifying ciphers', total=total):
+            _async = None
+            if nr_parallel > 0:
+                _async = AsyncController(parallel=nr_parallel)
+                channels = []
+                append = channels.append
+                async_verify_mix_round = _async.make_async(verify_mix_round)
+
+            encrypt_func = self._reencrypt
+            for i, bit in zip(range(nr_rounds), bit_iterator(int(challenge, 16))):
+                ciphers = cipher_collections[i]
+                offsets = offset_collections[i]
+                randoms = random_collections[i]
+
+                if _async:
+                    append(async_verify_mix_round(i, bit,
+                                    original_ciphers, mixed_ciphers, ciphers,
+                                    offsets, randoms, encrypt_func,
+                                    public, teller=None))
+                else:
+                    try:
+                        verify_mix_round(i, bit, original_ciphers, mixed_ciphers,
+                                        ciphers, offsets, randoms, encrypt_func,
+                                        public, teller=None)
+                    except RoundNotVerifiedError as error:
+                        e = error.args[0]
+                        raise MixNotVerifiedError(e)
+
+            # TODO: Refine try/except?
+            if _async:
+                try:
+                    count = 0
+                    while count < total:
+                        nr = _async.receive_shared(wait=1)
+                        teller.advance(nr)
+                        count += 1
+
+                    for channel in channels:
+                        channel.receive(wait=1)
+                except RoundNotVerifiedError as error:
+                    e = error.args[0]
+                    raise MixNotVerifiedError(e)
+
+                _async.shutdown()
+
+        teller.finish('Verifying mixing')
+        return True

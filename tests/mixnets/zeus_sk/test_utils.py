@@ -4,7 +4,8 @@ from hashlib import sha256
 from itertools import chain
 
 from crypto import ModPrimeElement
-from mixnets.zeus_sk.utils import compute_mix_challenge, shuffle_ciphers, MixVerificationError, verify_mix_round
+from mixnets.zeus_sk.utils import (compute_mix_challenge, shuffle_ciphers,
+    RoundNotVerifiedError, verify_mix_round)
 from utils.random import random_integer, random_permutation
 
 from tests.constants import (RES11_ZEUS_SK, RES11_ELECTION_KEY,
@@ -75,27 +76,27 @@ for mixnet, election_key in ((RES11_ZEUS_SK, RES11_ELECTION_KEY), (_2048_ZEUS_SK
             offsets = random_permutation(nr_ciphers)
             randoms = [random_exponent() for _ in _range]
 
-            primary_ciphers = [(random_element(), random_element()) for _ in _range]
+            preimages = [(random_element(), random_element()) for _ in _range]
             if verified:
-                secondary_ciphers = [None] * nr_ciphers
+                images = [None] * nr_ciphers
                 for j in _range:
-                    primary = primary_ciphers[j]
+                    preimage = preimages[j]
                     random = randoms[j]
                     offset = offsets[j]
-                    secondary = encrypt_func(primary[0], primary[1], public, randomness=random)
-                    secondary_ciphers[offset] = secondary
+                    image = encrypt_func(preimage[0], preimage[1], public, randomness=random)
+                    images[offset] = image
             else:
                 # TODO: Refine test
-                secondary_ciphers = [(random_element(), random_element()) for _ in _range]
+                images = [(random_element(), random_element()) for _ in _range]
 
             if bit == 0:
-                original_ciphers = primary_ciphers
+                original_ciphers = preimages
                 mixed_ciphers = ['Should play no role in this case...']
-                ciphers = secondary_ciphers
+                ciphers = images
             else:
                 original_ciphers = ['Should play no role in this case...']
-                mixed_ciphers = secondary_ciphers
-                ciphers = primary_ciphers
+                mixed_ciphers = images
+                ciphers = preimages
 
             __mix_round_verification_parameters.append((bit, original_ciphers,
                 mixed_ciphers, ciphers, offsets, randoms, encrypt_func, public, verified))
@@ -111,7 +112,7 @@ def test_verify_mix_round(bit, original_ciphers, mixed_ciphers, ciphers,
         assert verify_mix_round(0, bit, original_ciphers, mixed_ciphers,
             ciphers, offsets, randoms, encrypt_func, public)
     else:
-        with pytest.raises(MixVerificationError):
+        with pytest.raises(RoundNotVerifiedError):
             verify_mix_round(0, bit, original_ciphers, mixed_ciphers,
                 ciphers, offsets, randoms, encrypt_func, public)
 

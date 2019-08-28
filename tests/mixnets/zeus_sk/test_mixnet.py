@@ -140,3 +140,6 @@ __mixnet__mixed_collection__result = [
     __mixnet__mixed_collection__result)
 def test__extract_mix(mixnet, mixed_collection, result):
     assert result == mixnet._extract_mix(mixed_collection)
+
+
+# Test core

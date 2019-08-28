@@ -34,7 +34,7 @@ class ModPrimeElement(GroupElement):
 
         # Set here modular inverse (costly to compute everytime)
         try:
-            self.__inverse = invert(self.__value, self.__modulus)
+            self.__inverse = invert(self.__value, modulus)
         except ZeroDivisionError:
             pass                               # Set nothing if it doesn't exist
 
