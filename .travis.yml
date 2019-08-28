@@ -5,7 +5,7 @@ python:
 
 install:
   - sudo git clone https://github.com/aleaxit/gmpy.git
-  - cd gmpy2 && python3 setup.py install && cd ..
+  - cd gmpy && python3 setup.py install && cd ..
   - pip install -r requirements.txt
   - pip install -r dev-requirements.txt
   - pip install codecov
