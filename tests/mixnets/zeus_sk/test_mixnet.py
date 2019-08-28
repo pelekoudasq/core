@@ -1,7 +1,12 @@
 import pytest
 
+from copy import deepcopy
+
 from mixnets import Zeus_SK, MixnetError
+from mixnets.zeus_sk.mixnet import MixNotVerifiedError
 from crypto import WrongCryptoError
+from tests.mixnets.zeus_sk.helpers import _make_ciphers_to_mix
+from utils.binutils import bit_iterator
 
 ROUNDS = 100
 MIXES = 20
@@ -142,4 +147,72 @@ def test__extract_mix(mixnet, mixed_collection, result):
     assert result == mixnet._extract_mix(mixed_collection)
 
 
-# Test core
+# Cipher-mix verification
+
+# Success (sync)
+
+__mixnet__ciphers_to_mix__nr_rounds = []
+
+for (mixnet, election_key, nr_rounds) in (
+    (RES11_ZEUS_SK, RES11_ELECTION_KEY, 24),
+    (_2048_ZEUS_SK, _2048_ELECTION_KEY, 12),
+    (_4096_ZEUS_SK, _4096_ELECTION_KEY, 3)
+):
+    __mixnet__ciphers_to_mix__nr_rounds.append(
+        (mixnet, _make_ciphers_to_mix(mixnet, election_key), nr_rounds))
+
+@pytest.mark.parametrize('mixnet, ciphers_to_mix, nr_rounds',
+    __mixnet__ciphers_to_mix__nr_rounds)
+def test_cipher_mix_verification_success(mixnet, ciphers_to_mix, nr_rounds):
+    cipher_mix = mixnet.mix_ciphers(ciphers_to_mix, nr_rounds=nr_rounds, nr_parallel=0)
+    assert mixnet.verify_cipher_mix(cipher_mix, nr_parallel=0)
+
+# Failures (sync)
+
+__failure_cases = []
+
+for (mixnet, election_key, nr_rounds) in (
+    (RES11_ZEUS_SK, RES11_ELECTION_KEY, 24),
+    (_2048_ZEUS_SK, _2048_ELECTION_KEY, 12),
+    (_4096_ZEUS_SK, _4096_ELECTION_KEY, 3)
+):
+    ciphers_to_mix = _make_ciphers_to_mix(mixnet, election_key)
+    cipher_mix = mixnet.mix_ciphers(ciphers_to_mix)
+
+    # Corrupt keys
+    corrupt = deepcopy(cipher_mix)
+    del corrupt['public']
+    __failure_cases.append((mixnet, corrupt))
+
+    # Corrupt proof keys
+    corrupt = deepcopy(cipher_mix)
+    del corrupt['proof']['cipher_collections']
+    __failure_cases.append((mixnet, corrupt))
+
+    # Corrupt challenge
+    corrupt = deepcopy(cipher_mix)
+    corrupt['proof']['challenge'] += '0'
+    __failure_cases.append((mixnet, corrupt))
+
+    # Corrupt collections lengths
+    corrupt = deepcopy(cipher_mix)
+    corrupt['proof']['offset_collections'] += [0]
+    __failure_cases.append((mixnet, corrupt))
+
+    # Corrupt first round
+    corrupt = deepcopy(cipher_mix)
+    bit = next(bit_iterator(int(corrupt['proof']['challenge'], 16)))
+    if bit == 0:
+        preimages = corrupt['original_ciphers']
+        images = corrupt['proof']['cipher_collections'][0]
+    else:
+        preimages = corrupt['proof']['cipher_collections'][0]
+        images = corrupt['mixed_ciphers']
+    images[0][0].reduce_value()
+    __failure_cases.append((mixnet, corrupt))
+
+
+@pytest.mark.parametrize('mixnet, cipher_mix', __failure_cases)
+def test_cipher_mix_verification_failure(mixnet, cipher_mix):
+    with pytest.raises(MixNotVerifiedError):
+        mixnet.verify_cipher_mix(cipher_mix, nr_parallel=0)

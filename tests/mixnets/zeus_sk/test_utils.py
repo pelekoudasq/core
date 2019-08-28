@@ -86,7 +86,6 @@ for mixnet, election_key in ((RES11_ZEUS_SK, RES11_ELECTION_KEY), (_2048_ZEUS_SK
                     image = encrypt_func(preimage[0], preimage[1], public, randomness=random)
                     images[offset] = image
             else:
-                # TODO: Refine test
                 images = [(random_element(), random_element()) for _ in _range]
 
             if bit == 0:

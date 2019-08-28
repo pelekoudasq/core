@@ -124,8 +124,8 @@ def verify_mix_round(round_nr, bit, original_ciphers, mixed_ciphers,
     count = 0
     for j in range(nr_ciphers):
         preimage = preimages[j]
-        offset = offsets[j]
         random = randoms[j]
+        offset = offsets[j]
 
         alpha = preimage[ALPHA]
         beta = preimage[BETA]

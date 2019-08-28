@@ -247,15 +247,15 @@ class Zeus_SK(Mixnet):
         :rtype: dict
         """
         cipher_mix = {}
-        order = self.__order# ciphers_to_mix['order']
-        public = self.__election_key #ciphers_to_mix['public']
+        order = self.__order
+        public = self.__election_key
         original_ciphers = ciphers_to_mix['mixed_ciphers']
 
         # Set some data
 
-        cipher_mix['modulus'] = self.__modulus# ciphers_to_mix['modulus']
+        cipher_mix['modulus'] = self.__modulus
         cipher_mix['order'] = order
-        cipher_mix['generator'] = self.__generator #ciphers_to_mix['generator']
+        cipher_mix['generator'] = self.__generator
         cipher_mix['public'] = public
         cipher_mix['original_ciphers'] = original_ciphers
         cipher_mix['proof'] = {}
@@ -402,7 +402,7 @@ class Zeus_SK(Mixnet):
         # Check collections lengths
         if (len(offset_collections) != nr_rounds or
             len(random_collections) != nr_rounds):
-            e = 'Invlid mix format: collections not of the same size'
+            e = 'Invalid mix format: collections not of the same size'
             raise MixNotVerifiedError(e)
 
         # Verify mix rounds
