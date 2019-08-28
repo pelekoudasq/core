@@ -7,7 +7,7 @@ from crypto.constants import _2048_PRIME, _2048_PRIMITIVE, _4096_PRIME, _4096_PR
 from mixnets import Zeus_SK
 
 
-# Small algebraic objects
+# -- Small algebraic objects -- 
 
 RES11_GROUP = ModPrimeSubgroup(11, 2)             # quadratic residues mod 11
 
