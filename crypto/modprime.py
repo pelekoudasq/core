@@ -2021,6 +2021,9 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         Standard ElGamal decryption
 
+        .. note:: this function is not used by zeus. It is here included
+        for completeness of the cryptossytem and testing purposes.
+
         Decrypts the provided ElGamal-ciphertext `ciphertext`
 
         {'alpha': a, 'beta': b}
@@ -2032,9 +2035,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type ciphertext: dict
         :type private_key: mpz
         :rtype: ModPrimeElement
-
-        .. note:: this function is not used by zeus; it is here included
-        for completeness of the cryptossytem and testing purposes
         """
         alpha, beta = self._extract_ciphertext(ciphertext)
 
