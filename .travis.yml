@@ -4,11 +4,9 @@ python:
   - "3.6"
 
 install:
-  - sudo git clone https://github.com/aleaxit/gmpy.git
-  - cd gmpy && sudo python3 setup.py install && cd ..
-  - pip install -r requirements.txt
-  - pip install -r dev-requirements.txt
-  - pip install codecov
+  - sudo pip install -r requirements.txt
+  - sudo pip install -r dev-requirements.txt
+  - sudo pip install codecov
 
 script:
   - pytest tests/ --cov

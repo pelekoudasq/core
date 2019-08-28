@@ -1,1 +1,2 @@
-pycrypto>=2.6.1
+pytest>=5.0.1
+pytest-cov>=2.7.1
