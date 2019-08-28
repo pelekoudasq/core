@@ -1,17 +1,18 @@
 class AlgebraError(BaseException):
     """
+    Raised in case of algebraic incompatibility
     """
     pass
 
 class WrongCryptoError(BaseException):
     """
-    Raised when no systemtem exists for the provided configs
+    Raised when no cryptosystem exists for the provided parameters
     """
     pass
 
 class WeakCryptoError(BaseException):
     """
-    Raised when the requested systemtem does not meet the security standards
+    Raised when the requested cryptosystem does not meet the required security standards
     """
     pass
 

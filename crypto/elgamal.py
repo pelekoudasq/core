@@ -7,7 +7,7 @@ from utils import extract_value, hash_encode, hash_decode
 
 class ElGamalCrypto(object, metaclass=ABCMeta):
     """
-    Abstract class for ElGamal systemtems
+    Abstract class for ElGamal cryptosystems
     """
 
 # -------------------------------- External API --------------------------------
@@ -18,14 +18,14 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
     @abstractmethod
     def parameters(self):
         """
-        Returns a dictionary with the systemtem's parameters
+        Returns a dictionary with the cryptosystem's parameters
         """
 
     @property
     @abstractmethod
     def group(self):
         """
-        Returns the systemtem's underlying group
+        Returns the cryptosystem's underlying group
         """
 
     @property
@@ -113,7 +113,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
 
         Returns zero-knowledge proof that the provided 3-ple `ddh` is a DDH with respect
-        to the generator g of the systemtem's underlying group, i.e., of the form
+        to the generator g of the cryptosystem's underlying group, i.e., of the form
 
                         (g ^ x modp, g ^ z modp, g ^ (x * z) modp)
 
@@ -126,7 +126,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
 
         Validates the demonstrated zero-knowledge `proof` that the provided 3-ple `ddh` is a
-        DDH with respect to the generator g of the systemtem's underlying group, i.e., of
+        DDH with respect to the generator g of the cryptosystem's underlying group, i.e., of
         the form
                                 (u, v, g ^ (x * z) modp)
 

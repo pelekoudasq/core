@@ -1754,7 +1754,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
 
         Verifies that the demonstrated `proof` proves knowledge that the provided 3-ple `ddh`
-        is a DDH with respect to the generator g of the systemtem's underlying group, i.e., of
+        is a DDH with respect to the generator g of the cryptosystem's underlying group, i.e., of
         the form
 
                                 (u, v, g ^ (x * z) modp)

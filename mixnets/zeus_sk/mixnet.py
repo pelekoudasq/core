@@ -1,11 +1,15 @@
+"""
+"""
+
 from gmpy2 import mpz
 
-from ..abstracts import Mixnet, MixnetError
 from crypto import ModPrimeCrypto, ModPrimeElement, WrongCryptoError
 from utils import random_permutation
 from utils.async import AsyncController
 from utils.teller import _teller
 from utils.binutils import bit_iterator
+
+from ..abstracts import Mixnet, MixnetError
 from .utils import (shuffle_ciphers, compute_mix_challenge,
     RoundNotVerifiedError, verify_mix_round)
 
@@ -78,6 +82,72 @@ class Zeus_SK(Mixnet):
         :rtype: ModPrimeCrypto
         """
         return self.__cryptosystem
+
+
+    # API
+
+    def mix(self, cipher_collection):
+        """
+        {
+            'original_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],
+            ['mixed_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],]
+            ['proof': ...]
+            ...
+        }
+
+        :type cipher_collection: dict
+        :rtype: dict
+        """
+        ciphers_to_mix = self._prepare_mix(cipher_collection)
+        cipher_mix = self.mix_ciphers(ciphers_to_mix, nr_rounds=self.__nr_rounds)
+        return self._extract_mix(cipher_mix)
+
+    def mix_many(self, prev):
+        """
+        :type prev: dict
+        :rtype: list[dict]
+        """
+        mixes = []   # mix = [prev]
+        appned = mixes.append
+        for _ in range(self.__nr_mixes):
+            prev = self.mix(prev)
+            append(prev)
+        return mixes
+
+    def validate(self, cipher_collection):
+        """
+        {
+            'original_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],
+            ['mixed_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],]
+            ['proof': ...]
+            ...
+        }
+        :type cipher_collection: dict
+        :rtype: bool
+        """
+        cipher_mix = self._prepare_mix(cipher_collection)
+        try:
+            self.verify_cipher_mix(cipher_mix)
+        except MixNotVerifiedError:
+            return False # so that it can be used below; otherwise: raise
+        return True
+
+    def validate_many(self, cipher_collections):
+        """
+        :type cipher_collections: list[dict]
+        :rtype bool:
+        """
+        if len(cipher_collections) != self.__nr_mixes:
+            e = 'Invalid number of mixes provided'
+            raise AssertionError(e)
+
+        validated = True
+        validate = self.validate
+        for cipher_collection in cipher_collections:
+            # TODO: validate if original_ciphers != previous_mixed (?)
+            validated = validated and validate(cipher_collection)
+
+        return validated
 
 
     # Encryption

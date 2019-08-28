@@ -2,12 +2,12 @@ import pytest
 
 from gmpy2 import mpz, invert
 
-from crypto.constants import (_2048_KEY, _2048_PUBLIC, _2048_DDH,
-                              _4096_KEY, _4096_PUBLIC, _4096_DDH)
 from crypto.modprime import ModPrimeElement
 from utils.random import random_integer
 
-from tests.constants import (RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM)
+from tests.constants import (RES11_SYSTEM,
+    _2048_SYSTEM, _2048_KEY, _2048_PUBLIC, _2048_DDH,
+    _4096_SYSTEM, _4096_KEY, _4096_PUBLIC, _4096_DDH)
 
 
 # Key generation and validation
@@ -385,7 +385,7 @@ def test_decryption_with_decryptor(system, element, public_key, private_key):
 from tests.constants import RES11_SYSTEM
 
 group = RES11_SYSTEM.group
-modulus = group.modulus                    
+modulus = group.modulus
 
 __ciphertext__public__secret__decoded = []
 
