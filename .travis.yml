@@ -4,8 +4,13 @@ python:
   - "3.6"
 
 install:
+  # - sudo apt-get install build-essential libmpfr-dev libgmp3-dev libssl-dev libffi-dev python-dev
   - sudo apt-get update -y
-  - sudo apt-get install build-essential libmpfr-dev libgmp3-dev libssl-dev libffi-dev python-dev
+  - sudo apt-get upgrade -y
+  - sudo apt-get install build-essential
+  - whereis gcc make
+  - gcc --version
+  - make -v
   - sudo pip install -r requirements.txt
   - sudo pip install -r dev-requirements.txt
   - sudo pip install codecov
