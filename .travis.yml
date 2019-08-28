@@ -6,7 +6,7 @@ python:
 install:
   # - sudo apt-get install build-essential libmpfr-dev libgmp3-dev libssl-dev libffi-dev python-dev
   - sudo apt-get update -y
-  - sudo apt-get upgrade -y
+  # - sudo apt-get upgrade -y
   - sudo apt-get install build-essential
   - whereis gcc make
   - gcc --version
