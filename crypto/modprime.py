@@ -195,7 +195,7 @@ class ModPrimeSubgroup(Group):
         order, s = divmod(modulus - 1, root_order)
 
         if s != 0:
-            e = 'Provided order of unit root does not divide the multiplicative group\'s order'
+            e = 'Provided order of unit root does not divide the group\'s order'
             raise AlgebraError(e)
 
         self.__modulus = modulus
@@ -991,31 +991,33 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def _compute_decryption_factors(self, secret, ciphers):
         """
-        Uses the provided `secret` x to construct a DDH tuple for each of the
-        provided `ciphers` and generates proof-of-knowledge that the
-        constructed tuple is DDH
+        Uses the provided `secret` x to construct a presumable DDH tuple for
+        each of the provided `ciphers` and generates presumed proof-of-knowledge
+        that the constructed tuple is DDH
 
         Returns a list of these proofs along with the last member of the
         corresponding DDH
 
         For each ciphertext
 
-        {'alpha': a, 'beta': b}
+        {'alpha': a, 'beta': ...}
 
-        from the provided `ciphers`, supposing that
+        from the provided `ciphers`, provided that
 
         a = g ^ r (modp)
 
         as the result of ElGamal-encryption, generate a proof-of-knowledge
-        (Schnorr-proof) s that the tuple
+        (Chaum-Pedersen) s that the tuple
 
-                g ^ x (modp), g ^ r (modp), g ^ (x * r) modp
+                g ^ r (modp), g ^ x (modp), g ^ (r * x) modp
 
-        is DDH and return the list of pairs (s, g ^ (x * r) modp)
+        is DDH and return the list of pairs
+
+        {'data': g ^ (r * x) (modp), 'proof': s}
 
         :type secret: mpz
-        :type ciphers: list
-        :rtype: list
+        :type ciphers: list[dict]
+        :rtype: list[dict]
         """
         public = self.group.generate(secret)                        # g ^ x         (mod p)
 
@@ -1024,7 +1026,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         for cipher in ciphers:
 
             alpha, _ = self._extract_ciphertext(cipher)             # g ^ r         (mod p)
-            data = alpha * secret                                   # g ^ (x * r)   (mod p)
+            data = alpha ** secret                                  # g ^ (x * r)   (mod p)
 
             ddh = (alpha, public, data)
 
