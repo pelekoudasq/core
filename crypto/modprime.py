@@ -1276,8 +1276,10 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def keygen(self, private_key=None, schnorr=True):
         """
-        Generates and returns a keypair. If `shnorr` is `True`, the public part
-        will also contain a proof-of-knowledge of the private part.
+        Generates and returns a keypair
+
+        If `shnorr` is left to its default value `True`, the public part
+        will include proof-of-knowledge of the private part
 
         :type private_key: mpz
         :type schnorr: bool

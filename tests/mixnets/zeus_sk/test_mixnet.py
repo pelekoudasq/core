@@ -1,18 +1,18 @@
 import pytest
-
 from copy import deepcopy
 
 from mixnets import Zeus_SK, MixnetError
 from mixnets.zeus_sk.mixnet import MixNotVerifiedError
 from crypto import WrongCryptoError
-from tests.mixnets.zeus_sk.helpers import _make_ciphers_to_mix
 from utils.binutils import bit_iterator
-
-ROUNDS = 100
-MIXES = 20
 
 from tests.constants import (RES11_ELECTION_KEY, _2048_ELECTION_KEY,
     _4096_ELECTION_KEY, RES11_ZEUS_SK, _4096_ZEUS_SK, _2048_ZEUS_SK)
+from tests.helpers import _make_ciphers_to_mix
+
+
+ROUNDS = 100
+MIXES = 20
 
 
 # Test construction errors

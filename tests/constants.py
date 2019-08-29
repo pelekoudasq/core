@@ -7,7 +7,7 @@ from crypto.constants import _2048_PRIME, _2048_PRIMITIVE, _4096_PRIME, _4096_PR
 from mixnets import Zeus_SK
 
 
-# -- Small algebraic objects -- 
+# -- Small algebraic objects --
 
 RES11_GROUP = ModPrimeSubgroup(11, 2)             # quadratic residues mod 11
 
@@ -32,6 +32,11 @@ _4096_SYSTEM = ModPrimeCrypto(_4096_PRIME, _4096_PRIMITIVE)
 
 
 # -- Private/public keypairs (numerical constants) --
+
+# Keypair in residues mod 11 cryptosystem
+
+RES11_KEY = 4
+RES11_PUBLIC = 3
 
 # Keypair in _2048_PRIME cryptosystem
 
@@ -86,6 +91,10 @@ choices = [
     'Party-B:l Candidate-0001'
     'Party-C:l Candidate-0x00']
 
+# -- Messages --
+
+MESSAGE = 'l’esprit de sérieux est l’attitude de ceux qui pensent que \
+    les valeurs morales pré-existent à l’homme'
 
 # -- DDH tuples --
 

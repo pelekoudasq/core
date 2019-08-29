@@ -1,64 +1,73 @@
 import pytest
-
-from gmpy2 import mpz, invert
+from copy import deepcopy
+from gmpy2 import mpz, powmod, invert
 
 from crypto.modprime import ModPrimeElement
 from utils.random import random_integer
 
-from tests.constants import (RES11_SYSTEM,
+from tests.constants import (MESSAGE, RES11_SYSTEM, RES11_KEY, RES11_PUBLIC,
     _2048_SYSTEM, _2048_KEY, _2048_PUBLIC, _2048_DDH,
     _4096_SYSTEM, _4096_KEY, _4096_PUBLIC, _4096_DDH)
 
 
 # Key generation and validation
 
-_system_secret_public = [
-    (
-        _2048_SYSTEM, _2048_KEY, _2048_PUBLIC
-    ),
-    (
-        _4096_SYSTEM, _4096_KEY, _4096_PUBLIC
-    )
+__system__secret__public = [
+    (RES11_SYSTEM, RES11_KEY, RES11_PUBLIC),
+    (_2048_SYSTEM, _2048_KEY, _2048_PUBLIC),
+    (_4096_SYSTEM, _4096_KEY, _4096_PUBLIC)
 ]
 
-@pytest.mark.parametrize('system, secret, public', _system_secret_public)
-def test_non_random_keygen(system, secret, public):
-
-    key = system.keygen(private_key=secret)
-    public_key = key['public']
+@pytest.mark.parametrize('system, secret, public', __system__secret__public)
+def test_keygen_with_non_random_private(system, secret, public):
+    keypair = system.keygen(private_key=secret)
+    public_key = keypair['public']
     proof = public_key['proof']
     public_key = public_key['value']
 
     valid = system._schnorr_verify(proof, public_key)
 
-    assert secret == key['private'] and public_key.value == public and valid
+    assert secret == keypair['private'] and public_key.value == public and valid
 
 
-_system = [_2048_SYSTEM, _4096_SYSTEM]
+__system = [RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM]
 
-@pytest.mark.parametrize('system', _system)
-def test_random_keygen(system):
-
-    key = system.keygen()
-    public_key = key['public']
+@pytest.mark.parametrize('system', __system)
+def test_keygen_with_random_private(system):
+    keypair = system.keygen()
+    public_key = keypair['public']
     proof = public_key['proof']
     public_key = public_key['value']
 
-    valid = system._schnorr_verify(proof, public_key)
+    assert system._schnorr_verify(proof, public_key)
 
-    assert valid
 
-@pytest.mark.parametrize('system', _system)
-def test_validate_public_key(system):
+__system__public_key__result = []
 
-    key = system.keygen()
-    public_key = key['public']
-    valid = system.validate_public_key(public_key)
+for system in (RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM):
+    public_key = system.keygen()['public']
+    __system__public_key__result.append((system, public_key, True))
+
+    # Corrupt key
+    corrupt_value = public_key['value'].clone()
+    corrupt_value.reduce_value()
+    corrupt_public_key = {'value': corrupt_value, 'proof': public_key['proof']}
+    __system__public_key__result.append((system, corrupt_public_key, False))
+
+    # Corrupt proof
+    corrupt_proof = deepcopy(public_key['proof'])
+    corrupt_proof['challenge'] += 100
+    corrupt_public_key = {'value': public_key['value'], 'proof': corrupt_proof}
+    __system__public_key__result.append((system, corrupt_public_key, False))
+
+@pytest.mark.parametrize('system, public_key, result', __system__public_key__result)
+def test_validate_public_key(system, public_key, result):
+    assert system.validate_public_key(public_key) is result
 
 
 # Digital signatures
 
-_system_exponent_key__bool = [
+__system__exponent__keys__result = [
     (
         _2048_SYSTEM,
         239384877347538475938475384987497929929846663728917735493874593847593875,
@@ -69,9 +78,9 @@ _system_exponent_key__bool = [
     (
         _2048_SYSTEM,
         239384877347538475938475384987497929929846663728917735493874593847593875,
-        _2048_KEY - 1,
+        _2048_KEY - 1,                                       # Wrong private key
         _2048_PUBLIC,
-        False                                                # Wrong private key
+        False
     ),
     (
         _4096_SYSTEM,
@@ -83,15 +92,15 @@ _system_exponent_key__bool = [
     (
         _4096_SYSTEM,
         919228301823987238476870928301982103978254287481928123817398172931839120,
-        _4096_KEY - 1,
+        _4096_KEY - 1,                                       # Wrong private key
         _4096_PUBLIC,
-        False                                                # Wrong private key
+        False
     ),
 ]
 
-@pytest.mark.parametrize(
-    'system, exponent, private_key, public_key, _bool', _system_exponent_key__bool)
-def test_dsa_signature(system, exponent, private_key, public_key, _bool):
+@pytest.mark.parametrize('system, exponent, private_key, public_key, result',
+    __system__exponent__keys__result)
+def test_dsa_signature(system, exponent, private_key, public_key, result):
 
     private_key = mpz(private_key)
     public_key = ModPrimeElement(value=public_key, modulus=system.group.modulus)
@@ -99,37 +108,37 @@ def test_dsa_signature(system, exponent, private_key, public_key, _bool):
     signature = system._dsa_signature(exponent, private_key)
     verified = system._dsa_verify(exponent, signature, public_key)
 
-    assert verified is _bool
+    assert verified is result
 
 
 _system_message_key__bool = [
     (
         _2048_SYSTEM,
-        'kjkdfgkjdhfkgjhdkfjd',
+        MESSAGE,
         _2048_KEY,
         _2048_PUBLIC,
         True
     ),
     (
         _2048_SYSTEM,
-        'kjkdfgkjdhfkgjhdkfjd',
-        _2048_KEY - 1,
+        MESSAGE,
+        _2048_KEY - 1,                                       # Wrong private key
         _2048_PUBLIC,
-        False                                                # Wrong private key
+        False
     ),
     (
         _4096_SYSTEM,
-        'kdjfghkhelshfijaoiuv',
+        MESSAGE,
         _4096_KEY,
         _4096_PUBLIC,
         True
     ),
     (
         _4096_SYSTEM,
-        'kdjfghkhelshfijaoiuv',
-        _4096_KEY - 1,
+        MESSAGE,
+        _4096_KEY - 1,                                       # Wrong private key
         _4096_PUBLIC,
-        False                                                # Wrong private key
+        False
     ),
 ]
 
@@ -154,7 +163,7 @@ def test_text_message_signature(system, message, private_key, public_key, _bool)
 
 # Schnorr protocol
 
-_system_secret_public_extras__bool = [
+__system__secret__public__extras__result = [
     (
         _2048_SYSTEM,
         _2048_KEY,
@@ -205,10 +214,9 @@ _system_secret_public_extras__bool = [
     ),
 ]
 
-@pytest.mark.parametrize(
-    'system, secret, public, extras_1, extras_2, _bool',
-    _system_secret_public_extras__bool)
-def test_schnorr_protocol(system, secret, public, extras_1, extras_2, _bool):
+@pytest.mark.parametrize('system, secret, public, extras_1, extras_2, result',
+    __system__secret__public__extras__result)
+def test_schnorr_protocol(system, secret, public, extras_1, extras_2, result):
 
     secret = mpz(secret)
     public = ModPrimeElement(public, system.group.modulus)
@@ -216,12 +224,12 @@ def test_schnorr_protocol(system, secret, public, extras_1, extras_2, _bool):
     proof = system._schnorr_proof(secret, public, *extras_1)
     valid = system._schnorr_verify(proof, public, *extras_2)
 
-    assert valid is _bool
+    assert valid is result
 
 
 # Chaum-Pedersen protocol
 
-_system_ddh_z__bool = [
+__system__ddh__z__result = [
     (
         _2048_SYSTEM,
         _2048_DDH['ddh'],
@@ -248,20 +256,20 @@ _system_ddh_z__bool = [
     ),
 ]
 
-@pytest.mark.parametrize('system, ddh, z, _bool', _system_ddh_z__bool)
-def test_chaum_pedersen_protocol(system, ddh, z, _bool):
+@pytest.mark.parametrize('system, ddh, z, result', __system__ddh__z__result)
+def test_chaum_pedersen_protocol(system, ddh, z, result):
 
     ddh = [ModPrimeElement(_, system.group.modulus) for _ in ddh]
 
     proof = system._chaum_pedersen_proof(ddh, z)
     valid = system._chaum_pedersen_verify(ddh, proof)
 
-    assert valid is _bool
+    assert valid is result
 
 
 # El-Gamal encryption
 
-_system_element_key = [
+__system__element__keys = [
     (
         _2048_SYSTEM,
         792387492873492873492879428794827973465837687123194802943820394774576454,
@@ -276,8 +284,8 @@ _system_element_key = [
     )
 ]
 
-@pytest.mark.parametrize(
-    'system, element, public_key, private_key', _system_element_key)
+@pytest.mark.parametrize('system, element, public_key, private_key',
+    __system__element__keys)
 def test_encryption(system, element, public_key, private_key):
 
     __p = system.group.modulus
@@ -295,7 +303,7 @@ def test_encryption(system, element, public_key, private_key):
 
 
 @pytest.mark.parametrize(
-    'system, element, public_key, private_key', _system_element_key)
+    'system, element, public_key, private_key', __system__element__keys)
 def test_valid_encryption_proof(system, element, public_key, private_key):
 
     __p = system.group.modulus
@@ -314,7 +322,7 @@ def test_valid_encryption_proof(system, element, public_key, private_key):
     assert verified
 
 @pytest.mark.parametrize(
-    'system, element, public_key, private_key', _system_element_key)
+    'system, element, public_key, private_key', __system__element__keys)
 def test_invalid_encryption_proof(system, element, public_key, private_key):
 
     __p = system.group.modulus
@@ -340,7 +348,7 @@ def test_invalid_encryption_proof(system, element, public_key, private_key):
     assert not verified
 
 @pytest.mark.parametrize(
-    'system, element, public_key, private_key', _system_element_key)
+    'system, element, public_key, private_key', __system__element__keys)
 def test_encryption_with_secret_and_proof(system, element, public_key, private_key):
 
     __p = system.group.modulus
@@ -358,7 +366,7 @@ def test_encryption_with_secret_and_proof(system, element, public_key, private_k
     assert verified
 
 @pytest.mark.parametrize(
-    'system, element, public_key, private_key', _system_element_key)
+    'system, element, public_key, private_key', __system__element__keys)
 def test_decryption_with_decryptor(system, element, public_key, private_key):
 
     __p = system.group.modulus
@@ -380,50 +388,44 @@ def test_decryption_with_decryptor(system, element, public_key, private_key):
     assert element == decrypted
 
 
-# mod 11 setup
+__system__ciphertext__public__secret__decoded = []
 
-from tests.constants import RES11_SYSTEM
+for system in (RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM):
+    group = system.group
+    modulus = group.modulus
 
-group = RES11_SYSTEM.group
-modulus = group.modulus
+    for _ in range(10):
 
-__ciphertext__public__secret__decoded = []
+        beta = group.random_element()
+        public = group.random_element()
+        secret = group.random_exponent()
 
-for _ in range(10):
+        ciphertext = {'alpha': group.random_element(), 'beta': beta}
 
-    beta = group.random_element()
-    public = group.random_element()
-    secret = group.random_exponent()
+        encoded = (public ** secret).inverse * beta
 
-    ciphertext = {
-        'alpha': group.random_element(),
-        'beta': beta
-    }
+        b = beta.value
+        y = public.value
+        x = secret
 
-    encoded = (public ** secret).inverse * beta
+        if group.contains(encoded):
+            # (y ^ x) ^ -1 * b - 1 (mod p)
+            decoded = ((invert(powmod(y, x, modulus), modulus) * b) % modulus - 1) % modulus
+        else:
+            # (-(y ^ x) ^ -1 * b (mod p)) - 1 (mod p)
+            decoded = (-(invert(powmod(y, x, modulus), modulus) * b) % modulus - 1) % modulus
 
-    b = beta.value
-    y = public.value
-    x = secret
+        decoded = ModPrimeElement(decoded, modulus)
 
-    if group.contains(encoded):
-        # (y ^ x) ^ -1 * b - 1 (mod p)
-        decoded = ((invert(y ** x, modulus) * b) % modulus - 1) % modulus
-    else:
-        # (-(y ^ x) ^ -1 * b (mod p)) - 1 (mod p)
-        decoded = (-(invert(y ** x, modulus) * b) % modulus - 1) % modulus
-
-    decoded = ModPrimeElement(decoded, modulus)
-
-    __ciphertext__public__secret__decoded.append(
-        (ciphertext, public, secret, decoded))
+        __system__ciphertext__public__secret__decoded.append(
+            (system, ciphertext, public, secret, decoded))
 
 
-@pytest.mark.parametrize('ciphertext, public, secret, decoded',
-    __ciphertext__public__secret__decoded)
-def test_decryption_with_randomness(ciphertext, public, secret, decoded):
+@pytest.mark.parametrize('system, ciphertext, public, secret, decoded',
+    __system__ciphertext__public__secret__decoded)
+def test_decryption_with_randomness(system, ciphertext, public, secret, decoded):
     assert decoded == \
-        RES11_SYSTEM._decrypt_with_randomness(ciphertext, public, secret)
+        system._decrypt_with_randomness(ciphertext, public, secret)
 
 
 # Re-encryption

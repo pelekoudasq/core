@@ -1,11 +1,13 @@
 import pytest
-
 from gmpy2 import mpz
 
 from crypto.constants import (_2048_PRIME, _2048_ORDER, _2048_GENERATOR, _2048_PRIMITIVE,
                               _4096_PRIME, _4096_ORDER, _4096_GENERATOR, _4096_PRIMITIVE)
 from crypto.exceptions import AlgebraError, WrongCryptoError, WeakCryptoError
 from crypto.modprime import ModPrimeSubgroup, ModPrimeElement, ModPrimeCrypto
+
+from tests.constants import (RES11_GROUP,
+    _00_, _01_, _02_, _03_, _04_, _05_, _06_, _07_, _08_, _09_, _10_)
 
 
 __original__inverse__modulus = [
@@ -56,10 +58,7 @@ def test_ModPrimeSubgroup_Construction(modulus, root_order, order):
     assert (group.modulus, group.order) == (modulus, order)
 
 
-# mod 11 setup
-
-from tests.constants import (RES11_GROUP,
-    _00_, _01_, _02_, _03_, _04_, _05_, _06_, _07_, _08_, _09_, _10_)
+# Full testing of residue property and decode_with_randomness in mod11 context
 
 RES11_GROUP.set_generator(3)
 
@@ -92,5 +91,5 @@ __element__decoded = [
 ]
 
 @pytest.mark.parametrize('element, decoded', __element__decoded)
-def test_decoding(element, decoded):
+def test_decode_with_randomness(element, decoded):
     assert decoded == RES11_GROUP.decode_with_randomness(element)

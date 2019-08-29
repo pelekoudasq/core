@@ -1,10 +1,10 @@
 import pytest
-
 from gmpy2 import mpz
+
+from utils import random_integer
 
 from tests.constants import (RES11_SYSTEM, _2048_SYSTEM, _2048_KEY,
     _4096_SYSTEM, _4096_KEY)
-from utils import random_integer
 
 
 # Decryption-factors verification

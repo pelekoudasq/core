@@ -9,8 +9,8 @@ from crypto.exceptions import (InvalidVoteError, InvalidStructureError,
     InvalidSignatureError, InvalidEncryptionError)
 
 from tests.constants import choices, _2048_SYSTEM, _4096_SYSTEM
-from tests.crypto.modprime.helpers import (make_voters, make_corrupted_public_key,
-    make_vote, make_corrupted_signature_vote, corrupt_signature_structure,
+from tests.helpers import (make_voters, make_corrupted_public_key, make_vote,
+    make_corrupted_signature_vote, corrupt_signature_structure,
     corrupt_implicit_signature)
 
 def _exit(message, code=1):
