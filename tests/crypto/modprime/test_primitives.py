@@ -5,7 +5,8 @@ from gmpy2 import mpz, powmod, invert
 from crypto.modprime import ModPrimeElement
 from utils.random import random_integer
 
-from tests.constants import (MESSAGE, RES11_SYSTEM, RES11_KEY, RES11_PUBLIC,
+from tests.constants import (MESSAGE,
+    RES11_SYSTEM, RES11_KEY, RES11_PUBLIC, RES11_DDH,
     _2048_SYSTEM, _2048_KEY, _2048_PUBLIC, _2048_DDH,
     _4096_SYSTEM, _4096_KEY, _4096_PUBLIC, _4096_DDH)
 
@@ -229,37 +230,41 @@ def test_schnorr_protocol(system, secret, public, extras_1, extras_2, result):
 
 # Chaum-Pedersen protocol
 
-__system__ddh__z__result = [
-    (
-        _2048_SYSTEM,
-        _2048_DDH['ddh'],
-        _2048_DDH['log'],
-        True
-    ),
-    (
-        _2048_SYSTEM,
-        _4096_DDH['ddh'],
-        _2048_DDH['log'],
-        False                                                  # Wrong logarithm
-    ),
-    (
-        _4096_SYSTEM,
-        _4096_DDH['ddh'],
-        _4096_DDH['log'],
-        True
-    ),
-    (
-        _4096_SYSTEM,
-        _2048_DDH['ddh'],
-        _4096_DDH['log'],
-        False                                                  # Wrong logarithm
-    ),
-]
+__system__ddh__z__result = []
+
+for (system, DDH) in (
+    # (RES11_SYSTEM, RES11_DDH),
+    (_2048_SYSTEM, _2048_DDH),
+    (_4096_SYSTEM, _4096_DDH),
+):
+    modulus = system.group.modulus
+    ddh = [ModPrimeElement(elem, modulus) for elem in DDH['ddh']]
+    z = mpz(DDH['log'])
+    __system__ddh__z__result.append((system, ddh, z, True))
+
+    # Corrupt first member
+    corrupt = ddh[0].clone()
+    corrupt.reduce_value()
+    corrupt_ddh = [corrupt, ddh[1], ddh[2]]
+    __system__ddh__z__result.append((system, corrupt_ddh, z, False))
+
+    # Corrupt second member
+    corrupt = ddh[1].clone()
+    corrupt.reduce_value()
+    corrupt_ddh = [ddh[0], corrupt, ddh[2]]
+    __system__ddh__z__result.append((system, corrupt_ddh, z, False))
+
+    # Corrupt third member
+    corrupt = ddh[2].clone()
+    corrupt.reduce_value()
+    corrupt_ddh = [ddh[0], ddh[1], corrupt]
+    __system__ddh__z__result.append((system, corrupt_ddh, z, False))
+
+    # Corrupt logarithm
+    __system__ddh__z__result.append((system, ddh, z - 1, False))
 
 @pytest.mark.parametrize('system, ddh, z, result', __system__ddh__z__result)
 def test_chaum_pedersen_protocol(system, ddh, z, result):
-
-    ddh = [ModPrimeElement(_, system.group.modulus) for _ in ddh]
 
     proof = system._chaum_pedersen_proof(ddh, z)
     valid = system._chaum_pedersen_verify(ddh, proof)

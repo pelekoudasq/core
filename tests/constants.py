@@ -98,6 +98,13 @@ MESSAGE = 'l’esprit de sérieux est l’attitude de ceux qui pensent que \
 
 # -- DDH tuples --
 
+# DDH in mod 11 residues cryptosystem --
+
+RES11_DDH = {
+    'ddh': (5, 3, 9),
+    'log': 9            # the second member's logarithm
+}
+
 # DDH in mod _2048_PRIME cryptosystem --
 
 _2048_DDH = {
@@ -111,7 +118,6 @@ _2048_DDH = {
 
 
 # DDH in mod _4096_PRIME cryptosystem
-
 
 _4096_DDH = {
     'ddh': (

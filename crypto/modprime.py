@@ -8,7 +8,7 @@ from .elgamal import ElGamalCrypto
 from .algebra import Group, GroupElement
 from .exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
     InvalidVoteError, InvalidStructureError, InvalidSignatureError,
-    InvalidEncryptionError)
+    InvalidEncryptionError, InvalidFactorsError)
 from .constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION, V_ZEUS_PUBLIC,
     V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER, V_ALPHA, V_BETA,
     V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX, V_CAST_VOTE,
@@ -961,6 +961,9 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def _extract_factor(self, factor):
         """
+        Assumes: {'data': mpz, 'proof': dict}
+        Returns: (ModPrimeElement, dict)
+
         :type factor: dict
         :rtype: tuple
         """
@@ -981,7 +984,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def _extract_trustee_factors(self, trustee_factors):
         """
-        :type trustee_factors:
+        :type trustee_factors: dict
         :rtype: tuple
         """
         public = trustee_factors['public']
@@ -1061,8 +1064,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         is a DDH
 
         :type public: ModPrimeElement
-        :type ciphers: list
-        :type factors: list
+        :type ciphers: list[dict]
+        :type factors: list[dict]
         :rtype: bool
         """
         if len(ciphers) != len(factors):
@@ -1079,23 +1082,25 @@ class ModPrimeCrypto(ElGamalCrypto):
         return True
 
 
-    def _combine_decryption_factors(self, factors):
+    def _combine_decryption_factors(self, factor_collection):
         """
-        :type factors: list
+        :type factor_collection: ?
         :rtype:
         """
-        if not factors:
+        if not factor_collection:
             return 0
 
         master_factors = []
+        append = master_factors.append
 
-        # append = master_factors.append
-        # for trustees_factor in zip(*factors):
-        #     master_factor = self.__group.unit()
+        for trustees_factor in zip(*factor_collection): # ?
+            master_factor = self.__group.unit()
+            for factor in trustees_factor:
+                data, _ = self._extract_factor(factor)
+                master_factor *= data
+            append(master_factor)
 
         return master_factors
-
-
 
     def compute_zeus_factors(self, mixed_ballots, secret):
         """
@@ -1105,16 +1110,61 @@ class ModPrimeCrypto(ElGamalCrypto):
         secret = mpz(secret)
         return self._compute_decryption_factors(secret, mixed_ballots)
 
-    def validate_trustee_factors(self, trustee_public, trustee_factors, mixed_ballots):
-        """
-        If not True, raises Error
 
-        :type trustee_public:
-        :type trustee_factors:
+    def compute_trustee_factors(self, mixed_ballots, trustee_keypair):
+        """
+        Trustee keypair: {
+            private: mpz,
+            public: {
+                'value': ModPrimeElement,
+                ['proof': dict]
+            }
+        }
+
+        Mixed ballots: [{'alpha': ModPrimeElement, 'beta': ModPrimeElement}]
+
+        Returns: {'public': ModPrimeElement, 'factors': list[dict]}
+
+        :type trustee_kaypair: dict
+        :type mixed_ballots: list[dict]
+        :rtype: dict
+        """
+        trustee_secret, trustee_public = self._extract_keypair(trustee_keypair)
+        factors = self._compute_decryption_factors(trustee_secret, mixed_ballots)
+        trustee_factors = self._set_trustee_factors(trustee_public, factors)
+        return trustee_factors
+
+    # def validate_trustee_factors(self, mixed_ballots, trustee_factors):
+    def validate_trustee_factors(self, trustee_public, mixed_ballots, trustee_factors):
+        """
+        Verifies each one of the `trustee_factors` as the decryption factor of
+        the corresponding cipher from `mixed` ballots under the provided public
+        `trustee_public` (cf. the ._verify_decryption_factors() method)
+
+        Returns `True` if all factors are successfully validated, otherwise
+        an `InvalidFactorsError` is raised
+
+        :type trustee_public: dict
         :type mixed_ballots: list
+        :type trustee_factors: list[dict]
         :rtype: bool
         """
-        pass # ---> crypto.py
+        # trustee_public, decryption_factors = self._extract_trustee_factors(trustee_factors)
+        _, decryption_factors = self._extract_trustee_factors(trustee_factors)
+
+        # Delete this snipset in alterative version
+        # if not trustee_public or not trustee_factors:
+        #     e = 'Malformed trustee factors'
+        #     raise InvalidFactorsError(e)
+
+        trustee_public = self._extract_value(trustee_public)
+
+        if not self._verify_decryption_factors(trustee_public, mixed_ballots, decryption_factors):
+            e = 'Invalid trustee factors'
+            raise InvalidFactorsError(e)
+
+        return True
+
 
     def decrypt_ballots(self, mixed_ballots, zeus_factors, trustee_factors):
         pass # -> crypto
@@ -1723,12 +1773,8 @@ class ModPrimeCrypto(ElGamalCrypto):
                         (g ^ x modp, g ^ z modp, g ^ (x * z) modp)
 
         for some integers 0 <= x, z < q
-
-        The provided `ddh` is of the form
-
-                    [ModPrimeElement, ModPrimeElement, ModPrimeElement]
-
-        :type ddh: list
+        
+        :type ddh: (ModPrimeElement, ModPrimeElement, ModPrimeElement)
         :type z: mpz
         :rtype: dict
         """

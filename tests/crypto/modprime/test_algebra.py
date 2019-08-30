@@ -58,7 +58,7 @@ def test_ModPrimeSubgroup_Construction(modulus, root_order, order):
     assert (group.modulus, group.order) == (modulus, order)
 
 
-# Full testing of residue property and decode_with_randomness in mod11 context
+# Full testing of residue property in mod11 context
 
 RES11_GROUP.set_generator(3)
 

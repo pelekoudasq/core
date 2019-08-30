@@ -45,3 +45,9 @@ class InvalidEncryptionError(BaseException):
     Raised when the proof accompanying an encryption cannot be verified
     """
     pass
+
+class InvalidFactorsError(BaseException):
+    """
+    Raised when a trustee's factors are not validated
+    """
+    pass
