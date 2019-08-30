@@ -5,7 +5,8 @@ from gmpy2 import mpz
 from crypto.exceptions import InvalidFactorsError
 from utils import random_integer
 
-from tests.constants import (RES11_SYSTEM, RES11_KEY, _2048_SYSTEM, _2048_KEY,
+from tests.constants import (RES11_SYSTEM, RES11_KEY,
+    _2048_SYSTEM, _2048_KEY,
     _4096_SYSTEM, _4096_KEY)
 
 
@@ -156,9 +157,7 @@ for (system, key) in (
 
     # Corrupt public key
     corrupt_public = trustee_public.clone()
-    print(corrupt_public)
     corrupt_public.reduce_value()
-    print(corrupt_public)
     from crypto import ModPrimeElement
     __failure_cases__.append((system, corrupt_public, mixed_ballots, trustee_factors))
 
@@ -168,3 +167,42 @@ def test__failure_at_validation_of_trustee_factors(system, trustee_public,
     print(trustee_public)
     with pytest.raises(InvalidFactorsError):
         system.validate_trustee_factors(trustee_public, mixed_ballots, trustee_factors)
+
+
+# Ballot decryption
+
+__system__mixed_ballots__zeus_factors__trustees_factors__expecteds = []
+
+for system in (
+    RES11_SYSTEM,
+    _2048_SYSTEM,
+    _4096_SYSTEM,
+):
+    nr_ballots = 20
+    nr_trustees = 4
+    random_element = system.group.random_element
+
+    # Mock zeus and trustees
+    zeus_factors = [{'data': random_element().value, 'proof': {}} for _ in range(nr_ballots)]
+    trustees_factors = [[{'data': random_element().value, 'proof': {}} for _ in range(nr_ballots)] for _ in range(nr_trustees)]
+
+    # Combine componentwise to get decryption factors
+    decryption_factors = []
+    trustees_factors.append(zeus_factors)
+    decryption_factors = system._combine_decryption_factors(trustees_factors)
+
+    # Mock mixed ballots
+    mixed_ballots = [{'alpha': random_element(), 'beta': random_element()} for _ in range(nr_ballots)]
+
+    # Decrypt
+    expecteds = [(decryptor.inverse * ballot['beta']).to_integer()
+        for (ballot, decryptor) in zip(mixed_ballots, decryption_factors)]
+
+    # Append parameters
+    __system__mixed_ballots__zeus_factors__trustees_factors__expecteds\
+        .append((system, mixed_ballots, zeus_factors, trustees_factors, expecteds))
+
+@pytest.mark.parametrize('system, mixed_ballots, zeus_factors, trustees_factors, expecteds',
+    __system__mixed_ballots__zeus_factors__trustees_factors__expecteds)
+def test_decrypt_ballots(system, mixed_ballots, zeus_factors, trustees_factors, expecteds):
+    assert True

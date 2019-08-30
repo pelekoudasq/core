@@ -350,7 +350,7 @@ class ModPrimeSubgroup(Group):
         reduced = int_from_bytes(digest)
         output = self.generate(reduced).value
 
-        return output       # g ^ ( H( p | g | q | elements)  modq )  modp
+        return output                    # g ^ ( H( p | g | q | elements)  modq )  modp
 
 
     def contains(self, element):
@@ -967,6 +967,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type factor: dict
         :rtype: tuple
         """
+        # data = factor['data']
         data = ModPrimeElement(factor['data'], self.__modulus)
         proof = factor['proof']
         return data, proof
@@ -1183,22 +1184,22 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         Mixed ballots: list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}]
 
-        Zeus factors: list[dict]
+        Zeus factors: list[{'data': ModPrimeElement, 'proof': ...}]
 
-        Trustees factors: list[{'public': ModPrimeElement, 'factors': list[dict]}]
+        Trustees factors: list[{'public': ModPrimeElement, 'factors': list[{'data': ModPrimeElement, 'proof': ...}]}]
 
         :type mixed_ballots: list[list]
         :type zeus_factors: list
         :type trustees_factors: list[list[dict]]
         :rtype:
         """
+        plaintexts = []
+        append = plaintexts.append
+
         all_factors = [trustee_factors['factors'] for trustee_factors in trustees_factors]
         all_factors.append(zeus_factors)
+
         decryption_factors = self._combine_decryption_factors(all_factors)
-
-        encoded_messages = []
-        append = encoded_messages.append
-
         for ballot, factor in zip(mixed_ballots, decryption_factors):
             # decryption_factors:
             #          |ballot_1   |ballot_2   |ballot_3   |.........
@@ -1210,13 +1211,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             # ---------|-----------------------------------|---------
             #          |factor_1   |factor_2   |factor_3   |.........
             encoded = self._decrypt_with_decryptor(ballot, factor)
-            append(encoded)
-
-        plaintexts = []
-        append = plaintexts.append
-        for encoded in encoded_messages:
-            plaintext = encoded.to_integer()
-            append(plaintext)
+            append(encoded.to_integer())
 
         return plaintexts
 
