@@ -138,5 +138,3 @@ def _make_ciphers_to_mix(mixnet, election_key, nr_ciphers=12):
         'cipher_collections': []
     }
     return ciphers_to_mix
-
-def make_encrypted_ballots(system, nr_ballots):
