@@ -1,4 +1,5 @@
 import pytest
+from functools import reduce
 from gmpy2 import mpz
 
 from crypto.exceptions import InvalidFactorsError
@@ -7,6 +8,28 @@ from utils import random_integer
 from tests.constants import (RES11_SYSTEM, RES11_KEY, _2048_SYSTEM, _2048_KEY,
     _4096_SYSTEM, _4096_KEY)
 
+
+# Factor combination
+
+__system__factors_collections__elems__nr_trustees__nr_factors = []
+
+for system in (RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM):
+    group = system.group
+    for nr_trustees in range(0, 5):
+        for nr_factors in range(0, 5):
+            elems = [[group.random_element() for j in range(nr_factors)] for i in range(nr_trustees)]
+            factors_collections = [[{'data': elems[i][j].value, 'proof': {}} for j in range(nr_factors)] for i in range(nr_trustees)]
+            __system__factors_collections__elems__nr_trustees__nr_factors.append((system, factors_collections, elems, nr_trustees, nr_factors))
+
+@pytest.mark.parametrize('system, factors_collections, elems, nr_trustees, nr_factors',
+    __system__factors_collections__elems__nr_trustees__nr_factors)
+def test__combine_decryption_factors(system, factors_collections, elems, nr_trustees, nr_factors):
+    if not nr_trustees or not nr_factors:
+        assert system._combine_decryption_factors(factors_collections) == 0
+    else:
+        assert system._combine_decryption_factors(factors_collections) == [
+            reduce(lambda x, y: x * y, [elems[i][j] for i in range(nr_trustees)]) for j in range(nr_factors)
+        ]
 
 # Decryption-factors verification
 

@@ -1,7 +1,7 @@
 import Crypto
 from Crypto.Util.number import isPrime
 from gmpy2 import mpz, powmod, invert, mul, add, f_mod, qdiv
-from functools import partial
+from functools import partial, reduce
 import importlib
 
 from .elgamal import ElGamalCrypto
@@ -1082,21 +1082,34 @@ class ModPrimeCrypto(ElGamalCrypto):
         return True
 
 
-    def _combine_decryption_factors(self, factor_collection):
+    def _combine_decryption_factors(self, trustees_factors):
         """
-        :type factor_collection: ?
-        :rtype:
+        Componentwise multiplication
+
+        Given a 2D structure
+
+        [[f_11, ..., f_1n], ..., [f_m1, ... f_mn]]
+
+        of group elements, computes and returns the list
+
+        [f_11 * ... * f_m1, ..., f_1n * ... * f_mn]
+
+        .. note:: Returns a non-sensical 0 if the provided collection comprises
+        of empty lists (including the case that the collection itself is empty)
+
+        :type trustees_factors: list[list[{'data': ModPrimeElement, 'proof': ...}]]
+        :rtype: list[ModPrimeElement]
         """
-        if not factor_collection:
+        if not trustees_factors or trustees_factors == [[]] * len(trustees_factors):
             return 0
 
         master_factors = []
         append = master_factors.append
 
-        for trustees_factor in zip(*factor_collection): # ?
+        for trustees_factors in zip(*trustees_factors):
             master_factor = self.__group.unit()
-            for factor in trustees_factor:
-                data, _ = self._extract_factor(factor)
+            for trustee_factor in trustees_factors:
+                data, _ = self._extract_factor(trustee_factor)
                 master_factor *= data
             append(master_factor)
 
@@ -1121,7 +1134,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             }
         }
 
-        Mixed ballots: [{'alpha': ModPrimeElement, 'beta': ModPrimeElement}]
+        Mixed ballots: list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}]
 
         Returns: {'public': ModPrimeElement, 'factors': list[dict]}
 
@@ -1166,8 +1179,47 @@ class ModPrimeCrypto(ElGamalCrypto):
         return True
 
 
-    def decrypt_ballots(self, mixed_ballots, zeus_factors, trustee_factors):
-        pass # -> crypto
+    def decrypt_ballots(self, mixed_ballots, zeus_factors, trustees_factors):
+        """
+        Mixed ballots: list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}]
+
+        Zeus factors: list[dict]
+
+        Trustees factors: list[{'public': ModPrimeElement, 'factors': list[dict]}]
+
+        :type mixed_ballots: list[list]
+        :type zeus_factors: list
+        :type trustees_factors: list[list[dict]]
+        :rtype:
+        """
+        all_factors = [trustee_factors['factors'] for trustee_factors in trustees_factors]
+        all_factors.append(zeus_factors)
+        decryption_factors = self._combine_decryption_factors(all_factors)
+
+        encoded_messages = []
+        append = encoded_messages.append
+
+        for ballot, factor in zip(mixed_ballots, decryption_factors):
+            # decryption_factors:
+            #          |ballot_1   |ballot_2   |ballot_3   |.........
+            # ---------|-----------------------------------|---------
+            #     zeus |factor01   |factor02   |factor03   |.........
+            # trustee1 |factor11   |factor12   |factor13   |.........
+            # trustee2 |factor21   |factor22   |factor23   |.........
+            # trustee3 |factor31   |factor32   |factor33   |.........
+            # ---------|-----------------------------------|---------
+            #          |factor_1   |factor_2   |factor_3   |.........
+            encoded = self._decrypt_with_decryptor(ballot, factor)
+            append(encoded)
+
+        plaintexts = []
+        append = plaintexts.append
+        for encoded in encoded_messages:
+            plaintext = encoded.to_integer()
+            append(plaintext)
+
+        return plaintexts
+
 
     def validate_decrypting(self, mixed_ballots, public_shares, zeus_factors,
             trustees_factors, zeus_public):
@@ -1773,7 +1825,7 @@ class ModPrimeCrypto(ElGamalCrypto):
                         (g ^ x modp, g ^ z modp, g ^ (x * z) modp)
 
         for some integers 0 <= x, z < q
-        
+
         :type ddh: (ModPrimeElement, ModPrimeElement, ModPrimeElement)
         :type z: mpz
         :rtype: dict
@@ -1793,7 +1845,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             g_commitment,
             u_commitment)   # c = g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp
 
-        response = __group.add_exponents(randomness, challenge * z)     # s = r + c * z  modq
+        response = __group.add_exponents(randomness, challenge * z)      # s = r + c * z  modq
 
         proof = self._set_chaum_pedersen_proof(g_commitment, u_commitment, challenge, response)
         return proof
@@ -1854,7 +1906,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             return False
 
         # Verify that the provided u is of the form g ^ (k * z) for some k (and
-        # thus k = x due to prover's commitment to randomness r):
+        # thus k = x due to prover's verified commitment to randomness r):
         # u ^ s == u ^ r * w ^ c  modp ?
         return u ** response == u_commitment * (w ** challenge)
 
@@ -1986,7 +2038,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             'beta': b * y ^ r       (modp)
         }
 
-        .. note:: (Special case of same public key) Given the ElGamal encryption
+        .. note:: (Special case with fixed public key) Given the ElGamal encryption
 
         {
             'alpha': g ^ r_0        (modp)
@@ -2072,7 +2124,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         Standard ElGamal decryption
 
         .. note:: this function is not used by zeus. It is here included
-        for completeness of the cryptossytem and testing purposes.
+        for completeness of the cryptossytem and testing purposes. For
+        actual use see the `.decrypt_with_decryptor()` method.
 
         Decrypts the provided ElGamal-ciphertext `ciphertext`
 
@@ -2107,8 +2160,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type decryptor: ModPrimeElement
         :rtype: ModPrimeElement
 
-        .. note:: specializes to standard ElGamal decryption if the decryptor
-        is chosen to be a ^ x, where x is the private key used at ecnryption
+        .. note:: specializes to standard ElGamal decryption (`.decrypt()`) if
+        `decryptor` is a ^ x, where x is the private key used at ecnryption
         """
         _, beta = self._extract_ciphertext(ciphertext)
 

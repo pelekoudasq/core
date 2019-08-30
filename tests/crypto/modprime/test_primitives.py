@@ -14,7 +14,7 @@ from tests.constants import (MESSAGE,
 # Key generation and validation
 
 __system__secret__public = [
-    (RES11_SYSTEM, RES11_KEY, RES11_PUBLIC),
+    # (RES11_SYSTEM, RES11_KEY, RES11_PUBLIC),
     (_2048_SYSTEM, _2048_KEY, _2048_PUBLIC),
     (_4096_SYSTEM, _4096_KEY, _4096_PUBLIC)
 ]
@@ -31,7 +31,11 @@ def test_keygen_with_non_random_private(system, secret, public):
     assert secret == keypair['private'] and public_key.value == public and valid
 
 
-__system = [RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM]
+__system = [
+    # RES11_SYSTEM,
+    _2048_SYSTEM,
+    _4096_SYSTEM
+]
 
 @pytest.mark.parametrize('system', __system)
 def test_keygen_with_random_private(system):
@@ -45,7 +49,11 @@ def test_keygen_with_random_private(system):
 
 __system__public_key__result = []
 
-for system in (RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM):
+for system in (
+    # RES11_SYSTEM,
+    _2048_SYSTEM,
+    _4096_SYSTEM
+):
     public_key = system.keygen()['public']
     __system__public_key__result.append((system, public_key, True))
 
