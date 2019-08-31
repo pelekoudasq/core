@@ -52,7 +52,7 @@ class InvalidFactorsError(BaseException):
     """
     pass
 
-class InvalidBallotDecryption(BaseEncryption):
+class InvalidBallotDecryption(BaseException):
     """
     Raised when decryption of a ballot collection could not be validated
     """
