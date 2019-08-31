@@ -42,12 +42,18 @@ class InvalidSignatureError(BaseException):
 
 class InvalidEncryptionError(BaseException):
     """
-    Raised when the proof accompanying an encryption cannot be verified
+    Raised when the proof accompanying an encryption could not be verified
     """
     pass
 
 class InvalidFactorsError(BaseException):
     """
-    Raised when a trustee's factors are not validated
+    Raised when a trustee's factors could not be validated
+    """
+    pass
+
+class InvalidBallotDecryption(BaseEncryption):
+    """
+    Raised when decryption of a ballot collection could not be validated
     """
     pass
