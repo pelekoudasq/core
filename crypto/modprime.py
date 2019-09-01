@@ -1107,9 +1107,9 @@ class ModPrimeCrypto(ElGamalCrypto):
         master_factors = []
         append = master_factors.append
 
-        for trustees_factors in zip(*trustees_factors):
+        for factors_column in zip(*trustees_factors):
             master_factor = self.__group.unit()
-            for trustee_factor in trustees_factors:
+            for trustee_factor in factors_column:
                 data, _ = self._extract_factor(trustee_factor)
                 master_factor *= data
             append(master_factor)
@@ -1180,17 +1180,17 @@ class ModPrimeCrypto(ElGamalCrypto):
         return True
 
 
-    def decrypt_ballots(self, mixed_ballots, zeus_factors, trustees_factors):
+    def decrypt_ballots(self, mixed_ballots, trustees_factors, zeus_factors):
         """
         Mixed ballots: list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}]
 
-        Zeus factors: list[{'data': ModPrimeElement, 'proof': ...}]
-
         Trustees factors: list[{'public': ModPrimeElement, 'factors': list[{'data': ModPrimeElement, 'proof': ...}]}]
 
+        Zeus factors: list[{'data': ModPrimeElement, 'proof': ...}]
+
         :type mixed_ballots: list[list]
-        :type zeus_factors: list
         :type trustees_factors: list[list[dict]]
+        :type zeus_factors: list[dict]
         :rtype:
         """
         plaintexts = []
@@ -1237,40 +1237,10 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type zeus_public_key: ModPrimeElement
         :rtype: boolean
         """
-        #
-        # # Alternative version
-        #
-        # if len(trustees_factors) is not len(public_shares):
-        #     e = 'Unequal number of public shares and trustees'
-        #     raise InvalidBallotDecryption(e)
-        #
-        # # Just ignore proof of key
-        # trustees_factors = trustees_factors = [{
-        #     'public': self._extract_value(trustee_factors['public']),
-        #     'factors': trustee_factors['factors']
-        # } for trustee_factor in trustees_factors]
-        #
-        # # Verify trustees' factors
-        # for share in public_shares:
-        #     trustee_public = self._extract_value(share)
-        #
-        #     try:
-        #         trustee_factors = trustees_factors[trustee_public]
-        #     except KeyError:
-        #         e = 'Trustee mismatch with public shares'
-        #         raise InvalidBallotDecryption(e)
-        #
-        #     if not self._verify_decryption_factors(trustee_public, mixed_ballots, trustee_factors):
-        #         e = 'Trustee\'s factors could not be verified'
-        #         raise InvalidBallotDecryption(e)
-        #
-        # # Verify zeus's factors
-        # zeus_public_key = self._extract_value(zeus_public_key)
-        # if not self._verify_decryption_factors(zeus_public_key, mixed_ballots, zeus_factors):
-        #     e = 'Zeus\'s factors could not be verified'
-        #     raise InvalidBallotDecryption
-        #
-        # return True
+        # Lengths check
+        if len(trustees_factors) is not len(public_shares):
+            e = 'Unequal number of public shares and trustees'
+            raise InvalidBallotDecryption(e)
 
         # Remove proofs from trustees' public keys
         aux_factors = {}
@@ -1280,31 +1250,24 @@ class ModPrimeCrypto(ElGamalCrypto):
             aux_factors[public] = factors
         trustees_factors = aux_factors
 
-        # Lengths check
-        if len(trustees_factors) is not len(public_shares):
-            e = 'Unequal number of public shares and trustees'
-            raise InvalidBallotDecryption(e)
-
         # Verify trustees' factors
-        trustees_keys = trustees_factors.keys()
         for share in public_shares:
             trustee_public = self._extract_value(share)
-
-            if trustee_public not in trustees_keys:
+            try:
+                trustee_factors = trustees_factors[trustee_public]
+            except KeyError:
                 e = 'Trustee mismatch with public shares'
                 raise InvalidBallotDecryption(e)
 
-            trustee_factors = trustees_factors[trustee_public]
             if not self._verify_decryption_factors(trustee_public, mixed_ballots, trustee_factors):
                 e = 'Trustee\'s factors could not be verified'
                 raise InvalidBallotDecryption(e)
-
 
         # Verify zeus's factors
         zeus_public_key = self._extract_value(zeus_public_key)
         if not self._verify_decryption_factors(zeus_public_key, mixed_ballots, zeus_factors):
             e = 'Zeus\'s factors could not be verified'
-            raise InvalidBallotDecryption
+            raise InvalidBallotDecryption(e)
 
         return True
 

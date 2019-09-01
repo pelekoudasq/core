@@ -8,7 +8,7 @@ from mixnets.zeus_sk.utils import (compute_mix_challenge, shuffle_ciphers,
 from utils.random import random_integer, random_permutation
 
 from tests.constants import (RES11_ZEUS_SK, RES11_ELECTION_KEY,
-    _2048_ZEUS_SK, _2048_ELECTION_KEY)
+    _2048_ZEUS_SK, _2048_ELECTION_KEY, _4096_ZEUS_SK, _4096_ELECTION_KEY)
 
 def test_compute_mix_challenge():
     mixnet = RES11_ZEUS_SK
@@ -59,9 +59,9 @@ nr_ciphers = 12
 _range = range(nr_ciphers)
 
 for mixnet, election_key in (
-    (RES11_ZEUS_SK, RES11_ELECTION_KEY),
+    # (RES11_ZEUS_SK, RES11_ELECTION_KEY),
     (_2048_ZEUS_SK, _2048_ELECTION_KEY),
-    # (_4096_ZEUS_SK, _4096_ELECTION_KEY)
+    (_4096_ZEUS_SK, _4096_ELECTION_KEY)
 ):
     encrypt_func = mixnet._reencrypt
     public = election_key

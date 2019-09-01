@@ -1,8 +1,11 @@
 import pytest
+import math
+from copy import deepcopy
 from functools import reduce
+from itertools import permutations
 from gmpy2 import mpz
 
-from crypto.exceptions import InvalidFactorsError
+from crypto.exceptions import InvalidFactorsError, InvalidBallotDecryption
 from utils import random_integer
 
 from tests.constants import (RES11_SYSTEM, RES11_KEY,
@@ -121,7 +124,7 @@ def test_validate_trustee_factors(system, mixed_ballots, trustee_keypair, truste
 __failure_cases__ = []
 
 for (system, key) in (
-    (RES11_SYSTEM, RES11_KEY),
+    # (RES11_SYSTEM, RES11_KEY),
     (_2048_SYSTEM, _2048_KEY),
     (_4096_SYSTEM, _4096_KEY),
 ):
@@ -169,40 +172,98 @@ def test__failure_at_validation_of_trustee_factors(system, trustee_public,
         system.validate_trustee_factors(trustee_public, mixed_ballots, trustee_factors)
 
 
-# Ballot decryption
+# Ballot-decryption and decryption-validation
 
-__system__mixed_ballots__zeus_factors__trustees_factors__expecteds = []
+__system__mixed_ballots__trustees_factors__zeus_factors__expecteds = []
+__system__mixed_ballots__trustees_factors__public_shares__zeus_factors__zeus_public_key__result = []
+
+nr_ballots = 20
+nr_trustees = 4
 
 for system in (
-    RES11_SYSTEM,
+    # RES11_SYSTEM,
     _2048_SYSTEM,
     _4096_SYSTEM,
 ):
-    nr_ballots = 20
-    nr_trustees = 4
     random_element = system.group.random_element
 
     # Mock zeus and trustees
-    zeus_factors = [{'data': random_element().value, 'proof': {}} for _ in range(nr_ballots)]
-    trustees_factors = [[{'data': random_element().value, 'proof': {}} for _ in range(nr_ballots)] for _ in range(nr_trustees)]
+    zeus_keypair = system.keygen()
+    trustees_keypairs = [system.keygen() for _ in range(nr_trustees)]
+
+    # Mock ballots
+    mixed_ballots = [{'alpha': random_element(), 'beta': random_element()} for _ in range(nr_ballots)]
+
+    # Mock factors
+    trustees_factors = [{
+        'public': keypair['public'],
+        'factors': system._compute_decryption_factors(keypair['private'], mixed_ballots)
+    } for keypair in trustees_keypairs]
+    zeus_factors = system._compute_decryption_factors(zeus_keypair['private'], mixed_ballots)
+
+    # Mock public shares
+    zeus_public_key = zeus_keypair['public']['value']
+    trustees_public_keys = [keypair['public']['value'] for keypair in trustees_keypairs]
+    public_shares = list(permutations(trustees_public_keys))[random_integer(0, math.factorial(nr_trustees))]
+
+    # -- Perform decryption --
 
     # Combine componentwise to get decryption factors
-    decryption_factors = []
-    trustees_factors.append(zeus_factors)
-    decryption_factors = system._combine_decryption_factors(trustees_factors)
-
-    # Mock mixed ballots
-    mixed_ballots = [{'alpha': random_element(), 'beta': random_element()} for _ in range(nr_ballots)]
+    all_factors = [trustee_factors['factors'] for trustee_factors in trustees_factors]
+    all_factors.append(zeus_factors)
+    decryption_factors = system._combine_decryption_factors(all_factors)
 
     # Decrypt
     expecteds = [(decryptor.inverse * ballot['beta']).to_integer()
         for (ballot, decryptor) in zip(mixed_ballots, decryption_factors)]
 
     # Append parameters
-    __system__mixed_ballots__zeus_factors__trustees_factors__expecteds\
-        .append((system, mixed_ballots, zeus_factors, trustees_factors, expecteds))
+    __system__mixed_ballots__trustees_factors__zeus_factors__expecteds\
+        .append((system, mixed_ballots, trustees_factors, zeus_factors, expecteds))
 
-@pytest.mark.parametrize('system, mixed_ballots, zeus_factors, trustees_factors, expecteds',
-    __system__mixed_ballots__zeus_factors__trustees_factors__expecteds)
-def test_decrypt_ballots(system, mixed_ballots, zeus_factors, trustees_factors, expecteds):
-    assert True
+    # -- Validate decryption --
+
+    # Valid case
+    __system__mixed_ballots__trustees_factors__public_shares__zeus_factors__zeus_public_key__result.\
+        append((system, mixed_ballots, trustees_factors, public_shares, zeus_factors, zeus_public_key, True))
+
+    # Corrupt match
+    corrupt_shares = list(public_shares[:])
+    del corrupt_shares[-1]
+    __system__mixed_ballots__trustees_factors__public_shares__zeus_factors__zeus_public_key__result.\
+        append((system, mixed_ballots, trustees_factors, corrupt_shares, zeus_factors, zeus_public_key, False))
+
+    # Corrupt public shares
+    corrupt_shares = [share.clone() for share in public_shares]
+    corrupt_shares[0].reduce_value()
+    __system__mixed_ballots__trustees_factors__public_shares__zeus_factors__zeus_public_key__result.\
+        append((system, mixed_ballots, trustees_factors, corrupt_shares, zeus_factors, zeus_public_key, False))
+
+    # Corrupt first trustee
+    corrupt_trustees_factors = deepcopy(trustees_factors)
+    corrupt_trustees_factors[0]['public']['value'].reduce_value()
+    __system__mixed_ballots__trustees_factors__public_shares__zeus_factors__zeus_public_key__result.\
+        append((system, mixed_ballots, corrupt_trustees_factors, public_shares, zeus_factors, zeus_public_key, False))
+
+    # Corrupt zeus's factors
+    corrupt_zeus_factors = deepcopy(zeus_factors)
+    corrupt_proof = deepcopy(corrupt_zeus_factors[0]['proof'])
+    corrupt_proof['challenge'] += 1
+    corrupt_zeus_factors[0] = {'data': corrupt_zeus_factors[0]['data'], 'proof': corrupt_proof}
+    __system__mixed_ballots__trustees_factors__public_shares__zeus_factors__zeus_public_key__result.\
+        append((system, mixed_ballots, trustees_factors, public_shares, corrupt_zeus_factors, zeus_public_key, False))
+
+@pytest.mark.parametrize('system, mixed_ballots, trustees_factors, zeus_factors, expected',
+    __system__mixed_ballots__trustees_factors__zeus_factors__expecteds)
+def test_decrypt_ballots(system, mixed_ballots, trustees_factors, zeus_factors, expected):
+    assert system.decrypt_ballots(mixed_ballots, trustees_factors, zeus_factors) == expected
+
+@pytest.mark.parametrize(
+    'system, mixed_ballots, trustees_factors, public_shares, zeus_factors, zeus_public_key, result',
+    __system__mixed_ballots__trustees_factors__public_shares__zeus_factors__zeus_public_key__result)
+def test_validate_ballots_decryption(system, mixed_ballots, trustees_factors, public_shares, zeus_factors, zeus_public_key, result):
+    if result:
+        assert system.validate_ballots_decryption(mixed_ballots, trustees_factors, public_shares, zeus_factors, zeus_public_key)
+    else:
+        with pytest.raises(InvalidBallotDecryption):
+            system.validate_ballots_decryption(mixed_ballots, trustees_factors, public_shares, zeus_factors,zeus_public_key)
