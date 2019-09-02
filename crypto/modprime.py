@@ -584,7 +584,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         trustees = [self._get_public(keypair) for keypair in keypairs]
         return trustees
 
-    def _reprove_trustee(self, trustee_keypair):
+    def reprove_trustee(self, trustee_keypair):
         """
         :type trustee_keypair: dict
         :rtype: dict
@@ -619,89 +619,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         test_key = self.compute_election_key(trustees, zeus_keypair)
         return election_key == self._get_value(test_key)
 
-
-    def _get_public_shares(self, trustees):
-        """
-        Extracts public keys of the provided trustees as group elements
-        and returns them in a list
-
-        :type trustees: list[dict]
-        :rtype: list[ModPrimeElement]
-        """
-        public_shares = [self._get_value(public_key) for public_key in trustees]
-        return public_shares
-
-
-    def _encode_integer(self, integer):
-        """
-        :type integer: int
-        :rtype: ModPrimeElement
-        """
-        element = self.group.encode_integer(integer)
-        return element
-
-    def _set_vote(self, voter, encrypted, fingerprint, audit_code=None, publish=None,
-            voter_secret=None, previous=None, index=None, status=None, plaintext=None):
-        """
-        :type voter:
-        :type encrypted: dict
-        :type fingerprint: bytes
-        :type audit_code:
-        :type publish:
-        :type voter_sercret:
-        :type previous:
-        :type index:
-        :type status:
-        :type plaintext: int
-        :rtype: dict
-        """
-        vote = {}
-
-        vote['voter'] = str(voter)
-        vote['encrypted'] = encrypted
-        vote['fingerprint'] = hash_decode(fingerprint)
-
-        if audit_code:
-            vote['audit_code'] = int(audit_code)
-        if publish:
-            vote['voter_secret'] = str(voter_secret)    # str(int(voter_secret))
-        if previous:
-            vote['index'] = str(index)
-        if status:
-            vote['status'] = status
-        if plaintext:
-            vote['plaintext'] = str(plaintext)
-
-        return vote
-
-    def _extract_fingerprint_params(self, ciphertext_proof):
-        """
-        Prepares fignerprint parameters out of a dictionary of the form
-
-        {'ciphertext': dict, 'proof': dict}
-
-        :type ciphertext_proof: dict
-        :rtype: (ModPrimeElement, ModPrimeElement, ModPrimeElement, mpz, mpz, mpz)
-        """
-        ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
-        alpha, beta = self._extract_ciphertext(ciphertext)
-        commitment, challenge, response = self._extract_schnorr_proof(proof)
-        return alpha, beta, commitment, challenge, response
-
-    def _make_fingerprint(self, ciphertext_proof):
-        """
-        Makes fingerprint out of a dicitonary of the form
-
-        {'ciphertext': dict, 'proof': dict}
-
-        :type ciphertext_proof: dict
-        :rtype: bytes
-        """
-        fingerprint_params = self._extract_fingerprint_params(ciphertext_proof)
-        fingerprint = hash_texts(*[str(param) for param in fingerprint_params])
-        return fingerprint
-
-
     def vote(self, election_key, voter, plaintext,
                 audit_code=None, publish=None):
         """
@@ -727,33 +644,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         vote = self._set_vote(voter, encrypted, fingerprint, audit_code, publish, randomness)
         return vote
 
-
-    def _extract_vote(self, vote):
-        """
-        :type vote: dict
-        :rtype: dict
-        """
-        voter = vote['voter']
-        encrypted = vote['encrypted']
-        fingerprint = hash_encode(vote['fingerprint'])
-
-        audit_code = extract_value(vote, 'audit_code', int)
-        voter_secret = extract_value(vote, 'voter_secret', mpz)
-
-        previous = None
-        if 'previous' in vote.keys():
-            previous = hash_encode(vote['previous'])
-
-        index = extract_value(vote, 'index', int)
-        status = extract_value(vote, 'status', str)
-
-        cast = partial(self.__GroupElement, modulus=self.__modulus)
-        plaintext = extract_value(vote, 'plaintext', cast)
-
-        return voter, encrypted, fingerprint, audit_code,\
-            voter_secret, previous, index, status, plaintext
-
-
     def validate_submitted_vote(self, vote):
         """
         Checks if the vote's fingerprint is correct, returning the fingerprint
@@ -773,7 +663,6 @@ class ModPrimeCrypto(ElGamalCrypto):
             raise InvalidVoteError(e)
 
         return fingerprint
-
 
     def sign_vote(self, vote, comments, election_key, zeus_keypair, trustees, choices):
         """
@@ -833,7 +722,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         vote_signature += '%s\n%s\n%s\n' % (exponent, c_1, c_2)
 
         return vote_signature
-
 
     def verify_vote_signature(self, vote_signature):
         """
@@ -935,7 +823,6 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return True
 
-
     def verify_audit_votes(self, election_key, choices, votes=None, audit_reqs=None):
         """
         :type election_key: dict
@@ -978,17 +865,128 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return missing, failed
 
+
+    def _get_public_shares(self, trustees):
+        """
+        Extracts public keys of the provided trustees as group elements
+        and returns them in a list
+
+        :type trustees: list[dict]
+        :rtype: list[ModPrimeElement]
+        """
+        public_shares = [self._get_value(public_key) for public_key in trustees]
+        return public_shares
+
+    def _combine_public_keys(self, initial, public_keys):
+        """
+        Assuming the provided keys in the form of group elements, computes
+        and returns their product
+
+        :type initial: ModPrimeElement
+        :type public_keys: list[ModPrimeElement]
+        :rtype: ModPrimeElement
+        """
+        combined = initial
+        for public_key in public_keys:
+            combined = combined * public_key
+        return combined
+
+    def _encode_integer(self, integer):
+        """
+        :type integer: int
+        :rtype: ModPrimeElement
+        """
+        element = self.__group.encode_integer(integer)
+        return element
+
+    def _set_vote(self, voter, encrypted, fingerprint, audit_code=None, publish=None,
+            voter_secret=None, previous=None, index=None, status=None, plaintext=None):
+        """
+        :type voter:
+        :type encrypted: dict
+        :type fingerprint: bytes
+        :type audit_code:
+        :type publish:
+        :type voter_sercret:
+        :type previous:
+        :type index:
+        :type status:
+        :type plaintext: int
+        :rtype: dict
+        """
+        vote = {}
+
+        vote['voter'] = str(voter)
+        vote['encrypted'] = encrypted
+        vote['fingerprint'] = hash_decode(fingerprint)
+
+        if audit_code:
+            vote['audit_code'] = int(audit_code)
+        if publish:
+            vote['voter_secret'] = str(voter_secret)    # str(int(voter_secret))
+        if previous:
+            vote['index'] = str(index)
+        if status:
+            vote['status'] = status
+        if plaintext:
+            vote['plaintext'] = str(plaintext)
+
+        return vote
+
+    def _extract_vote(self, vote):
+        """
+        :type vote: dict
+        :rtype: dict
+        """
+        voter = vote['voter']
+        encrypted = vote['encrypted']
+        fingerprint = hash_encode(vote['fingerprint'])
+
+        audit_code = extract_value(vote, 'audit_code', int)
+        voter_secret = extract_value(vote, 'voter_secret', mpz)
+
+        previous = None
+        if 'previous' in vote.keys():
+            previous = hash_encode(vote['previous'])
+
+        index = extract_value(vote, 'index', int)
+        status = extract_value(vote, 'status', str)
+
+        cast = partial(self.__GroupElement, modulus=self.__modulus)
+        plaintext = extract_value(vote, 'plaintext', cast)
+
+        return voter, encrypted, fingerprint, audit_code,\
+            voter_secret, previous, index, status, plaintext
+
+    def _extract_fingerprint_params(self, ciphertext_proof):
+        """
+        Prepares fignerprint parameters out of a dictionary of the form
+
+        {'ciphertext': dict, 'proof': dict}
+
+        :type ciphertext_proof: dict
+        :rtype: (ModPrimeElement, ModPrimeElement, ModPrimeElement, mpz, mpz, mpz)
+        """
+        ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
+        alpha, beta = self._extract_ciphertext(ciphertext)
+        commitment, challenge, response = self._extract_schnorr_proof(proof)
+        return alpha, beta, commitment, challenge, response
+
+    def _make_fingerprint(self, ciphertext_proof):
+        """
+        Makes fingerprint out of a dicitonary of the form
+
+        {'ciphertext': dict, 'proof': dict}
+
+        :type ciphertext_proof: dict
+        :rtype: bytes
+        """
+        fingerprint_params = self._extract_fingerprint_params(ciphertext_proof)
+        fingerprint = hash_texts(*[str(param) for param in fingerprint_params])
+        return fingerprint
+
+
     # Mixing and ballots decryption
-
-    def _get_mixnet_class(self, module):
-        """
-        :type module: str
-        :rtype:
-        """
-        _module = import_module('mixnets.%s' % module)
-        _cls = getattr(_module, module.capitalize())
-        return _cls
-
 
     def initialize_mixnet(self, module, config, election_key):
         """
@@ -998,6 +996,15 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         _cls = self._get_mixnet_class(module)
         return _cls(config, election_key)
+
+    def _get_mixnet_class(self, module):
+        """
+        :type module: str
+        :rtype:
+        """
+        _module = import_module('mixnets.%s' % module)
+        _cls = getattr(_module, module.capitalize())
+        return _cls
 
 
     #############################################################
@@ -1064,129 +1071,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         return public, factors
 
 
-    def _compute_decryption_factors(self, secret, ciphers):
-        """
-        Uses the provided `secret` x to construct a presumable DDH tuple for
-        each of the provided `ciphers` and generates presumed proof-of-knowledge
-        that the constructed tuple is DDH
-
-        Returns a list of these proofs along with the last member of the
-        corresponding DDH
-
-        For each ciphertext
-
-        {'alpha': a, 'beta': ...}
-
-        from the provided `ciphers`, provided that
-
-        a = g ^ r (modp)
-
-        as the result of ElGamal-encryption, generate a proof-of-knowledge
-        (Chaum-Pedersen) s that the tuple
-
-                g ^ r (modp), g ^ x (modp), g ^ (r * x) modp
-
-        is DDH and return the list of pairs
-
-        {'data': g ^ (r * x) (modp), 'proof': s}
-
-        :type secret: mpz
-        :type ciphers: list[dict]
-        :rtype: list[dict]
-        """
-        public = self.group.generate(secret)                        # g ^ x         (mod p)
-
-        factors = []
-        append = factors.append
-        for cipher in ciphers:
-
-            alpha, _ = self._extract_ciphertext(cipher)             # g ^ r         (mod p)
-            data = alpha ** secret                                  # g ^ (x * r)   (mod p)
-
-            ddh = (alpha, public, data)
-
-            proof = self._chaum_pedersen_proof(ddh, secret)
-            factor = self._set_factor(data, proof)
-            append(factor)
-
-        return factors
-
-
-    def _verify_decryption_factors(self, public, ciphers, factors):
-        """
-        Returns `True` iff all the provided cipher-factor pairs are
-        successfully verified under the provided `public` y
-
-        .. note:: `False` is returned if the number of ciphers is unequal
-        to the number of factors
-
-        For each ciphertext
-
-        {'alpha': a, 'beta': ...}
-
-        from the provided `ciphers` and corresponding factor
-
-        {'data': c, 'proof': s}
-
-        from the provided `factors`, the current cipher-factor pair will be
-        verified iff the (Shnorr-proof) s proves knowledge that the tuple
-
-        (a, y, c)
-
-        is a DDH
-
-        :type public: ModPrimeElement
-        :type ciphers: list[dict]
-        :type factors: list[dict]
-        :rtype: bool
-        """
-        if len(ciphers) != len(factors):
-            return False
-
-        for cipher, factor in zip(ciphers, factors):
-            alpha, _ = self._extract_ciphertext(cipher)
-            data, proof = self._extract_factor(factor)
-
-            ddh = (alpha, public, data)
-            if not self._chaum_pedersen_verify(ddh, proof):
-                return False
-
-        return True
-
-
-    def _combine_decryption_factors(self, trustees_factors):
-        """
-        Componentwise multiplication
-
-        Given a 2D structure
-
-        [[f_11, ..., f_1n], ..., [f_m1, ... f_mn]]
-
-        of group elements, computes and returns the list
-
-        [f_11 * ... * f_m1, ..., f_1n * ... * f_mn]
-
-        .. note:: Returns a non-sensical 0 if the provided collection comprises
-        of empty lists (including the case that the collection itself is empty)
-
-        :type trustees_factors: list[list[{'data': ModPrimeElement, 'proof': ...}]]
-        :rtype: list[ModPrimeElement]
-        """
-        if not trustees_factors or trustees_factors == [[]] * len(trustees_factors):
-            return 0
-
-        master_factors = []
-        append = master_factors.append
-
-        for factors_column in zip(*trustees_factors):
-            master_factor = self.__group.unit
-            for trustee_factor in factors_column:
-                data, _ = self._extract_factor(trustee_factor)
-                master_factor *= data
-            append(master_factor)
-
-        return master_factors
-
     def compute_zeus_factors(self, mixed_ballots, secret):
         """
         :type mixed_ballots: list
@@ -1194,7 +1078,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         secret = mpz(secret)
         return self._compute_decryption_factors(secret, mixed_ballots)
-
 
     def compute_trustee_factors(self, mixed_ballots, trustee_keypair):
         """
@@ -1250,7 +1133,6 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return True
 
-
     def decrypt_ballots(self, mixed_ballots, trustees_factors, zeus_factors):
         """
         Mixed ballots: list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}]
@@ -1285,7 +1167,6 @@ class ModPrimeCrypto(ElGamalCrypto):
             append(encoded.to_integer())
 
         return plaintexts
-
 
     def validate_ballots_decryption(self, mixed_ballots, trustees_factors,
             public_shares, zeus_factors, zeus_public_key):
@@ -1341,6 +1222,128 @@ class ModPrimeCrypto(ElGamalCrypto):
             raise InvalidBallotDecryption(e)
 
         return True
+
+
+    def _compute_decryption_factors(self, secret, ciphers):
+        """
+        Uses the provided `secret` x to construct a presumable DDH tuple for
+        each of the provided `ciphers` and generates presumed proof-of-knowledge
+        that the constructed tuple is DDH
+
+        Returns a list of these proofs along with the last member of the
+        corresponding DDH
+
+        For each ciphertext
+
+        {'alpha': a, 'beta': ...}
+
+        from the provided `ciphers`, provided that
+
+        a = g ^ r (modp)
+
+        as the result of ElGamal-encryption, generate a proof-of-knowledge
+        (Chaum-Pedersen) s that the tuple
+
+                g ^ r (modp), g ^ x (modp), g ^ (r * x) modp
+
+        is DDH and return the list of pairs
+
+        {'data': g ^ (r * x) (modp), 'proof': s}
+
+        :type secret: mpz
+        :type ciphers: list[dict]
+        :rtype: list[dict]
+        """
+        public = self.group.generate(secret)                        # g ^ x         (mod p)
+
+        factors = []
+        append = factors.append
+        for cipher in ciphers:
+
+            alpha, _ = self._extract_ciphertext(cipher)             # g ^ r         (mod p)
+            data = alpha ** secret                                  # g ^ (x * r)   (mod p)
+
+            ddh = (alpha, public, data)
+
+            proof = self._chaum_pedersen_proof(ddh, secret)
+            factor = self._set_factor(data, proof)
+            append(factor)
+
+        return factors
+
+    def _verify_decryption_factors(self, public, ciphers, factors):
+        """
+        Returns `True` iff all the provided cipher-factor pairs are
+        successfully verified under the provided `public` y
+
+        .. note:: `False` is returned if the number of ciphers is unequal
+        to the number of factors
+
+        For each ciphertext
+
+        {'alpha': a, 'beta': ...}
+
+        from the provided `ciphers` and corresponding factor
+
+        {'data': c, 'proof': s}
+
+        from the provided `factors`, the current cipher-factor pair will be
+        verified iff the (Shnorr-proof) s proves knowledge that the tuple
+
+        (a, y, c)
+
+        is a DDH
+
+        :type public: ModPrimeElement
+        :type ciphers: list[dict]
+        :type factors: list[dict]
+        :rtype: bool
+        """
+        if len(ciphers) != len(factors):
+            return False
+
+        for cipher, factor in zip(ciphers, factors):
+            alpha, _ = self._extract_ciphertext(cipher)
+            data, proof = self._extract_factor(factor)
+
+            ddh = (alpha, public, data)
+            if not self._chaum_pedersen_verify(ddh, proof):
+                return False
+
+        return True
+
+    def _combine_decryption_factors(self, trustees_factors):
+        """
+        Componentwise multiplication
+
+        Given a 2D structure
+
+        [[f_11, ..., f_1n], ..., [f_m1, ... f_mn]]
+
+        of group elements, computes and returns the list
+
+        [f_11 * ... * f_m1, ..., f_1n * ... * f_mn]
+
+        .. note:: Returns a non-sensical 0 if the provided collection comprises
+        of empty lists (including the case that the collection itself is empty)
+
+        :type trustees_factors: list[list[{'data': ModPrimeElement, 'proof': ...}]]
+        :rtype: list[ModPrimeElement]
+        """
+        if not trustees_factors or trustees_factors == [[]] * len(trustees_factors):
+            return 0
+
+        master_factors = []
+        append = master_factors.append
+
+        for factors_column in zip(*trustees_factors):
+            master_factor = self.__group.unit
+            for trustee_factor in factors_column:
+                data, _ = self._extract_factor(trustee_factor)
+                master_factor *= data
+            append(master_factor)
+
+        return master_factors
 
 
     # def convert_mixes_to_elements(self, mixes):
@@ -1563,20 +1566,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: ModPrimeElement
         """
         return public_key['value'] if type(public_key) is dict else public_key
-
-    def _combine_public_keys(self, initial, public_keys):
-        """
-        Assuming the provided keys in the form of group elements, computes
-        and returns their product
-
-        :type initial: ModPrimeElement
-        :type public_keys: list[ModPrimeElement]
-        :rtype: ModPrimeElement
-        """
-        combined = initial
-        for public_key in public_keys:
-            combined = combined * public_key
-        return combined
 
 
     # Text-message signatures
