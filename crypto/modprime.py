@@ -7,7 +7,7 @@ from importlib import import_module
 from .elgamal import ElGamalCrypto
 from .algebra import Group, GroupElement
 from .exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
-    InvalidVoteError, InvalidSignatureError, InvalidFactorsError,
+    InvalidVoteError, InvalidSignatureError, InvalidFactorError,
     InvalidBallotDecryption)
 from .constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION, V_ZEUS_PUBLIC,
     V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER, V_ALPHA, V_BETA,
@@ -1116,7 +1116,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         `trustee_public` (cf. the ._verify_decryption_factors() method)
 
         Returns `True` if all factors are successfully validated, otherwise
-        an `InvalidFactorsError` is raised
+        an `InvalidFactorError` is raised
 
         :type trustee_public: dict
         :type mixed_ballots: list
@@ -1129,13 +1129,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         # Delete this snipset in alterative version
         # if not trustee_public or not trustee_factors:
         #     e = 'Malformed trustee factors'
-        #     raise InvalidFactorsError(e)
+        #     raise InvalidFactorError(e)
 
         trustee_public = self._get_value(trustee_public)
 
         if not self._verify_decryption_factors(trustee_public, mixed_ballots, decryption_factors):
             e = 'Invalid trustee factors'
-            raise InvalidFactorsError(e)
+            raise InvalidFactorError(e)
 
         return True
 

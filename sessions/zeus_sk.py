@@ -22,7 +22,7 @@ def _make_ciphers(cryptosystem, nr_ciphers=40):
     random_element = cryptosystem.group.random_element
     return [(random_element(), random_element()) for _ in range(nr_ciphers)]
 
-def _make_ciphers_to_mix(cryptosystem):
+def _make_ciphers_to_mix(cryptosystem, nr_rounds=12):
     params = cryptosystem.parameters()
     ciphers_to_mix = {
         'modulus': params['modulus'],
@@ -57,9 +57,9 @@ if __name__=='__main__':
     # Synchronous Mixing
     print('Mixing synchronously')
     sleep(1)
-    ciphers_to_mix = _make_ciphers_to_mix(cryptosystem)
+    ciphers_to_mix = _make_ciphers_to_mix(cryptosystem, ROUNDS)
     try:
-        cipher_mix = mixnet.mix_ciphers(ciphers_to_mix, nr_rounds=12, nr_parallel=0)
+        cipher_mix = mixnet.mix_ciphers(ciphers_to_mix, nr_parallel=0)
     except:
         _exit(' - Sync mixing failed to be performed')
     else:
@@ -76,7 +76,6 @@ if __name__=='__main__':
     else:
         print(' + Sync verification successfully performed')
 
-    # sys.stdout.write('\n')
     print()
 
     corrupt = deepcopy(cipher_mix)
@@ -85,8 +84,6 @@ if __name__=='__main__':
         mixnet.verify_cipher_mix(corrupt, nr_parallel=0)
     except MixNotVerifiedError:
         print(' + Malformed cipher mix successfully detected')
-    except:
-        _exit(' - Malformed cipher mix failed to be detected')
     else:
         _exit(' - Malformed cipher mix failed to be detected')
 
@@ -96,8 +93,6 @@ if __name__=='__main__':
         mixnet.verify_cipher_mix(corrupt, nr_parallel=0)
     except MixNotVerifiedError:
         print(' + Malformed mix proof successfully detected')
-    except:
-        _exit(' - Malformed mix proof failed to be detected')
     else:
         _exit(' - Malformed mix proof failed to be detected')
 
@@ -107,18 +102,14 @@ if __name__=='__main__':
         mixnet.verify_cipher_mix(corrupt, nr_parallel=0)
     except MixNotVerifiedError:
         print(' + Invalid challenge successfully detected')
-    except:
-        _exit(' - Invalid challenge failed to be detected')
     else:
         _exit(' - Invalid challenge failed to be detected')
 
     try:
-        lower_bound = ROUNDS - 1
+        lower_bound = ROUNDS + 1
         mixnet.verify_cipher_mix(cipher_mix, min_rounds=lower_bound)
     except MixNotVerifiedError:
         print(' + Wrong lower bound successfully detected')
-    except:
-        _exit(' - Wrong lower bound failed to be detected')
     else:
         _exit(' - Wrong lower bound failed to be detected')
 
@@ -128,8 +119,6 @@ if __name__=='__main__':
         mixnet.verify_cipher_mix(corrupt, nr_parallel=0)
     except MixNotVerifiedError:
         print(' + Wrong collection length successfully detected')
-    except:
-        _exit(' - Wrong collection length failed to be detected')
     else:
         _exit(' - Wrong collection length failed to be detected')
 
@@ -146,8 +135,6 @@ if __name__=='__main__':
         mixnet.verify_cipher_mix(corrupt, nr_parallel=0)
     except MixNotVerifiedError:
         print(' + Unverified round successfully detected')
-    except:
-        _exit(' - Unverified round failed to be detected')
     else:
         _exit(' - Unverified round failed to be detected')
 
@@ -157,7 +144,7 @@ if __name__=='__main__':
     # sleep(1)
     # ciphers_to_mix = _make_ciphers_to_mix(cryptosystem)
     # try:
-    #     cipher_mix = mixnet.mix_ciphers(ciphers_to_mix, nr_rounds=12, nr_parallel=2)
+    #     cipher_mix = mixnet.mix_ciphers(ciphers_to_mix, nr_parallel=2)
     # except:
     #     _exit(' - Async mixing failed to be performed')
     # else:

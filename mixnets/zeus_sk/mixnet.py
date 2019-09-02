@@ -114,7 +114,7 @@ class Zeus_sk(Mixnet):
         :rtype: dict
         """
         ciphers_to_mix = self._set_cipher_mix(cipher_collection)
-        cipher_mix = self.mix_ciphers(ciphers_to_mix, nr_rounds=self.__nr_rounds)
+        cipher_mix = self.mix_ciphers(ciphers_to_mix)
         return self._extract_cipher_mix(cipher_mix)
 
     def mix_many(self, prev):
@@ -208,7 +208,7 @@ class Zeus_sk(Mixnet):
     #       ...                                                                               #
     #   }                                                                                     #
     #                                                                                         #
-    #   wheres by cipher-mix is meant a structure of the form                                 #
+    #   whereas by cipher-mix is meant a structure of the form                                #
     #                                                                                         #
     #   {                                                                                     #
     #       'modulus': mpz,                                                                   #
@@ -298,7 +298,7 @@ class Zeus_sk(Mixnet):
 
     # Core
 
-    def mix_ciphers(self, original_mix, nr_rounds, teller=_teller, nr_parallel=0):
+    def mix_ciphers(self, original_mix, teller=_teller, nr_parallel=0):
         """
         {
             'modulus': mpz,
@@ -328,6 +328,8 @@ class Zeus_sk(Mixnet):
         :type original_mix: dict
         :rtype: dict
         """
+        nr_rounds = self.__nr_rounds
+
         cipher_mix = {}
 
         order = self.__order

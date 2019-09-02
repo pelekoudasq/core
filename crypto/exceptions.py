@@ -30,11 +30,11 @@ class InvalidVoteError(BaseException):
 
 class InvalidSignatureError(BaseException):
     """
-    Raised when a submitted signature cannot be verified under the attached public key
+    Raised when a submitted signature could not be verified
     """
     pass
 
-class InvalidFactorsError(BaseException):
+class InvalidFactorError(BaseException):
     """
     Raised when a trustee's factors could not be validated
     """

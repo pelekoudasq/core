@@ -8,7 +8,7 @@ from functools import reduce
 from itertools import permutations
 from gmpy2 import mpz
 
-from crypto.exceptions import InvalidFactorsError, InvalidBallotDecryption
+from crypto.exceptions import InvalidFactorError, InvalidBallotDecryption
 from utils import random_integer
 
 from tests.constants import (RES11_SYSTEM, RES11_KEY,
@@ -174,7 +174,7 @@ for (system, key) in (
 def test__failure_at_validation_of_trustee_factors(system, trustee_public,
         mixed_ballots, trustee_factors):
     print(trustee_public)
-    with pytest.raises(InvalidFactorsError):
+    with pytest.raises(InvalidFactorError):
         system.validate_trustee_factors(trustee_public, mixed_ballots, trustee_factors)
 
 
