@@ -196,7 +196,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         return zeus_keypair
 
 
-    def _extract_public_shares(self, trustee_public_keys):
+    def _get_public_shares(self, trustee_public_keys):
         """
         Extracts public keys of the provided trustees as group elements
         and returns them in a list
@@ -204,7 +204,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         :type trustee_public_keys: list
         :rtype: list
         """
-        public_shares = [self._extract_value(public_key)\
+        public_shares = [self._get_value(public_key)\
             for public_key in trustee_public_keys]
         return public_shares
 
@@ -217,10 +217,10 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         :type zeus_keypair: dict
         :rtype: GroupElement
         """
-        public_shares = self._extract_public_shares(trustee_public_keys)    # group elements
-        zeus_public_key = self._extract_public_value(zeus_keypair)
+        public_shares = self._get_public_shares(trustee_public_keys)    # group elements
+        zeus_public_key = self._get_public_value(zeus_keypair)
         combined = self._combine_public_keys(zeus_public_key, public_shares)
-        election_key = self._set_public_key_from_element(combined)
+        election_key = self._set_public_key(combined)
         return election_key  # proof: None
 
 
@@ -232,7 +232,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         :type zeus_keypair: dict
         :rtype: bool
         """
-        election_key = self._extract_value(election_key)
+        election_key = self._get_value(election_key)
         test_key = self.compute_election_key()
 
 

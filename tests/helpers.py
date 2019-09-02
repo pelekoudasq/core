@@ -14,7 +14,7 @@ def make_voters(nr_voters):
 
 def make_corrupted_public_key(system):
     corrupted_keypair = system.keygen()
-    return system._extract_public(corrupted_keypair)
+    return system._get_public(corrupted_keypair)
 
 def make_vote(voter, system, election_key, invalid=False):
     plaintext = random_integer(2, PLAINTEXT_CEIL)
@@ -29,10 +29,10 @@ def make_corrupted_signature_vote(system, vote, comments, election_key,
     """
     __p, __q, __g = system._parameters()
 
-    election_key = system._extract_value(election_key)
+    election_key = system._get_value(election_key)
 
     zeus_private_key, zeus_public_key = system._extract_keypair(zeus_keypair)
-    zeus_public_key = system._extract_value(zeus_public_key)
+    zeus_public_key = system._get_value(zeus_public_key)
 
     _, encrypted, fingerprint, _, _, previous, index, status, _ = system._extract_vote(vote)
 
@@ -42,7 +42,7 @@ def make_corrupted_signature_vote(system, vote, comments, election_key,
     alpha = ModPrimeElement(alpha.value + 1, __p)
     index = 1
 
-    trustees = [system._extract_value(trustee) for trustee in trustees]
+    trustees = [system._get_value(trustee) for trustee in trustees]
 
     m00 = status if status is not None else 'NONE'
     m01 = '%s%s' % (V_FINGERPRINT, fingerprint)

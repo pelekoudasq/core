@@ -28,23 +28,11 @@ class InvalidVoteError(BaseException):
     """
     pass
 
-# class InvalidStructureError(BaseException):
-#     """
-#     Raised when a submitted signature does not have the expected format
-#     """
-#     pass
-
 class InvalidSignatureError(BaseException):
     """
     Raised when a submitted signature cannot be verified under the attached public key
     """
     pass
-
-# class InvalidEncryptionError(BaseException):
-#     """
-#     Raised when the proof accompanying an encryption could not be verified
-#     """
-#     pass
 
 class InvalidFactorsError(BaseException):
     """

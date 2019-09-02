@@ -24,10 +24,10 @@ if __name__=='__main__':
         % json.dumps(system.parameters(), indent=4, sort_keys=True))
 
     keypair = system.keygen()
-    private_key = system._extract_private(keypair)
-    public_key = system._extract_public(keypair)
+    private_key = system._get_private(keypair)
+    public_key = system._get_public(keypair)
 
-    print('\n-- PUBLIC KEY --\n%d' % system.extract_value(public_key))
+    print('\n-- PUBLIC KEY --\n%s' % str(public_key['value']))
 
     print('\nVoting session complete: ALL CHECKS PASSED\n')
     sys.exit(0)

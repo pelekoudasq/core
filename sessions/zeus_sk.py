@@ -28,7 +28,7 @@ def _make_ciphers_to_mix(cryptosystem):
         'modulus': params['modulus'],
         'order': params['order'],
         'generator': params['generator'],
-        'public': cryptosystem._extract_value(cryptosystem._extract_public(cryptosystem.keygen())),
+        'public': cryptosystem._get_value(cryptosystem._get_public(cryptosystem.keygen())),
         'original_ciphers': [],
         'mixed_ciphers': _make_ciphers(cryptosystem),
         'cipher_collections': []

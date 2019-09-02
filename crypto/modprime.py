@@ -1,5 +1,5 @@
 import Crypto
-from Crypto.Util.number import isPrime
+from Crypto.Util.number import isPrime as is_prime
 from gmpy2 import mpz, powmod, invert, mul, add, f_mod, qdiv
 from functools import partial
 from importlib import import_module
@@ -184,7 +184,7 @@ class ModPrimeSubgroup(Group):
         modulus = modulus
         root_order = root_order
 
-        if modulus <= 2 or not isPrime(modulus):
+        if modulus <= 2 or not is_prime(modulus):
             e = 'Provided modulus is not an odd prime'
             raise AlgebraError(e)
 
@@ -503,7 +503,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             e = 'Provided modulus is not 3 mod 4'
             raise WrongCryptoError(e)
 
-        if prime_order and not isPrime(group.order):
+        if prime_order and not is_prime(group.order):
             e = 'Order of the requested group is not prime'
             raise WrongCryptoError(e)
 
@@ -561,7 +561,9 @@ class ModPrimeCrypto(ElGamalCrypto):
         return self.__GroupElement
 
 
-    # Elections API
+    # ----------------------------- Elections API -----------------------------
+
+    # Voting
 
     def create_zeus_keypair(self, zeus_secret_key=None):
         """
@@ -579,7 +581,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: list[dict]
         """
         keypairs = [self.keygen() for _ in range(nr_trustees)]
-        trustees = [self._extract_public(keypair) for keypair in keypairs]
+        trustees = [self._get_public(keypair) for keypair in keypairs]
         return trustees
 
     def _reprove_trustee(self, trustee_keypair):
@@ -588,7 +590,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: dict
         """
         private_key, public_key = self._extract_keypair(trustee_keypair)
-        public_key = self._extract_value(public_key)
+        public_key = self._get_value(public_key)
         proof = self._schnorr_proof(private_key, public_key)
         return proof
 
@@ -600,10 +602,10 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type zeus_keypair: dict
         :rtype: dict
         """
-        public_shares = self._extract_public_shares(trustees)
-        zeus_public_key = self._extract_public_value(zeus_keypair)
+        public_shares = self._get_public_shares(trustees)
+        zeus_public_key = self._get_public_value(zeus_keypair)
         combined = self._combine_public_keys(zeus_public_key, public_shares)
-        election_key = self._set_public_key_from_element(combined)
+        election_key = self._set_public_key(combined)
         return election_key
 
     def validate_election_key(self, election_key, trustees, zeus_keypair):
@@ -613,12 +615,12 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type zeus_keypair: dict
         :rtype: bool
         """
-        election_key = self._extract_value(election_key)
+        election_key = self._get_value(election_key)
         test_key = self.compute_election_key(trustees, zeus_keypair)
-        return election_key == self._extract_value(test_key)
+        return election_key == self._get_value(test_key)
 
 
-    def _extract_public_shares(self, trustees):
+    def _get_public_shares(self, trustees):
         """
         Extracts public keys of the provided trustees as group elements
         and returns them in a list
@@ -626,7 +628,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type trustees: list[dict]
         :rtype: list[ModPrimeElement]
         """
-        public_shares = [self._extract_value(public_key) for public_key in trustees]
+        public_shares = [self._get_value(public_key) for public_key in trustees]
         return public_shares
 
 
@@ -672,6 +674,33 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return vote
 
+    def _extract_fingerprint_params(self, ciphertext_proof):
+        """
+        Prepares fignerprint parameters out of a dictionary of the form
+
+        {'ciphertext': dict, 'proof': dict}
+
+        :type ciphertext_proof: dict
+        :rtype: (ModPrimeElement, ModPrimeElement, ModPrimeElement, mpz, mpz, mpz)
+        """
+        ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
+        alpha, beta = self._extract_ciphertext(ciphertext)
+        commitment, challenge, response = self._extract_schnorr_proof(proof)
+        return alpha, beta, commitment, challenge, response
+
+    def _make_fingerprint(self, ciphertext_proof):
+        """
+        Makes fingerprint out of a dicitonary of the form
+
+        {'ciphertext': dict, 'proof': dict}
+
+        :type ciphertext_proof: dict
+        :rtype: bytes
+        """
+        fingerprint_params = self._extract_fingerprint_params(ciphertext_proof)
+        fingerprint = hash_texts(*[str(param) for param in fingerprint_params])
+        return fingerprint
+
 
     def vote(self, election_key, voter, plaintext,
                 audit_code=None, publish=None):
@@ -685,7 +714,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :publish: None
         :rtype: dict
         """
-        election_key = self._extract_value(election_key)
+        election_key = self._get_value(election_key)
         encoded_plaintext = self._encode_integer(plaintext)
         ciphertext, randomness = self._encrypt(encoded_plaintext, election_key,
             get_secret=True)
@@ -718,7 +747,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         index = extract_value(vote, 'index', int)
         status = extract_value(vote, 'status', str)
 
-        cast = partial(self.GroupElement, modulus=self.__modulus)
+        cast = partial(self.__GroupElement, modulus=self.__modulus)
         plaintext = extract_value(vote, 'plaintext', cast)
 
         return voter, encrypted, fingerprint, audit_code,\
@@ -763,16 +792,16 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         __p, __q, __g = self._parameters()
 
-        election_key = self._extract_value(election_key)
+        election_key = self._get_value(election_key)
 
         zeus_private_key, zeus_public_key = self._extract_keypair(zeus_keypair)
-        zeus_public_key = self._extract_value(zeus_public_key)
+        zeus_public_key = self._get_value(zeus_public_key)
 
         _, encrypted, fingerprint, _, _, previous, index, status, _ = self._extract_vote(vote)
 
         alpha, beta, commitment, challenge, response = self._extract_fingerprint_params(encrypted)
 
-        trustees = [self._extract_value(trustee) for trustee in trustees]
+        trustees = [self._get_value(trustee) for trustee in trustees]
 
         m00 = status if status is not None else 'NONE'
         m01 = '%s%s' % (V_FINGERPRINT, fingerprint)
@@ -949,7 +978,40 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return missing, failed
 
-    # Mixing?
+    # Mixing and ballots decryption
+
+    def _get_mixnet_class(self, module):
+        """
+        :type module: str
+        :rtype:
+        """
+        _module = import_module('mixnets.%s' % module)
+        _cls = getattr(_module, module.capitalize())
+        return _cls
+
+
+    def initialize_mixnet(self, module, config, election_key):
+        """
+        :type module: str
+        :type config: dict
+        :type election_key: dict
+        """
+        _cls = self._get_mixnet_class(module)
+        return _cls(config, election_key)
+
+
+    #############################################################
+    #                                                           #
+    #   By factor is meant a dictionary of the form             #
+    #                                                           #
+    #   {                                                       #
+    #     'data': ModPrimElement,                               #
+    #     'proof': dict                                         #
+    #   }                                                       #
+    #                                                           #
+    #   where the value of 'proof' is usually a Schnorr-proof   #
+    #                                                           #
+    #############################################################
 
     def _set_factor(self, data, proof):
         """
@@ -957,23 +1019,31 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type proof: dict
         :rtype: dict
         """
-        factor = {'data': data.value, 'proof': proof}
+        factor = {'data': data, 'proof': proof}
         return factor
 
 
     def _extract_factor(self, factor):
         """
-        Assumes: {'data': mpz, 'proof': dict}
-        Returns: (ModPrimeElement, dict)
-
         :type factor: dict
-        :rtype: tuple
+        :rtype: (ModPrimeElement, dict)
         """
-        # data = factor['data']
-        data = ModPrimeElement(factor['data'], self.__modulus)
-        proof = factor['proof']
-        return data, proof
+        return factor['data'], factor['proof']
 
+
+    #####################################################################
+    #                                                                   #
+    #   By trustee-factors is meant is meant a dictionary of the form   #
+    #                                                                   #
+    #   {                                                               #
+    #       'public': ModPrimeElement,                                  #
+    #       'factors': list[factor]                                     #
+    #   }                                                               #
+    #                                                                   #
+    #   where the value of 'public' is thought of as the                #
+    #   trustee's public key                                            #
+    #                                                                   #
+    #####################################################################
 
     def _set_trustee_factors(self, public, factors):
         """
@@ -983,7 +1053,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         trustee_factors = {'public': public, 'factors': factors}
         return trustee_factors
-
 
     def _extract_trustee_factors(self, trustee_factors):
         """
@@ -1173,7 +1242,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         #     e = 'Malformed trustee factors'
         #     raise InvalidFactorsError(e)
 
-        trustee_public = self._extract_value(trustee_public)
+        trustee_public = self._get_value(trustee_public)
 
         if not self._verify_decryption_factors(trustee_public, mixed_ballots, decryption_factors):
             e = 'Invalid trustee factors'
@@ -1248,13 +1317,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         aux_factors = {}
         for trustee_factors in trustees_factors:
             public, factors = self._extract_trustee_factors(trustee_factors)
-            public = self._extract_value(public)
+            public = self._get_value(public)
             aux_factors[public] = factors
         trustees_factors = aux_factors
 
         # Verify trustees' factors
         for share in public_shares:
-            trustee_public = self._extract_value(share)
+            trustee_public = self._get_value(share)
             try:
                 trustee_factors = trustees_factors[trustee_public]
             except KeyError:
@@ -1266,7 +1335,7 @@ class ModPrimeCrypto(ElGamalCrypto):
                 raise InvalidBallotDecryption(e)
 
         # Verify zeus's factors
-        zeus_public_key = self._extract_value(zeus_public_key)
+        zeus_public_key = self._get_value(zeus_public_key)
         if not self._verify_decryption_factors(zeus_public_key, mixed_ballots, zeus_factors):
             e = 'Zeus\'s factors could not be verified'
             raise InvalidBallotDecryption(e)
@@ -1334,136 +1403,25 @@ class ModPrimeCrypto(ElGamalCrypto):
     #     return mixes[-1]
 
 
-    def _get_mixnet_class(self, module):
-        """
-        :type module: str
-        :rtype:
-        """
-        _module = import_module('mixnets.%s' % module)
-        _cls = getattr(_module, module.capitalize())
-        return _cls
-
-
-    def initialize_mixnet(self, module, config, election_key):
-        """
-        :type module: str
-        :type config: dict
-        :type election_key: dict
-        """
-        _cls = self._get_mixnet_class(module)
-        return _cls(config, election_key)
-
+    # ------------------------------- Primitives -------------------------------
 
     # Key management
 
-    ###############################################################
-    #                                                             #
-    #    By keypair is meant a dictionary of the form             #
-    #                                                             #
-    #    {                                                        #
-    #        'private': mpz,                                      #
-    #        'public': {                                          #
-    #            'value': ModPrimeElement,                        #
-    #            'proof': ...                                     #
-    #        }                                                    #
-    #    }                                                        #
-    #                                                             #
-    #   where tha value for the key `proof` is either `None` or   #
-    #   a Schnorr-proof                                           #
-    #                                                             #
-    ###############################################################
-
-
-    def _set_public_key_from_element(self, element, proof=None):
-        """
-        :type element: ModPrimeElement
-        :type proof: dict
-        :rtype: dict
-        """
-        public_key = {'value': element, 'proof': proof}
-        return public_key
-
-
-    def _set_public_key_from_value(self, value, proof=None):
-        """
-        :type value: mpz
-        :type proof: dict
-        :rtype: dict
-        """
-        public_key = {
-            'value': ModPrimeElement(value, self.__modulus),
-            'proof': proof
-        }
-        return public_key
-
-
-    def _set_keypair(self, private_key, public_key):
-        """
-        :type private_key:
-        :type public_key: dict
-        :rtype: dict
-        """
-        keypair = {'private': private_key, 'public': public_key}
-        return keypair
-
-
-    def _extract_keypair(self, keypair):
-        """
-        Returns a tuple with the private and public part of the provided key in
-        the form of a numerical value (mpz) and a dict respectively
-
-        :type keypair: dict
-        :rtype: tuple
-        """
-        return keypair['private'], keypair['public']
-
-
-    def _extract_private(self, keypair):
-        """
-        :type keypair: dict
-        :rtype: mpz
-        """
-        return keypair['private']
-
-
-    def _extract_public(self, keypair):
-        """
-        :type: keypair
-        :rtype: dict
-        """
-        return keypair['public']
-
-
-    def _extract_public_value(self, keypair):
-        """
-        :type keypair: dict
-        :rtype: ModPrimeElement
-        """
-        return keypair['public']['value']
-
-
-    def _extract_value(self, public_key):
-        """
-        :type public_key: dict or ModPrimeElement
-        :rtype: ModPrimeElement
-        """
-        return public_key['value'] if type(public_key) is dict else public_key
-
-
-    def _combine_public_keys(self, initial, public_keys):
-        """
-        Assuming the provided public keys in the form of gorup elements,
-        computes and returns the combined key
-
-        :type initial: ModPrimeElement
-        :type public_keys: list[ModPrimeElement]
-        :rtype: ModPrimeElement
-        """
-        combined = initial
-        for public_key in public_keys:
-            combined = combined * public_key
-        return combined
-
+    ######################################################################
+    #                                                                    #
+    #    By keypair is meant a dictionary of the form                    #
+    #                                                                    #
+    #    {                                                               #
+    #        'private': mpz,                                             #
+    #        'public': {                                                 #
+    #            'value': ModPrimeElement,                               #
+    #            'proof': ...                                            #
+    #        }                                                           #
+    #    }                                                               #
+    #                                                                    #
+    #   where tha value of `proof` is either `None` or a Schnorr-proof   #
+    #                                                                    #
+    ######################################################################
 
     def keygen(self, private_key=None, schnorr=True):
         """
@@ -1489,25 +1447,71 @@ class ModPrimeCrypto(ElGamalCrypto):
         public_key = __group.generate(private_key)              # y = g ^ x modp
 
         proof = None
-        if schnorr is True:
+        if schnorr:
             proof = self._schnorr_proof(private_key, public_key)
 
-        public_key = self._set_public_key_from_element(public_key, proof)
+        public_key = self._set_public_key(public_key, proof)
         keypair = self._set_keypair(private_key, public_key)
 
         return keypair
 
+    def _set_keypair(self, private_key, public_key):
+        """
+        :type private_key: mpz
+        :type public_key: dict
+        :rtype: dict
+        """
+        keypair = {'private': private_key, 'public': public_key}
+        return keypair
+
+    def _extract_keypair(self, keypair):
+        """
+        Returns a tuple with the private and public part of the provided key in
+        the form of a numerical value (mpz) and a dict respectively
+
+        :type keypair: dict
+        :rtype: (mpz, dict)
+        """
+        return keypair['private'], keypair['public']
+
+    def _get_private(self, keypair):
+        """
+        :type keypair: dict
+        :rtype: mpz
+        """
+        return keypair['private']
+
+    def _get_public(self, keypair):
+        """
+        :type: keypair
+        :rtype: dict
+        """
+        return keypair['public']
+
+    def _get_public_value(self, keypair):
+        """
+        :type keypair: dict
+        :rtype: ModPrimeElement
+        """
+        return keypair['public']['value']
+
+
+    #####################################################################
+    #                                                                   #
+    #    By public-key is meant a dictionary of the form                #
+    #                                                                   #
+    #    {                                                              #
+    #        'value': ModPrimeElement,                                  #
+    #        'proof': ...                                               #
+    #    }                                                              #
+    #                                                                   #
+    #    where the value of 'proof' is either None or a Schnorr-proof   #
+    #                                                                   #
+    #####################################################################
 
     def validate_public_key(self, public_key):
         """
-        Assuming `public_key` to be the public part
-
-        {
-            'value': ModPrimeElement,
-            'proof': ...
-        }
-
-        of a keypair, verifies the included proof-of-knowledge of its private counterpart
+        Verifies that the 'proof' field proves knowledge of the private counterpart
 
         :type public_key: dict
         :rtype: bool
@@ -1525,14 +1529,54 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return self._schnorr_verify(proof=proof, public=public_key)
 
-
-    def extract_value(self, public_key):
+    def _set_public_key(self, element, proof=None):
         """
-        Returns as common integer the value of the provided public key
-
-        :rtype: int
+        :type element: ModPrimeElement
+        :type proof: dict
+        :rtype: dict
         """
-        return int(public_key['value'].value)
+        public_key = {'value': element, 'proof': proof}
+        return public_key
+
+    def _set_public_key_from_value(self, value, proof=None):
+        """
+        :type value: mpz
+        :type proof: dict
+        :rtype: dict
+        """
+        public_key = {
+            'value': ModPrimeElement(value, self.__modulus),
+            'proof': proof
+        }
+        return public_key
+
+    def _extract_public_key(self, public_key):
+        """
+        :type public_key: dict
+        :rtype: (ModPrimeElement, dict)
+        """
+        return public_key['value'], public_key['proof']
+
+    def _get_value(self, public_key):
+        """
+        :type public_key: dict or ModPrimeElement
+        :rtype: ModPrimeElement
+        """
+        return public_key['value'] if type(public_key) is dict else public_key
+
+    def _combine_public_keys(self, initial, public_keys):
+        """
+        Assuming the provided keys in the form of group elements, computes
+        and returns their product
+
+        :type initial: ModPrimeElement
+        :type public_keys: list[ModPrimeElement]
+        :rtype: ModPrimeElement
+        """
+        combined = initial
+        for public_key in public_keys:
+            combined = combined * public_key
+        return combined
 
 
     # Text-message signatures
@@ -1631,7 +1675,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         message, signature = self._extract_message_signature(signed_message)
 
         # Extract value of public key
-        public_key = self._extract_value(public_key)
+        public_key = self._get_value(public_key)
 
         # Verify signature
         hashed_message = self.__group.exponent_from_texts(message)              # H(m)
@@ -1787,7 +1831,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     def _extract_schnorr_proof(self, proof):
         """
         :type proof: dict
-        :rtype: tuple
+        :rtype: (ModPrimElement, mpz, mpz)
         """
         commitment = proof['commitment']
         challenge = proof['challenge']
@@ -1871,7 +1915,6 @@ class ModPrimeCrypto(ElGamalCrypto):
     #                                                                 #
     ###################################################################
 
-
     def _set_chaum_pedersen_proof(self, base_commitment, message_commitment,
         challenge, response):
         """
@@ -1893,7 +1936,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     def _extract_chaum_pedersen_proof(self, proof):
         """
         :type proof: dict
-        :rtype: tuple
+        :rtype: (ModPrimElement, ModPrimElement, mpz, mpz)
         """
         base_commitment = proof['base_commitment']
         message_commitment = proof['message_commitment']
@@ -1901,7 +1944,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         response = proof['response']
 
         return base_commitment, message_commitment, challenge, response
-
 
     def _chaum_pedersen_proof(self, ddh, z):
         """
@@ -1939,7 +1981,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         proof = self._set_chaum_pedersen_proof(g_commitment, u_commitment, challenge, response)
         return proof
 
-
     def _chaum_pedersen_verify(self, ddh, proof):
         """
         Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
@@ -1966,7 +2007,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             'response': mpz
         }
 
-        :type ddh: list
+        :type ddh: tuple
         :type proof: dict
         :rtype: bool
         """
@@ -2002,17 +2043,16 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     # El-Gamal encryption and decryption
 
-    ################################################################
-    #                                                              #
-    #    By ElGamal-cipertext is meant a dictionary of the form    #
-    #                                                              #
-    #    {                                                         #
-    #        'alpha': ModPrimeElement                              #
-    #        'beta': ModPrimeElement                               #
-    #    }                                                         #
-    #                                                              #
-    ################################################################
-
+    #########################################################
+    #                                                       #
+    #    By ciphertext is meant a dictionary of the form    #
+    #                                                       #
+    #    {                                                  #
+    #        'alpha': ModPrimeElement                       #
+    #        'beta': ModPrimeElement                        #
+    #    }                                                  #
+    #                                                       #
+    #########################################################
 
     def _set_ciphertext(self, alpha, beta):
         """
@@ -2022,16 +2062,14 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         return {'alpha': alpha, 'beta': beta}
 
-
     def _extract_ciphertext(self, ciphertext):
         """
         :type ciphertext: dict
-        :rtype: typle
+        :rtype: (ModPrimeElement, ModPrimeElement)
         """
         alpha = ciphertext['alpha']
         beta = ciphertext['beta']
         return alpha, beta
-
 
     def _set_ciphertext_proof(self, ciphertext, proof):
         """
@@ -2041,43 +2079,24 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         return {'ciphertext': ciphertext, 'proof': proof}
 
-
     def _extract_ciphertext_proof(self, ciphertext_proof):
         """
+        Extracts values from a dictionary of the form
+
+        {'ciphertext': dict, 'proof': dict}
+
         :type ciphertext_proof: dict
-        :rtype: tuple
+        :rtype: (dict, dict)
         """
         ciphertext = ciphertext_proof['ciphertext']
         proof = ciphertext_proof['proof']
         return ciphertext, proof
 
-
-    def _extract_fingerprint_params(self, ciphertext_proof):
-        """
-        :type ciphertext_proof: dict
-        :rtype: tuple
-        """
-        ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
-        alpha, beta = self._extract_ciphertext(ciphertext)
-        commitment, challenge, response = self._extract_schnorr_proof(proof)
-        return alpha, beta, commitment, challenge, response
-
-
-    def _make_fingerprint(self, ciphertext_proof):
-        """
-        :type ciphertext_proof: dict
-        :rtype: bytes
-        """
-        fingerprint_params = self._extract_fingerprint_params(ciphertext_proof)
-        fingerprint = hash_texts(*[str(param) for param in fingerprint_params])
-        return fingerprint
-
-
     def _encrypt(self, element, public_key, randomness=None, get_secret=False):
         """
         ElGamal encryption
 
-        Computes and returns the ElGamal-ciphertext
+        Computes and returns the ciphertext
 
         {
             'alpha': g ^ r (modp)
@@ -2091,7 +2110,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type public_key: ModPrimeElement
         :type randomness: mpz
         :type get_secret: bool
-        :rtype: dict
+        :rtype: dict or (dict, mpz)
         """
         __group = self.__group
 
@@ -2107,20 +2126,19 @@ class ModPrimeCrypto(ElGamalCrypto):
             return ciphertext, randomness
         return ciphertext
 
-
     def _reencrypt(self, ciphertext, public_key, randomness=None, get_secret=False):
         """
-        Re-encryption of ElGamal-ciphertexts
+        Re-encryption of ciphertext
 
         .. note:: This function is not used by zeus. It is here included for
         testing and explanatory purposes. For actual use see the homonymous
         mixnet method instead.
 
-        Given the ElGamal-ciphertext `ciphertext`
+        Given a ciphertext `ciphertext`
 
         {'alpha': a, 'beta': b}
 
-        and an element `public_key` y, computes and returns the ElGamal-ciphertext
+        and an element `public_key` y, computes and returns the ciphertext
 
         {
             'alpha': a * g ^ r      (modp)
@@ -2148,7 +2166,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type public_key: ModPrimeElement
         :type randomness: mpz
         :type get_secret: bool
-        :rtype: dict or tuple
+        :rtype: dict or (dict, mpz)
         """
         __group = self.__group
 
@@ -2166,47 +2184,37 @@ class ModPrimeCrypto(ElGamalCrypto):
             return ciphertext, randomness
         return ciphertext
 
-
-    def _prove_encryption(self, ciphertext, randomness, proof_method=None):
+    def _prove_encryption(self, ciphertext, randomness):
         """
-        Generates according to the provided (zero-knowledge) `proof_method` a
-        proof-of-knowledge of the `randomness` r involved in the encryption
-        yielding the given ElGamal-ciphertext `ciphertext`
-
-        If no proof-method is provided, then Schnorr-proof is applied by default
+        Generates proof-of-knowledge of the `randomness` r involved in the
+        ElGamal encryption yielding the provided ciphertext `ciphertext`
 
         :type ciphertext: dict
         :type randomness: mpz
-        :type proof_method: function
         :rtype: dict
         """
         alpha, beta = self._extract_ciphertext(ciphertext)
-
-        if proof_method is None:
-            proof_method = self._schnorr_proof
-        proof = proof_method(randomness, alpha, beta)
+        proof = self._schnorr_proof(randomness, alpha, beta)
 
         return proof
 
-
-    def _verify_encryption(self, ciphertext_proof, verification_method=None):
+    def _verify_encryption(self, ciphertext_proof):
         """
-        Verifies proof-of-knowledge of the  randomness used in
-        the encryption yielding the provided ElGamal-ciphertext
+        Assuming a dictionary
+
+        {'ciphertext': ..., 'proof': ...}
+
+        verifies that 'proof' proves knowledge of the randomness used in the
+        ElGamal encryption that yields 'ciphertext'
 
         :type ciphertext_proof: dict
         :rtype: bool
         """
         ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
         alpha, beta = self._extract_ciphertext(ciphertext)
-
-        if verification_method is None:
-            verification_method = self._schnorr_verify
-
-        verified = verification_method(proof, alpha, beta)
+        verified = self._schnorr_verify(proof, alpha, beta)
 
         return verified
-
 
     def _decrypt(self, ciphertext, private_key):
         """
@@ -2216,7 +2224,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         for completeness of the cryptossytem and testing purposes. For
         actual use see the `.decrypt_with_decryptor()` method.
 
-        Decrypts the provided ElGamal-ciphertext `ciphertext`
+        Decrypts the provided ciphertext `ciphertext`
 
         {'alpha': a, 'beta': b}
 
@@ -2229,15 +2237,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: ModPrimeElement
         """
         alpha, beta = self._extract_ciphertext(ciphertext)
-
         original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
 
         return original
 
-
     def _decrypt_with_decryptor(self, ciphertext, decryptor):
         """
-        Given the El-Gamal-ciphertext `ciphertext`
+        Given the ciphertext `ciphertext`
 
         {'alpha': a, 'beta': b}
 
@@ -2253,15 +2259,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         `decryptor` is a ^ x, where x is the private key used at ecnryption
         """
         _, beta = self._extract_ciphertext(ciphertext)
-
         encoded = decryptor.inverse * beta                      # decryptor ^ -1 * beta (modp)
 
         return encoded
 
-
     def _decrypt_with_randomness(self, ciphertext, public, secret):
         """
-        Given the ElGamal-ciphertext `ciphertext`
+        Given the ciphertext `ciphertext`
 
         {'alpha': a, 'beta': b},
 
@@ -2283,8 +2287,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: ModPrimeElement
         """
         _, beta = self._extract_ciphertext(ciphertext)
-
         encoded = (public ** secret).inverse * beta             # (y ^ x) ^ -1 * beta (modp)
-
         decoded = self.group.decode_with_randomness(encoded)
+
         return decoded

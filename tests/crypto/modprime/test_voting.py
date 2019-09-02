@@ -141,7 +141,7 @@ for (system, election_key, zeus_keypair, trustees, valid_votes, vote_signatures)
     vote_signatures[1] = corrupted
 
     signature = vote_signatures[2]
-    zeus_private_key = system._extract_private(zeus_keypair)
+    zeus_private_key = system._get_private(zeus_keypair)
     corrupted = corrupt_implicit_signature(signature, zeus_private_key, system)
     vote_signatures[2] = corrupted              # must raise InvalidSignatureError
 

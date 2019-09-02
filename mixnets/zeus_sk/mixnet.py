@@ -61,7 +61,7 @@ class Zeus_sk(Mixnet):
 
         # Set election key
 
-        self.__election_key = self.__cryptosystem._extract_value(election_key)
+        self.__election_key = self.__cryptosystem._get_value(election_key)
 
     @classmethod
     def supports_cryptosystem(cls, cryptosystem):

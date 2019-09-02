@@ -1,3 +1,6 @@
+"""
+"""
+
 import pytest
 import math
 from copy import deepcopy
@@ -22,7 +25,7 @@ for system in (RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM):
     for nr_trustees in range(0, 5):
         for nr_factors in range(0, 5):
             elems = [[group.random_element() for j in range(nr_factors)] for i in range(nr_trustees)]
-            factors_collections = [[{'data': elems[i][j].value, 'proof': {}} for j in range(nr_factors)] for i in range(nr_trustees)]
+            factors_collections = [[{'data': elems[i][j], 'proof': {}} for j in range(nr_factors)] for i in range(nr_trustees)]
             __system__factors_collections__elems__nr_trustees__nr_factors.append((system, factors_collections, elems, nr_trustees, nr_factors))
 
 @pytest.mark.parametrize('system, factors_collections, elems, nr_trustees, nr_factors',
@@ -172,7 +175,7 @@ def test__failure_at_validation_of_trustee_factors(system, trustee_public,
         system.validate_trustee_factors(trustee_public, mixed_ballots, trustee_factors)
 
 
-# Ballot-decryption and decryption-validation
+# Ballot-decryption and validation
 
 __system__mixed_ballots__trustees_factors__zeus_factors__expecteds = []
 __system__mixed_ballots__trustees_factors__public_shares__zeus_factors__zeus_public_key__result = []

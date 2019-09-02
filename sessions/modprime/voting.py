@@ -135,32 +135,34 @@ if __name__=='__main__':
     for i in range(len(vote_signatures)):
         signature = vote_signatures[i]
 
-        try:
-            system.verify_vote_signature(signature)
-        except InvalidSignatureError:
-            if i == 0:
+        if i == 0:
+            try:
+                system.verify_vote_signature(signature)
+            except InvalidSignatureError:
                 print(' + Invalid encryption proof successfully detected')
-                non_verified_signatures.append(signature)
             else:
                 _exit(' - Valid encryption proof erroneously invalidated')
-        except InvalidSignatureError:
-            if i == 1:
+        elif i == 1:
+            try:
+                system.verify_vote_signature(signature)
+            except InvalidSignatureError:
                 print(' + Invalid signature structure successfully detected')
-                non_verified_signatures.append(signature)
             else:
                 _exit(' - Valid signature structure erroneously invalidated')
-        except InvalidSignatureError:
-            if i == 2:
+        elif i == 2:
+            try:
+                system.verify_vote_signature(signature)
+            except InvalidSignatureError:
                 print(' + Invalid inscribed signature successfully detected')
-                non_verified_signatures.append(signature)
             else:
                 _exit(' - Valid inscribed signature erroneously invalidated')
         else:
-            if i >= 3:
-                print(' + Vote signature successfully verified')
-                verified_signatures.append(signature)
-            else:
+            try:
+                system.verify_vote_signature(signature)
+            except InvalidSignatureError:
                 _exit(' - Invalid vote signature failed to be detected')
+            else:
+                print(' + Vote signature successfully verified')
 
     print('\nVoting session complete: ALL CHECKS PASSED\n')
     sys.exit(0)

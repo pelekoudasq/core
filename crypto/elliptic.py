@@ -1,5 +1,4 @@
 import Crypto
-from Crypto.Util.number import isPrime
 
 from .elgamal import ElGamalCrypto
 from .exceptions import WrongCryptoError, WeakCryptoError
