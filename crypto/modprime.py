@@ -1,6 +1,6 @@
 import Crypto
 from Crypto.Util.number import isPrime as is_prime
-from gmpy2 import mpz, powmod, invert, mul, add, f_mod, qdiv
+from gmpy2 import mpz, powmod, invert, mul
 from functools import partial
 from importlib import import_module
 
@@ -171,7 +171,6 @@ class ModPrimeSubgroup(Group):
 
     E.g., the default value r = 2 yields the group of quadratic residues modp
     """
-
 
     __slots__ = ('__modulus', '__order', '__generator', '__Element')
 
@@ -432,7 +431,6 @@ class ModPrimeCrypto(ElGamalCrypto):
     MIN_MOD_SIZE = 2048
     MIN_GEN_SIZE = 2000
 
-
     __slots__ = ('__group', '__GroupElement',
 
         # ~ Group params included for mpz computations
@@ -457,8 +455,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type min_gen_size: int
         :type allow_weakness: bool
         """
-
-        # Type conversion
         modulus = mpz(modulus)                                   # p
         primitive = ModPrimeElement(mpz(primitive), modulus)     # g0
         root_order = mpz(root_order)                             # r
@@ -490,8 +486,23 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         self.__generator = group.generator.value
 
-        # System validation
+        # Validate system
+        self.__class__._validate_system(modulus, group.order, group.generator,
+            root_order, prime_order, min_mod_size, min_gen_size, allow_weakness)
 
+    @classmethod
+    def _validate_system(cls, modulus, order, generator,
+        root_order, prime_order, min_mod_size, min_gen_size, allow_weakness):
+        """
+        :type modulus: mpz
+        :type order: mpz
+        :type generator: ModPrimElement
+        :type root_order: mpz
+        :type prime_order: bool
+        :type min_mod_size: int
+        :type min_gen_size: int
+        :allow_weakness: bool
+        """
         if root_order==2 and modulus % 4 != 3:
             # Algebraic fact: the condition p = 3 mod 4 guarantees direct
             # solvability of the congruence x ^ 2 = a (mod p), a E Z*_p,
@@ -499,22 +510,21 @@ class ModPrimeCrypto(ElGamalCrypto):
             e = 'Provided modulus is not 3 mod 4'
             raise WrongCryptoError(e)
 
-        if prime_order and not is_prime(group.order):
+        if prime_order and not is_prime(order):
             e = 'Order of the requested group is not prime'
             raise WrongCryptoError(e)
 
         if not allow_weakness:
 
-            MIN_MOD_SIZE = min_mod_size or self.__class__.MIN_MOD_SIZE
+            MIN_MOD_SIZE = min_mod_size or cls.MIN_MOD_SIZE
             if modulus.bit_length() < MIN_MOD_SIZE:
                 e = 'Provided modulus is < %d bits long' % MIN_MOD_SIZE
                 raise WeakCryptoError(e)
 
-            MIN_GEN_SIZE = min_gen_size or self.__class__.MIN_GEN_SIZE
-            if group.generator.bit_length < MIN_GEN_SIZE:
+            MIN_GEN_SIZE = min_gen_size or cls.MIN_GEN_SIZE
+            if generator.bit_length < MIN_GEN_SIZE:
                 e = 'Generator is < %d bits long' % MIN_GEN_SIZE
                 raise WeakCryptoError(e)
-
 
     # Cryptosystem
 
@@ -1034,19 +1044,19 @@ class ModPrimeCrypto(ElGamalCrypto):
         return factor['data'], factor['proof']
 
 
-    #####################################################################
-    #                                                                   #
-    #   By trustee-factors is meant is meant a dictionary of the form   #
-    #                                                                   #
-    #   {                                                               #
-    #       'public': ModPrimeElement,                                  #
-    #       'factors': list[factor]                                     #
-    #   }                                                               #
-    #                                                                   #
-    #   where the value of 'public' is thought of as the                #
-    #   trustee's public key                                            #
-    #                                                                   #
-    #####################################################################
+    ###########################################################
+    #                                                         #
+    #   By trustee-factors is meanta dictionary of the form   #
+    #                                                         #
+    #   {                                                     #
+    #       'public': ModPrimeElement,                        #
+    #       'factors': list[factor]                           #
+    #   }                                                     #
+    #                                                         #
+    #   where the value of 'public' is thought of as the      #
+    #   trustee's public key                                  #
+    #                                                         #
+    ###########################################################
 
     def _set_trustee_factors(self, public, factors):
         """
