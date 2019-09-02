@@ -135,7 +135,7 @@ class ModPrimeElement(GroupElement):
         """
         __modulus = self.__modulus
 
-        # ~ result = self.__value ** exp % __modulus ---> "...outrageous exponent"
+        # result = self.__value ** exp % __modulus # ---> "...outrageous exponent"
         # ~ Use gmpy2.powmod instead in order to avoid overflow in mpz type
         result = powmod(self.__value, exp, __modulus)
         return self.__class__(result, __modulus)
@@ -274,7 +274,7 @@ class ModPrimeSubgroup(Group):
         """
         :type generator: ModPrimeElement or mpz
         """
-        Element = self.Element
+        Element = self.__Element
         if isinstance(generator, Element):
             self.__generator = generator
         else:
@@ -302,7 +302,7 @@ class ModPrimeSubgroup(Group):
         :rtype: mpz
         """
         exponent = random_integer(min, self.__order)
-        return mpz(exponent)
+        return exponent # mpz(exponent)
 
     def exponent_from_texts(self, *texts):
         """
@@ -314,10 +314,9 @@ class ModPrimeSubgroup(Group):
         hashed_params = hash_nums(__p, __q, __g).hex()
         hashed_texts = hash_texts(hashed_params, *texts)
         exponent = int_from_bytes(hashed_texts)
-        exponent = f_mod(exponent, __q)
+        exponent = exponent % __q # f_mod(exponent, __q)
 
         return exponent
-
 
     def random_element(self):
         """
@@ -333,7 +332,6 @@ class ModPrimeSubgroup(Group):
         """
         exp = self.exponent_from_texts(*texts)
         return self.generate(exp)
-
 
     def fiatshamir(self, *elements):
         """
@@ -353,7 +351,6 @@ class ModPrimeSubgroup(Group):
 
         return output                    # g ^ ( H( p | g | q | elements)  modq )  modp
 
-
     def contains(self, element):
         """
         Checks if the group contains the provided element of Z*_p
@@ -366,7 +363,6 @@ class ModPrimeSubgroup(Group):
             # an mod p element x is contained in C iff x ^ q = 1
             return element ** self.__order == 1
         return False
-
 
     def encode_integer(self, integer):
         """
@@ -1707,7 +1703,6 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return signature
 
-
     def _extract_dsa_signature(self, signature):
         """
         :type signature: dict
@@ -1718,7 +1713,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         c_1 = commitments['c_1']
         c_2 = commitments['c_2']
         return exponent, c_1, c_2
-
 
     def _dsa_signature(self, exponent, private_key):
         """
@@ -1743,11 +1737,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         __q = self.__order
 
         randomness = __group.random_exponent()                           # 1 < r < q
-        c_1 = f_mod(__group.generate(randomness).value, __q)             # (g ^ r modp) modq
+        c_1 = __group.generate(randomness).value % __q                   # (g ^ r modp) modq
 
         exps = __group.add_exponents(exponent, mul(private_key, c_1))    # (e + x * c_1) modq
         r_inv = invert(randomness, __q)                                  # r ^ -1 modq
-        c_2 = f_mod(mul(exps, r_inv), __q)                               # (e + x * c_1)/r modq
+        c_2 = mul(exps, r_inv) % __q                                     # (e + x * c_1)/r modq
 
         signature = self._set_dsa_signature(exponent, c_1, c_2)
         return signature
@@ -1778,13 +1772,13 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         c_2_inv = invert(c_2, __q)                                      # c_2 ^ -1 modq
 
-        v_1 = f_mod(mul(exponent, c_2_inv), __q)                        # (e + c_2 ^ -1) modq
-        v_2 = f_mod(mul(c_1, c_2_inv), __q)                             # (v_1 * c_2 ^ -1) modq
+        v_1 = mul(exponent, c_2_inv) % __q                              # (e + c_2 ^ -1) modq
+        v_2 = mul(c_1, c_2_inv) % __q                                   # (v_1 * c_2 ^ -1) modq
 
         element = (__group.generate(v_1) * public_key ** v_2).value     # (g ^ v_1 * y ^ v_2) modp
 
         # ((g ^ v_1 * y ^ v_2) modp) modq == c_1 ?
-        return f_mod(element, __q) == c_1
+        return element % __q == c_1
 
 
     # Schnorr protocol

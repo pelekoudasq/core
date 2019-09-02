@@ -61,7 +61,10 @@ def test__computation_and_verification_of_decryption_factors(system, ciphers, se
 __failure_cases = []
 
 for (system, key) in (
-    (RES11_SYSTEM, RES11_KEY), (_2048_SYSTEM, _2048_KEY), (_4096_SYSTEM, _4096_KEY)):
+    # (RES11_SYSTEM, RES11_KEY),
+    (_2048_SYSTEM, _2048_KEY),
+    (_4096_SYSTEM, _4096_KEY)
+):
     group = system.group
     ciphers = [{'alpha': group.random_element(), 'beta': group.random_element()}
         for _ in range(random_integer(2, 12))]
