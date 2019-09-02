@@ -26,8 +26,6 @@ def make_vote(voter, system, election_key, invalid=False):
 def make_corrupted_signature_vote(system, vote, comments, election_key,
                             zeus_keypair, trustees, choices):
     """
-    Creates a corrupted vote signature, such that InvalidEncryptionError
-    gets raised upon validation.
     """
     __p, __q, __g = system._parameters()
 
@@ -79,8 +77,6 @@ def make_corrupted_signature_vote(system, vote, comments, election_key,
 
 def corrupt_signature_structure(vote_signature):
     """
-    Corrupts vote signature by invalidating the structure of the inscribed,
-    message so that InvalidStructureError gets raised upon validation
     """
     message, _, exponent, c_1, c_2, _ = vote_signature.rsplit('\n', 5)
 

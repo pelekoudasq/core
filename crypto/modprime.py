@@ -7,8 +7,8 @@ from importlib import import_module
 from .elgamal import ElGamalCrypto
 from .algebra import Group, GroupElement
 from .exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
-    InvalidVoteError, InvalidStructureError, InvalidSignatureError,
-    InvalidEncryptionError, InvalidFactorsError, InvalidBallotDecryption)
+    InvalidVoteError, InvalidSignatureError, InvalidFactorsError,
+    InvalidBallotDecryption)
 from .constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION, V_ZEUS_PUBLIC,
     V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER, V_ALPHA, V_BETA,
     V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX, V_CAST_VOTE,
@@ -259,6 +259,7 @@ class ModPrimeSubgroup(Group):
         """
         return self.__Element
 
+    @property
     def unit(self):
         """
         Returns the unit element of the group (i.e., the neutral
@@ -266,7 +267,7 @@ class ModPrimeSubgroup(Group):
 
         :rtype: ModPrimeElement
         """
-        return self.Element(self.__unit, self.__modulus)
+        return self.__Element(self.__unit, self.__modulus)
 
 
     def set_generator(self, generator):
@@ -807,7 +808,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def verify_vote_signature(self, vote_signature):
         """
-        Returns `True` if the signature is verified, otherwise raises exception
+        Returns `True` if verified, otherwise raises `InvalidSignatureError`
 
         :type vote_signature: str
         :rtype: bool
@@ -841,7 +842,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             not m15.startswith(V_RESPONSE) or
             not m16.startswith(V_COMMENTS)):
             e = 'Invalid vote signature structure'
-            raise InvalidStructureError(e)
+            raise InvalidSignatureError(e)
 
         # Extract data
 
@@ -901,7 +902,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         # if index is not None and not self._verify_encryption(encrypted):
         if (index is not None and not self._verify_encryption(encrypted)):
             e = 'Invalid vote encryption'
-            raise InvalidEncryptionError(e)
+            raise InvalidSignatureError(e)
 
         return True
 
@@ -1109,7 +1110,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         append = master_factors.append
 
         for factors_column in zip(*trustees_factors):
-            master_factor = self.__group.unit()
+            master_factor = self.__group.unit
             for trustee_factor in factors_column:
                 data, _ = self._extract_factor(trustee_factor)
                 master_factor *= data

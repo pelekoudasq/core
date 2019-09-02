@@ -5,8 +5,7 @@ import sys
 from time import sleep
 
 from utils import random_integer
-from crypto.exceptions import (InvalidVoteError, InvalidStructureError,
-    InvalidSignatureError, InvalidEncryptionError)
+from crypto.exceptions import (InvalidVoteError, InvalidSignatureError)
 
 from tests.constants import choices, _2048_SYSTEM, _4096_SYSTEM
 from tests.helpers import (make_voters, make_corrupted_public_key, make_vote,
@@ -107,8 +106,7 @@ if __name__=='__main__':
             % (i, vote['fingerprint']) for i in range(nr_comments)]
 
         if i == 0:
-            # Corrupt 1st signature by tempering proof encryption;
-            # will raise InvalidEncryptionError
+            # Corrupt 1st signature by tempering proof encryption
             vote_signature = make_corrupted_signature_vote(system, vote,
                     comments, election_key, zeus_keypair, trustees, choices)
         else:
@@ -121,11 +119,11 @@ if __name__=='__main__':
 
     signature = vote_signatures[1]
     corrupted = corrupt_signature_structure(signature)
-    vote_signatures[1] = corrupted              # will raise InvalidStructureError
+    vote_signatures[1] = corrupted
 
     signature = vote_signatures[2]
     corrupted = corrupt_implicit_signature(signature, zeus_private_key, system)
-    vote_signatures[2] = corrupted              # will raise InvalidSignatureError
+    vote_signatures[2] = corrupted
 
 
     # Verify vote signatures
@@ -139,13 +137,13 @@ if __name__=='__main__':
 
         try:
             system.verify_vote_signature(signature)
-        except InvalidEncryptionError:
+        except InvalidSignatureError:
             if i == 0:
                 print(' + Invalid encryption proof successfully detected')
                 non_verified_signatures.append(signature)
             else:
                 _exit(' - Valid encryption proof erroneously invalidated')
-        except InvalidStructureError:
+        except InvalidSignatureError:
             if i == 1:
                 print(' + Invalid signature structure successfully detected')
                 non_verified_signatures.append(signature)

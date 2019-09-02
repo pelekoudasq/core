@@ -1,7 +1,6 @@
 import pytest
 
-from crypto.exceptions import (InvalidVoteError, InvalidStructureError,
-    InvalidSignatureError, InvalidEncryptionError)
+from crypto.exceptions import (InvalidVoteError, InvalidSignatureError)
 from utils import random_integer
 
 from tests.helpers import (make_voters, make_corrupted_public_key, make_vote,
@@ -126,8 +125,7 @@ for (system, election_key, zeus_keypair, trustees, valid_votes, vote_signatures)
             % (i, vote['fingerprint']) for i in range(nr_comments)]
 
         if i == 0:
-            # Corrupt 1st signature by tampering proof encryption;
-            # must raise InvalidEncryptionError
+            # Corrupt 1st signature by tampering proof encryption
             vote_signature = make_corrupted_signature_vote(system, vote,
                     comments, election_key, zeus_keypair, trustees, choices)
         else:
@@ -140,7 +138,7 @@ for (system, election_key, zeus_keypair, trustees, valid_votes, vote_signatures)
 
     signature = vote_signatures[1]
     corrupted = corrupt_signature_structure(signature)
-    vote_signatures[1] = corrupted              # must raise InvalidStructureError
+    vote_signatures[1] = corrupted
 
     signature = vote_signatures[2]
     zeus_private_key = system._extract_private(zeus_keypair)
@@ -154,13 +152,7 @@ for (system, election_key, zeus_keypair, trustees, valid_votes, vote_signatures)
 def test_vote_signature_verification(system, vote_signatures):
     for i in range(len(vote_signatures)):
         signature = vote_signatures[i]
-        if i == 0:
-            with pytest.raises(InvalidEncryptionError):
-                system.verify_vote_signature(signature)
-        elif i == 1:
-            with pytest.raises(InvalidStructureError):
-                system.verify_vote_signature(signature)
-        elif i == 2:
+        if 0 <= i <= 2:
             with pytest.raises(InvalidSignatureError):
                 system.verify_vote_signature(signature)
         else:

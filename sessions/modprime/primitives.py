@@ -5,8 +5,7 @@ import sys
 from time import sleep
 
 from utils import random_integer
-from crypto.exceptions import (InvalidVoteError, InvalidStructureError,
-    InvalidSignatureError, InvalidEncryptionError)
+from crypto.exceptions import (InvalidVoteError, InvalidSignatureError)
 
 from tests.constants import _2048_SYSTEM, _4096_SYSTEM
 
