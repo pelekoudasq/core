@@ -4,7 +4,7 @@ Contains constants for testing
 
 from crypto.modprime import ModPrimeSubgroup, ModPrimeElement, ModPrimeCrypto
 from crypto.constants import _2048_PRIME, _2048_PRIMITIVE, _4096_PRIME, _4096_PRIMITIVE
-from mixnets import Zeus_SK
+from mixnets import Zeus_sk
 
 
 # -- Small algebraic objects --
@@ -58,19 +58,19 @@ _4096_ELECTION_KEY = _4096_SYSTEM.group.random_element()
 
 # -- Sako-Killian Mixnets --
 
-RES11_ZEUS_SK = Zeus_SK({
+RES11_ZEUS_SK = Zeus_sk({
     'cryptosystem': RES11_SYSTEM,
     'nr_rounds': 100,
     'nr_mixes': 20
 }, election_key=RES11_ELECTION_KEY)
 
-_2048_ZEUS_SK = Zeus_SK({
+_2048_ZEUS_SK = Zeus_sk({
     'cryptosystem': _2048_SYSTEM,
     'nr_rounds': 100,
     'nr_mixes': 20
 }, election_key=_2048_ELECTION_KEY)
 
-_4096_ZEUS_SK = Zeus_SK({
+_4096_ZEUS_SK = Zeus_sk({
     'cryptosystem': _4096_SYSTEM,
     'nr_rounds': 100,
     'nr_mixes': 20

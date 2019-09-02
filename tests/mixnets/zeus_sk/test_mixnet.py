@@ -1,7 +1,7 @@
 import pytest
 from copy import deepcopy
 
-from mixnets import Zeus_SK, MixnetError
+from mixnets import Zeus_sk, MixnetError
 from mixnets.zeus_sk.mixnet import MixNotVerifiedError
 from crypto import WrongCryptoError
 from utils.binutils import bit_iterator
@@ -17,15 +17,15 @@ MIXES = 20
 
 # Test construction errors
 
-def test__MixnetError__at__Zeus_SK__construction():
+def test__MixnetError__at__Zeus_sk__construction():
     with pytest.raises(MixnetError):
-        Zeus_SK({'key_1': 0}, 1)
+        Zeus_sk({'key_1': 0}, 1)
 
-def test__WrongCryptoError__at__Zeus_SK__construction():
+def test__WrongCryptoError__at__Zeus_sk__construction():
     class EllipticCrypto(object): pass
     system = EllipticCrypto()
     with pytest.raises(WrongCryptoError):
-        Zeus_SK({'cryptosystem': system,
+        Zeus_sk({'cryptosystem': system,
             'nr_rounds': ROUNDS,
             'nr_mixes': MIXES
         }, _4096_ELECTION_KEY)

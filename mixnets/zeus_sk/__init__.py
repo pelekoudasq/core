@@ -1,3 +1,3 @@
-from .mixnet import Zeus_SK
+from .mixnet import Zeus_sk
 
-__all__ = ('Zeus_SK',)
+__all__ = ('Zeus_sk',)

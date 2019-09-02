@@ -1,8 +1,8 @@
 import Crypto
 from Crypto.Util.number import isPrime
 from gmpy2 import mpz, powmod, invert, mul, add, f_mod, qdiv
-from functools import partial, reduce
-import importlib
+from functools import partial
+from importlib import import_module
 
 from .elgamal import ElGamalCrypto
 from .algebra import Group, GroupElement
@@ -462,13 +462,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
 
         # Type conversion
-
         modulus = mpz(modulus)                                   # p
         primitive = ModPrimeElement(mpz(primitive), modulus)     # g0
         root_order = mpz(root_order)                             # r
 
         # Resolve group
-
         try:
             group = ModPrimeSubgroup(modulus, root_order)
         except AlgebraError:
@@ -499,7 +497,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         if root_order==2 and modulus % 4 != 3:
             # Algebraic fact: the condition p = 3 mod 4 guarantees direct
-            # solvability of the congruence x ^ 2 = a (mod p), a in Z*_p,
+            # solvability of the congruence x ^ 2 = a (mod p), a E Z*_p,
             # allowing for efficient verification of quadratic residues
             e = 'Provided modulus is not 3 mod 4'
             raise WrongCryptoError(e)
@@ -523,14 +521,16 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     # Cryptosystem
 
-    @property
     def parameters(self):
         """
+        Returns the modulus p, order q and fixed generator g of the
+        underlying group as a dictionary with integer values
+
         :rtype: dict
         """
-        p, q, g = self._parameters()
+        __p, __q, __g = self._parameters()
 
-        return {'modulus': int(p), 'order': int(q), 'generator': int(g)}
+        return {'modulus': int(__p), 'order': int(__q), 'generator': int(__g)}
 
     def _parameters(self):
         """
@@ -539,10 +539,11 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         :rtype: tuple
         """
-        p = self.__modulus
-        q = self.__order
-        g = self.__generator
-        return p, q, g
+        __p = self.__modulus
+        __q = self.__order
+        __g = self.__generator
+
+        return __p, __q, __g
 
     @property
     def group(self):
@@ -651,11 +652,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type plaintext: int
         :rtype: dict
         """
-        vote = {
-            'voter': str(voter),
-            'encrypted': encrypted,
-            'fingerprint': hash_decode(fingerprint)
-        }
+        vote = {}
+
+        vote['voter'] = str(voter)
+        vote['encrypted'] = encrypted
+        vote['fingerprint'] = hash_decode(fingerprint)
 
         if audit_code:
             vote['audit_code'] = int(audit_code)
@@ -1272,43 +1273,84 @@ class ModPrimeCrypto(ElGamalCrypto):
         return True
 
 
-    def convert_mixes_to_elements(self, mixes):
-        """
-        """
-        pass # --> elgamal.py
+    # def convert_mixes_to_elements(self, mixes):
+    #     """
+    #     :type mixes:
+    #     :rtype:
+    #     """
+    #     for mix in mixes:
+    #         # mix_keys = mix.keys()
+    #         # if 'mixed_ciphers' in mix_keys:
+    #         #     mix['mixed_ciphers'] = [{
+    #         #         'alpha': cipher['alpha'],
+    #         #         'beta': cipher['beta']
+    #         #     } for cipher in mix['mixed_ciphers']]
+    #         # elif 'original_ciphers' in mix_keys:
+    #         #     mix['original_ciphers'] = [{
+    #         #         'alpha': cipher['alpha'],
+    #         #         'beta': cipher['beta']
+    #         #     } for cipher in mix['original_ciphers']]
+    #         key = 'mixed_ciphers' if 'mixed_ciphers' in mix.keys() else 'original_ciphers'
+    #         try:
+    #             mix[key] = [{'alpha': cipher['alpha'], 'beta': cipher['beta']}
+    #                 for cipher in mix[key]]
+    #         except KeyError:
+    #             continue
+    #     return mixes
+    #
+    #
+    # def convert_mixes(self, mixes):
+    #     """
+    #     :type mixes:
+    #     :rtype:
+    #     """
+    #     for mix in mixes:
+    #         # mix_keys = mix.keys()
+    #         # if 'mixed_ciphers' in mix_keys:
+    #         #     mix['mixed_ciphers'] = [{
+    #         #         'alpha': cipher['alpha'].value,
+    #         #         'beta': cipher['beta'].value
+    #         #     } for cipher in mix['mixed_ciphers']]
+    #         # elif 'original_ciphers' in mix_keys:
+    #         #     mix['original_ciphers'] = [{
+    #         #         'alpha': cipher['alpha'].value,
+    #         #         'beta': cipher['beta'].value
+    #         #     } for cipher in mix['original_ciphers']]
+    #         key = 'mixed_ciphers' if 'mixed_ciphers' in mix.keys() else 'original_ciphers'
+    #         try:
+    #             mix[key] = [{
+    #                 'alpha': cipher['alpha'].value,
+    #                 'beta': cipher['beta'].value
+    #             } for cipher in mix[key]]
+    #         except KeyError:
+    #             continue
+    #     return mixes
+    #
+    #
+    # def _get_last_mix(mixes):
+    #     """
+    #     """
+    #     return mixes[-1]
 
 
-    def convert_mixes(self, mixes):
-        """
-        """
-        pass # --> elgamal.py
-
-
-    def _get_last_mix(mixes):
-        """
-        """
-        return mixes[-1]
-
-
-    def _get_mixer_class(self, module):
+    def _get_mixnet_class(self, module):
         """
         :type module: str
         :rtype:
         """
-        module_name = importlib.import_module('zeus_crypto.mixnets.%s' % module)
-        _cls = getattr(module_name, module.capitalize())
+        _module = import_module('mixnets.%s' % module)
+        _cls = getattr(_module, module.capitalize())
         return _cls
 
 
-    def initialize_mixer(self, module, params, election_key):
+    def initialize_mixnet(self, module, config, election_key):
         """
         :type module: str
-        :type params: dict
+        :type config: dict
         :type election_key: dict
         """
-        public_key = self._extract_value(election_key)	# GroupElement
-        _cls = self._get_mixer_class(module)
-        return _cls(params, public_key)
+        _cls = self._get_mixnet_class(module)
+        return _cls(config, election_key)
 
 
     # Key management

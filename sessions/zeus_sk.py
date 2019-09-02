@@ -5,7 +5,7 @@ import sys
 from time import sleep
 from copy import deepcopy
 
-from mixnets import Zeus_SK
+from mixnets import Zeus_sk
 from mixnets.zeus_sk.mixnet import MixNotVerifiedError
 from utils.binutils import bit_iterator
 from utils.random import random_integer
@@ -23,7 +23,7 @@ def _make_ciphers(cryptosystem, nr_ciphers=40):
     return [(random_element(), random_element()) for _ in range(nr_ciphers)]
 
 def _make_ciphers_to_mix(cryptosystem):
-    params = cryptosystem.parameters
+    params = cryptosystem.parameters()
     ciphers_to_mix = {
         'modulus': params['modulus'],
         'order': params['order'],
@@ -46,7 +46,7 @@ if __name__=='__main__':
     cryptosystem = RES11_SYSTEM # _2048_SYSTEM # _4096_SYSTEM
     election_key = RES11_ELECTION_KEY # _2048_ELECTION_KEY # _4096_ELECTION_KEY
 
-    mixnet = Zeus_SK({
+    mixnet = Zeus_sk({
         'cryptosystem': cryptosystem,
         'nr_rounds': ROUNDS,
         'nr_mixes': MIXES

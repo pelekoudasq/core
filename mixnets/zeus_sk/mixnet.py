@@ -4,10 +4,7 @@
 from gmpy2 import mpz
 
 from crypto import ModPrimeCrypto, ModPrimeElement, WrongCryptoError
-from utils import random_permutation
-from utils.async import AsyncController
-from utils.teller import _teller
-from utils.binutils import bit_iterator
+from utils import random_permutation, AsyncController, _teller, bit_iterator
 
 from ..abstracts import Mixnet, MixnetError
 from .utils import (shuffle_ciphers, compute_mix_challenge,
@@ -22,7 +19,7 @@ class MixNotVerifiedError(BaseException):
     pass
 
 
-class Zeus_SK(Mixnet):
+class Zeus_sk(Mixnet):
     """
     """
 
@@ -52,7 +49,7 @@ class Zeus_SK(Mixnet):
         self.__cryptosystem = cryptosystem
         self.__group = self.__cryptosystem.group
 
-        parameters = cryptosystem.parameters
+        parameters = cryptosystem.parameters()
         self.__modulus = parameters['modulus']
         self.__order = parameters['order']
         self.__generator = parameters['generator']

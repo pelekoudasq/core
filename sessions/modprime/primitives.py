@@ -22,7 +22,7 @@ if __name__=='__main__':
     system = _4096_SYSTEM
     import json
     print('-- CRYPTOSYSTEM --\n%s'
-        % json.dumps(system.parameters, indent=4, sort_keys=True))
+        % json.dumps(system.parameters(), indent=4, sort_keys=True))
 
     keypair = system.keygen()
     private_key = system._extract_private(keypair)
