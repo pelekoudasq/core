@@ -117,8 +117,8 @@ __mixnet__cipher_collection__result = [
 
 @pytest.mark.parametrize('mixnet, cipher_collection, result',
     __mixnet__cipher_collection__result)
-def test__prepare_mix(mixnet, cipher_collection, result):
-    assert result == mixnet._prepare_mix(cipher_collection)
+def test__set_cipher_mix(mixnet, cipher_collection, result):
+    assert result == mixnet._set_cipher_mix(cipher_collection)
 
 
 __mixnet__mixed_collection__result = [
@@ -143,8 +143,8 @@ __mixnet__mixed_collection__result = [
 
 @pytest.mark.parametrize('mixnet, mixed_collection, result',
     __mixnet__mixed_collection__result)
-def test__extract_mix(mixnet, mixed_collection, result):
-    assert result == mixnet._extract_mix(mixed_collection)
+def test__extract_cipher_mix(mixnet, mixed_collection, result):
+    assert result == mixnet._extract_cipher_mix(mixed_collection)
 
 
 # Cipher-mix verification
