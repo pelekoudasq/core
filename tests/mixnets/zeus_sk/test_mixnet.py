@@ -154,7 +154,7 @@ def test__extract_cipher_mix(mixnet, mixed_collection, result):
 __mixnet__ciphers_to_mix = []
 
 for (mixnet, election_key) in (
-    (RES11_ZEUS_SK, RES11_ELECTION_KEY),
+    # (RES11_ZEUS_SK, RES11_ELECTION_KEY),
     (_2048_ZEUS_SK, _2048_ELECTION_KEY),
     (_4096_ZEUS_SK, _4096_ELECTION_KEY),
 ):

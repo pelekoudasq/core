@@ -248,95 +248,33 @@ def test_text_message_signature(system, signed_message, public_key, verified):
 
 # El-Gamal encryption
 
-__system__element__keys = [
-    (
-        _2048_SYSTEM,
-        792387492873492873492879428794827973465837687123194802943820394774576454,
-        _2048_PUBLIC,
-        _2048_KEY
-    ),
-    (
-        _4096_SYSTEM,
-        792387492873492873492879428794827973465837687123194802943820394774576454,
-        _4096_PUBLIC,
-        _4096_KEY
-    )
-]
+__element = 792387492873492873492879428794827973465837687123194802943820394774576454
 
-@pytest.mark.parametrize('system, element, public_key, private_key',
-    __system__element__keys)
-def test_encryption(system, element, public_key, private_key):
+__system__element__private_key__public_key = []
 
-    __p = system.group.modulus
+for (system, private_key) in (
+    (_2048_SYSTEM, _2048_KEY),
+    (_4096_SYSTEM, _4096_KEY),
+):
+    element = ModPrimeElement(mpz(__element), system.group.modulus)
+    keypair = system.keygen(private_key)
+    private_key, public_key = system._extract_keypair(keypair)
+    public_key = system._get_value(public_key)
 
-    # Type conversions
-    element = ModPrimeElement(element, __p)
-    public_key = ModPrimeElement(public_key, __p)
-    private_key = mpz(private_key)
+    __system__element__private_key__public_key.append(
+        (system, element, private_key, public_key))
 
-    # Ecnryption/Decryption
+@pytest.mark.parametrize('system, element, private_key, public_key',
+    __system__element__private_key__public_key)
+def test_encryption(system, element, private_key, public_key):
     ciphertext = system._encrypt(element, public_key)
     original = system._decrypt(ciphertext, private_key)
 
     assert element == original
 
-
-@pytest.mark.parametrize(
-    'system, element, public_key, private_key', __system__element__keys)
-def test_valid_encryption_proof(system, element, public_key, private_key):
-
-    __p = system.group.modulus
-
-    # Type conversions
-    element = ModPrimeElement(element, __p)
-    public_key = ModPrimeElement(public_key, __p)
-
-    # Ecnryption/Proof validation
-    randomness = system.group.random_exponent()
-    ciphertext = system._encrypt(element, public_key, randomness)
-    proof = system._prove_encryption(ciphertext, randomness)
-    ciphertext_proof = system._set_ciphertext_proof(ciphertext, proof)
-    verified = system._verify_encryption(ciphertext_proof)
-
-    assert verified
-
-@pytest.mark.parametrize(
-    'system, element, public_key, private_key', __system__element__keys)
-def test_invalid_encryption_proof(system, element, public_key, private_key):
-
-    __p = system.group.modulus
-
-    # Type conversions
-    element = ModPrimeElement(element, __p)
-    public_key = ModPrimeElement(public_key, __p)
-
-    # Ecnryption/Proof validation
-
-    randomness = system.group.random_exponent()
-    ciphertext = system._encrypt(element, public_key, randomness)
-
-    # Corrupt ciphertext by tampering alpha
-    alpha, beta = system._extract_ciphertext(ciphertext)
-    alpha = ModPrimeElement(alpha.value + 1, system.group.modulus)
-    corrupted_ciphertext = system._set_ciphertext(alpha, beta)
-
-    proof = system._prove_encryption(ciphertext, randomness)
-    ciphertext_proof = system._set_ciphertext_proof(corrupted_ciphertext, proof)
-    verified = system._verify_encryption(ciphertext_proof)
-
-    assert not verified
-
-@pytest.mark.parametrize(
-    'system, element, public_key, private_key', __system__element__keys)
-def test_encryption_with_secret_and_proof(system, element, public_key, private_key):
-
-    __p = system.group.modulus
-
-    # Type conversions
-    element = ModPrimeElement(element, __p)
-    public_key = ModPrimeElement(public_key, __p)
-
-    # Encryption/Proof validation
+@pytest.mark.parametrize('system, element, private_key, public_key',
+    __system__element__private_key__public_key)
+def test_encryption_with_secret_and_proof(system, element, private_key, public_key):
     ciphertext, randomness = system._encrypt(element, public_key, get_secret=True)
     proof = system._prove_encryption(ciphertext, randomness)
     ciphertext_proof = system._set_ciphertext_proof(ciphertext, proof)
@@ -344,32 +282,85 @@ def test_encryption_with_secret_and_proof(system, element, public_key, private_k
 
     assert verified
 
-@pytest.mark.parametrize(
-    'system, element, public_key, private_key', __system__element__keys)
-def test_decryption_with_decryptor(system, element, public_key, private_key):
+__system__ciphertext_proof__verified = []
+__system__ciphertext__decryptor__element = []
 
-    __p = system.group.modulus
+for (system, element, private_key, public_key) in __system__element__private_key__public_key:
+    ciphertext, randomness = system._encrypt(element, public_key, get_secret=True)
+    proof = system._prove_encryption(ciphertext, randomness)
+    ciphertext_proof = system._set_ciphertext_proof(ciphertext, proof)
 
-    # Type conversions
-    element = ModPrimeElement(element, __p)
-    public_key = ModPrimeElement(public_key, __p)
-    private_key = mpz(private_key)
+    # Encryption proof
 
-    # Ecnryption
-    ciphertext = system._encrypt(element, public_key)
+    # Valid case
+    __system__ciphertext_proof__verified.append(
+        (system, ciphertext_proof, True))
 
-    # ~ Decrypt with decryptor alpha ^ x (specializes to
-    # ~ standard ElGamal decryption for testing purposes)
+    # Corrupt ciphertext by tampering devryptor
+    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    corrupt_ciphertext = deepcopy(ciphertext)
+    corrupt_ciphertext['alpha'].reduce_value()
+    corrupt_ciphertext_proof = system._set_ciphertext_proof(corrupt_ciphertext, proof)
+    __system__ciphertext_proof__verified.append(
+        (system, corrupt_ciphertext_proof, False))
+
+    # Corrupt ciphertext by tampering beta
+    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    corrupt_ciphertext = deepcopy(ciphertext)
+    corrupt_ciphertext['beta'].reduce_value()
+    corrupt_ciphertext_proof = system._set_ciphertext_proof(corrupt_ciphertext, proof)
+    __system__ciphertext_proof__verified.append(
+        (system, corrupt_ciphertext_proof, False))
+
+    # Corrupt proof by tampering commitment
+    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    corrupt_proof = deepcopy(proof)
+    corrupt_proof['commitment'].reduce_value()
+    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    __system__ciphertext_proof__verified.append(
+        (system, corrupt_ciphertext_proof, False))
+
+    # Corrupt proof by tampering challenge
+    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    corrupt_proof = deepcopy(proof)
+    corrupt_proof['challenge'] += 1
+    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    __system__ciphertext_proof__verified.append(
+        (system, corrupt_ciphertext_proof, False))
+
+    # Corrupt proof by tampering response
+    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    corrupt_proof = deepcopy(proof)
+    corrupt_proof['response'] += 1
+    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    __system__ciphertext_proof__verified.append(
+        (system, corrupt_ciphertext_proof, False))
+
+    # Decryption
+    
     alpha, _ = system._extract_ciphertext(ciphertext)
     decryptor = alpha ** private_key
-    decrypted = system._decrypt_with_decryptor(ciphertext, decryptor)
+    __system__ciphertext__decryptor__element.append(
+        (system, ciphertext, decryptor, element))
 
-    assert element == decrypted
+@pytest.mark.parametrize('system, ciphertext_proof, verified',
+    __system__ciphertext_proof__verified)
+def test_verify_encryption(system, ciphertext_proof, verified):
+    assert system._verify_encryption(ciphertext_proof) is verified
+
+@pytest.mark.parametrize('system, ciphertext, decryptor, element',
+    __system__ciphertext__decryptor__element)
+def test_decrypt_with_decryptor(system, ciphertext, decryptor, element):
+    assert system._decrypt_with_decryptor(ciphertext, decryptor) == element
 
 
 __system__ciphertext__public__secret__decoded = []
 
-for system in (RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM):
+for system in (
+    RES11_SYSTEM,
+    _2048_SYSTEM,
+    _4096_SYSTEM
+):
     group = system.group
     modulus = group.modulus
 

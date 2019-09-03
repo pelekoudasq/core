@@ -26,9 +26,6 @@ if __name__=='__main__':
     system = _4096_SYSTEM
     secret = _4096_KEY
     DDH    = _4096_DDH
-    # import json
-    # print('-- CRYPTOSYSTEM --\n%s'
-    #     % json.dumps(system.parameters(), indent=4, sort_keys=True))
 
     print('\nSchnorr protocol\n')
     sleep(.5)
@@ -101,9 +98,9 @@ if __name__=='__main__':
     proof = system._chaum_pedersen_proof(ddh, z)
     valid = system._chaum_pedersen_verify(ddh, proof)
     if valid:
-        print(' + Valid proof successfully verified')
+        print(' + Valid DDH proof successfully verified')
     else:
-        print(' - Invalid proof erroneously invalidated')
+        print(' - Invalid DDH proof erroneously invalidated')
 
     # Corrupt first member
     corrupt = ddh[0].clone()
@@ -112,9 +109,9 @@ if __name__=='__main__':
     proof = system._chaum_pedersen_proof(corrupt_ddh, z)
     valid = system._chaum_pedersen_verify(corrupt_ddh, proof)
     if not valid:
-        print(' + Invalid tuple successfully detected')
+        print(' + Invalid DDH successfully detected')
     else:
-        print(' - Invalid tuple failed to be detected')
+        print(' - Invalid DDH failed to be detected')
 
     # Corrupt second member
     corrupt = ddh[1].clone()
@@ -123,9 +120,9 @@ if __name__=='__main__':
     proof = system._chaum_pedersen_proof(corrupt_ddh, z)
     valid = system._chaum_pedersen_verify(corrupt_ddh, proof)
     if not valid:
-        print(' + Invalid tuple successfully detected')
+        print(' + Invalid DDH successfully detected')
     else:
-        print(' - Invalid tuple failed to be detected')
+        print(' - Invalid DDH failed to be detected')
 
     # Corrupt third member
     corrupt = ddh[2].clone()
@@ -134,9 +131,9 @@ if __name__=='__main__':
     proof = system._chaum_pedersen_proof(corrupt_ddh, z)
     valid = system._chaum_pedersen_verify(corrupt_ddh, proof)
     if not valid:
-        print(' + Invalid tuple successfully detected')
+        print(' + Invalid DDH successfully detected')
     else:
-        print(' - Invalid tuple failed to be detected')
+        print(' - Invalid DDH failed to be detected')
 
     # Corrupt logarithm
     proof = system._chaum_pedersen_proof(ddh, z + 1)
@@ -237,6 +234,98 @@ if __name__=='__main__':
         print(' + Tampered message successfully detected')
     else:
         _exit(' - Tampered message failed to be detected')
+
+    print('\nElGamal encryption/decryption\n')
+    sleep(.5)
+
+    __element = 792387492873492873492879428794827973465837687123194802943820394774576454
+
+    element = ModPrimeElement(mpz(__element), system.group.modulus)
+
+    ciphertext, randomness = system._encrypt(element,
+        system._get_value(public_key), get_secret=True)
+    proof = system._prove_encryption(ciphertext, randomness)
+    ciphertext_proof = system._set_ciphertext_proof(ciphertext, proof)
+
+    # Valid case
+    verified = system._verify_encryption(ciphertext_proof)
+    if verified:
+        print(' + Valid encryption successfully verified')
+    else:
+        _exit(' - Valid encryption erroneously invalidated')
+
+    # Corrupt ciphertext by tampering devryptor
+    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    corrupt_ciphertext = deepcopy(ciphertext)
+    corrupt_ciphertext['alpha'].reduce_value()
+    corrupt_ciphertext_proof = system._set_ciphertext_proof(corrupt_ciphertext, proof)
+    verified = system._verify_encryption(corrupt_ciphertext_proof)
+    if not verified:
+        print(' + Invalid encryption (tampered decryptor) successfully detected')
+    else:
+        _exit(' - Invalid encryption (tampered decryptor) failed to be detected')
+
+    # Corrupt ciphertext by tampering beta
+    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    corrupt_ciphertext = deepcopy(ciphertext)
+    corrupt_ciphertext['beta'].reduce_value()
+    corrupt_ciphertext_proof = system._set_ciphertext_proof(corrupt_ciphertext, proof)
+    verified = system._verify_encryption(corrupt_ciphertext_proof)
+    if not verified:
+        print(' + Invalid encryption (tampered beta) successfully detected')
+    else:
+        _exit(' - Invalid encryption (tampered beta) failed to be detected')
+
+    # Corrupt proof by tampering commitment
+    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    corrupt_proof = deepcopy(proof)
+    corrupt_proof['commitment'].reduce_value()
+    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    verified = system._verify_encryption(corrupt_ciphertext_proof)
+    if not verified:
+        print(' + Invalid encryption-proof (tampered commitment) successfully detected')
+    else:
+        _exit(' - Invalid encryption-proof (tampered commitment) failed to be detected')
+
+    # Corrupt proof by tampering challenge
+    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    corrupt_proof = deepcopy(proof)
+    corrupt_proof['challenge'] += 1
+    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    verified = system._verify_encryption(corrupt_ciphertext_proof)
+    if not verified:
+        print(' + Invalid encryption-proof (tampered challenge) successfully detected')
+    else:
+        _exit(' - Invalid encryption-proof (tampered challenge) failed to be detected')
+
+    # Corrupt proof by tampering response
+    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    corrupt_proof = deepcopy(proof)
+    corrupt_proof['response'] += 1
+    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    verified = system._verify_encryption(corrupt_ciphertext_proof)
+    if not verified:
+        print(' + Invalid encryption-proof (tampered response) successfully detected')
+    else:
+        _exit(' - Invalid encryption-proof (tampered response) failed to be detected')
+
+    # Decryption
+
+    # Standards
+    decrypted = system._decrypt(ciphertext, private_key)
+    if decrypted == element:
+        print(' + Decryption successful (retrieved original message)')
+    else:
+        _exit(' - Decryption failed (did NOT yield original message)')
+
+    # With decryptor a ^ x (so that it yields original message for testing purposes)
+    alpha, _ = system._extract_ciphertext(ciphertext)
+    decryptor = alpha ** private_key
+    decrypted = system._decrypt_with_decryptor(ciphertext, decryptor)
+    if decrypted == element:
+        print(' + Decryption with decryptor successful (retrieved original message)')
+    else:
+        _exit(' - Decryption with decryptor failed (did NOT yield original message)')
 
     print('\nPrimitives session complete: ALL CHECKS PASSED\n')
     sys.exit(0)

@@ -1817,7 +1817,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         for a once used randomness 1 < r < q.
 
-        NOTE: The original message m gets hashed as H(m) before being signed for
+        .. note:: The original message m gets hashed as H(m) before being signed for
         defence against existential forgery.
 
         :type message: str
