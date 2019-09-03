@@ -167,6 +167,46 @@ if __name__=='__main__':
     else:
         _exit(' - Invalid key failed to be detected')
 
+    print('\nDigital Signature Algorithm\n')
+    sleep(.5)
+
+    exponent = 919228301823987238476870928301982103978254287481928123817398172931839120
+
+    # Valid case
+    exponent = mpz(exponent)
+    signature = system._dsa_signature(exponent, private_key)
+    verified = system._dsa_verify(exponent, signature, system._get_value(public_key))
+    if verified:
+        print(' + Valid signature successfully verified')
+    else:
+        _exit(' - Valid signature erroneously invalidated')
+
+    # Invalid identity (Authentication check)
+    wrong_secret = private_key + 1
+    signature = system._dsa_signature(exponent, wrong_secret)
+    verified = system._dsa_verify(exponent, signature, system._get_value(public_key))
+    if not verified:
+        print(' + Unauthorized signer successfully verified')
+    else:
+        _exit(' - Unauthorized signer failed to be detected')
+
+    # Tampered message (Integrity check)
+    signature = system._dsa_signature(exponent, private_key)
+    verified = system._dsa_verify(exponent + 1, signature, system._get_value(public_key))
+    if not verified:
+        print(' + Tampered message successfully verified')
+    else:
+        _exit(' - Tampered message failed to be detected')
+
+    # Invalid commitments
+    signature = system._dsa_signature(exponent, private_key)
+    signature['commitments']['c_1'] = system.group.order
+    verified = system._dsa_verify(exponent, signature, system._get_value(public_key))
+    if not verified:
+        print(' + Invalid commitment successfully detected')
+    else:
+        _exit(' - Invalid commitment failed to be detected')
+
     print('\nText-message signatures\n')
     sleep(.5)
 

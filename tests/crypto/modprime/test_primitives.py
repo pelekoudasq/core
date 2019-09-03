@@ -181,8 +181,9 @@ for (system, private_key) in (
     private_key, public_key = system._extract_keypair(keypair)
     public_key = system._get_value(public_key)
 
-    # Valid case
     exponent = mpz(exponent)
+
+    # Valid case
     signature = system._dsa_signature(exponent, private_key)
     __system__exponent__signature__public_key__verified.append(
         (system, exponent, signature, public_key, True))

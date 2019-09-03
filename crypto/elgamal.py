@@ -238,7 +238,6 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         """
         return {'message': message, 'signature': signature}
 
-
     def _extract_message_signature(self, signed_message):
         """
         :type signed_message: dict
@@ -258,3 +257,78 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         signature = signed_message['signature']
         exponent, c_1, c_2 = self._extract_dsa_signature(signature)
         return message, exponent, c_1, c_2
+
+    # ElGamal encryption and decryption
+
+    @abstractmethod
+    def _encrypt(self, element, public_key, randomness=None, get_secret=False):
+        """
+        """
+
+    @abstractmethod
+    def _reencrypt(self, ciphertext, public_key, randomness=None, get_secret=False):
+        """
+        """
+
+    @abstractmethod
+    def _prove_encryption(self, ciphertext, randomness):
+        """
+        """
+
+    @abstractmethod
+    def _verify_encryption(self, ciphertext_proof):
+        """
+        """
+
+    @abstractmethod
+    def _decrypt(self, ciphertext, private_key):
+        """
+        """
+
+    @abstractmethod
+    def _decrypt_with_decryptor(self, ciphertext, decryptor):
+        """
+        """
+
+    @abstractmethod
+    def _decrypt_with_randomness(self, ciphertext, public, secret):
+        """
+        """
+
+    def _set_ciphertext(self, alpha, beta):
+        """
+        :type alpha: ModPrimeElement
+        :type beta: ModPrimeElement
+        :rtype: dict
+        """
+        return {'alpha': alpha, 'beta': beta}
+
+    def _extract_ciphertext(self, ciphertext):
+        """
+        :type ciphertext: dict
+        :rtype: (ModPrimeElement, ModPrimeElement)
+        """
+        alpha = ciphertext['alpha']
+        beta = ciphertext['beta']
+        return alpha, beta
+
+    def _set_ciphertext_proof(self, ciphertext, proof):
+        """
+        :type ciphertext: dict
+        :type proof: dict
+        :rtype: dict
+        """
+        return {'ciphertext': ciphertext, 'proof': proof}
+
+    def _extract_ciphertext_proof(self, ciphertext_proof):
+        """
+        Extracts values from a dictionary of the form
+
+        {'ciphertext': dict, 'proof': dict}
+
+        :type ciphertext_proof: dict
+        :rtype: (dict, dict)
+        """
+        ciphertext = ciphertext_proof['ciphertext']
+        proof = ciphertext_proof['proof']
+        return ciphertext, proof

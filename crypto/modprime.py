@@ -1862,44 +1862,6 @@ class ModPrimeCrypto(ElGamalCrypto):
     #                                                       #
     #########################################################
 
-    def _set_ciphertext(self, alpha, beta):
-        """
-        :type alpha: ModPrimeElement
-        :type beta: ModPrimeElement
-        :rtype: dict
-        """
-        return {'alpha': alpha, 'beta': beta}
-
-    def _extract_ciphertext(self, ciphertext):
-        """
-        :type ciphertext: dict
-        :rtype: (ModPrimeElement, ModPrimeElement)
-        """
-        alpha = ciphertext['alpha']
-        beta = ciphertext['beta']
-        return alpha, beta
-
-    def _set_ciphertext_proof(self, ciphertext, proof):
-        """
-        :type ciphertext: dict
-        :type proof: dict
-        :rtype: dict
-        """
-        return {'ciphertext': ciphertext, 'proof': proof}
-
-    def _extract_ciphertext_proof(self, ciphertext_proof):
-        """
-        Extracts values from a dictionary of the form
-
-        {'ciphertext': dict, 'proof': dict}
-
-        :type ciphertext_proof: dict
-        :rtype: (dict, dict)
-        """
-        ciphertext = ciphertext_proof['ciphertext']
-        proof = ciphertext_proof['proof']
-        return ciphertext, proof
-
     def _encrypt(self, element, public_key, randomness=None, get_secret=False):
         """
         ElGamal encryption
