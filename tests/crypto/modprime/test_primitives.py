@@ -57,13 +57,13 @@ for system in (
     public_key = system.keygen()['public']
     __system__public_key__result.append((system, public_key, True))
 
-    # Corrupt key
+    # Corrupt key value
     corrupt_value = public_key['value'].clone()
     corrupt_value.reduce_value()
     corrupt_public_key = {'value': corrupt_value, 'proof': public_key['proof']}
     __system__public_key__result.append((system, corrupt_public_key, False))
 
-    # Corrupt proof
+    # Corrupt key proof
     corrupt_proof = deepcopy(public_key['proof'])
     corrupt_proof['challenge'] += 100
     corrupt_public_key = {'value': public_key['value'], 'proof': corrupt_proof}
@@ -74,100 +74,82 @@ def test_validate_public_key(system, public_key, result):
     assert system.validate_public_key(public_key) is result
 
 
-# Digital signatures
+# Text-message signatures
 
-__system__exponent__keys__result = [
-    (
-        _2048_SYSTEM,
-        239384877347538475938475384987497929929846663728917735493874593847593875,
-        _2048_KEY,
-        _2048_PUBLIC,
-        True
-    ),
-    (
-        _2048_SYSTEM,
-        239384877347538475938475384987497929929846663728917735493874593847593875,
-        _2048_KEY - 1,                                       # Wrong private key
-        _2048_PUBLIC,
-        False
-    ),
-    (
-        _4096_SYSTEM,
-        919228301823987238476870928301982103978254287481928123817398172931839120,
-        _4096_KEY,
-        _4096_PUBLIC,
-        True
-    ),
-    (
-        _4096_SYSTEM,
-        919228301823987238476870928301982103978254287481928123817398172931839120,
-        _4096_KEY - 1,                                       # Wrong private key
-        _4096_PUBLIC,
-        False
-    ),
-]
+__system__signed_message__public_key__verified = []
 
-@pytest.mark.parametrize('system, exponent, private_key, public_key, result',
-    __system__exponent__keys__result)
-def test_dsa_signature(system, exponent, private_key, public_key, result):
+for (system, private_key) in (
+    (_2048_SYSTEM, _2048_KEY),
+    (_4096_SYSTEM, _4096_KEY),
+):
+    keypair = system.keygen(mpz(private_key))
 
-    private_key = mpz(private_key)
-    public_key = ModPrimeElement(value=public_key, modulus=system.group.modulus)
-
-    signature = system._dsa_signature(exponent, private_key)
-    verified = system._dsa_verify(exponent, signature, public_key)
-
-    assert verified is result
-
-
-_system_message_key__bool = [
-    (
-        _2048_SYSTEM,
-        MESSAGE,
-        _2048_KEY,
-        _2048_PUBLIC,
-        True
-    ),
-    (
-        _2048_SYSTEM,
-        MESSAGE,
-        _2048_KEY - 1,                                       # Wrong private key
-        _2048_PUBLIC,
-        False
-    ),
-    (
-        _4096_SYSTEM,
-        MESSAGE,
-        _4096_KEY,
-        _4096_PUBLIC,
-        True
-    ),
-    (
-        _4096_SYSTEM,
-        MESSAGE,
-        _4096_KEY - 1,                                       # Wrong private key
-        _4096_PUBLIC,
-        False
-    ),
-]
-
-@pytest.mark.parametrize(
-    'system, message, private_key, public_key, _bool', _system_message_key__bool)
-def test_text_message_signature(system, message, private_key, public_key, _bool):
-
-    private_key = mpz(private_key)
-    public_key = {
-        'value': ModPrimeElement(value=public_key, modulus=system.group.modulus),
-        'proof': {
-            'whatever': '... attached proof plays no role here...'
-            # ...
-        }
-    }
-
+    # Valid case
+    private_key, public_key = system._extract_keypair(keypair)
+    message = MESSAGE
     signed_message = system.sign_text_message(message, private_key)
-    verified = system.verify_text_signature(signed_message, public_key)
+    __system__signed_message__public_key__verified.append(
+        (system, signed_message, public_key, True))
 
-    assert verified is _bool
+    # Invalid identity (Authentication check)
+    wrong_secret = private_key + 1
+    signed_message = system.sign_text_message(message, wrong_secret)
+    __system__signed_message__public_key__verified.append(
+        (system, signed_message, public_key, False))
+
+    # Tampered message (Integrity check)
+    signed_message = system.sign_text_message(message, private_key)
+    signed_message['message'] += '__corrupt_part'
+    __system__signed_message__public_key__verified.append(
+        (system, signed_message, public_key, False))
+
+@pytest.mark.parametrize('system, signed_message, public_key, verified',
+    __system__signed_message__public_key__verified)
+def test_text_message_signature(system, signed_message, public_key, verified):
+    assert system.verify_text_signature(signed_message, public_key) is verified
+
+
+# Digital Signature Algorithm
+
+exponent = 919228301823987238476870928301982103978254287481928123817398172931839120
+
+__system__exponent__signature__public_key__verified = []
+
+for (system, private_key) in (
+    (_2048_SYSTEM, _2048_KEY),
+    (_4096_SYSTEM, _4096_KEY),
+):
+    keypair = system.keygen(mpz(private_key))
+    private_key, public_key = system._extract_keypair(keypair)
+    public_key = system._get_value(public_key)
+
+    # Valid case
+    exponent = mpz(exponent)
+    signature = system._dsa_signature(exponent, private_key)
+    __system__exponent__signature__public_key__verified.append(
+        (system, exponent, signature, public_key, True))
+
+    # Invalid identity (Authentication check)
+    wrong_secret = private_key + 1
+    signature = system._dsa_signature(exponent, wrong_secret)
+    __system__exponent__signature__public_key__verified.append(
+        (system, exponent, signature, public_key, False))
+
+    # Tampered message (Integrity check)
+    signature = system._dsa_signature(exponent, private_key)
+    __system__exponent__signature__public_key__verified.append(
+        (system, exponent + 1, signature, public_key, False))
+
+    # Invalid commitments
+    signature = system._dsa_signature(exponent, private_key)
+    signature['commitments']['c_1'] = system.group.order
+    __system__exponent__signature__public_key__verified.append(
+        (system, exponent, signature, public_key, False))
+
+@pytest.mark.parametrize('system, exponent, signature, public_key, verified',
+    __system__exponent__signature__public_key__verified)
+def test_text_message_signature(system, exponent, signature, public_key, verified):
+    assert system._dsa_verify(exponent, signature, public_key) is verified
 
 
 # Schnorr protocol

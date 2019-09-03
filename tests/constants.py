@@ -92,7 +92,7 @@ choices = [
 # -- Messages --
 
 MESSAGE = 'l’esprit de sérieux est l’attitude de ceux qui pensent que \
-    les valeurs morales pré-existent à l’homme'
+les valeurs morales pré-existent à l’homme'
 
 # -- DDH tuples --
 
