@@ -7,7 +7,7 @@ from importlib import import_module
 from .elgamal import ElGamalCrypto
 from .algebra import Group, GroupElement
 from .exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
-    InvalidVoteError, InvalidSignatureError, InvalidFactorError,
+    InvalidKeyError, InvalidVoteError, InvalidSignatureError, InvalidFactorError,
     InvalidBallotDecryption)
 from .constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION, V_ZEUS_PUBLIC,
     V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER, V_ALPHA, V_BETA,
@@ -1415,6 +1415,191 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     # ------------------------------- Primitives -------------------------------
 
+
+    # Schnorr protocol
+
+    ############################################################
+    #                                                          #
+    #    By Schnorr-proof is meant a dictionary of the form    #
+    #                                                          #
+    #    {                                                     #
+    #       'commitment': ModPrimeElement                      #
+    #       'challenge': mpz                                   #
+    #       'response': mpz                                    #
+    #    }                                                     #
+    #                                                          #
+    ############################################################
+
+    def _schnorr_proof(self, secret, public, *extras):
+        """
+        Implementation of Schnorr protocol from the prover's side (non-interactive)
+
+        Returns proof-of-knowldge (Schnorr-proof) of the discrete logarithm x (`secret`)
+        of y (`public`), with `*extras` being used in the Fiat-Shamir heuristic
+
+        :type secret: mpz
+        :type public: modPrimeElement
+        :type *extras: mpz or int or ModPrimeElement
+        :rtype: dict
+        """
+
+        __group = self.__group
+
+        randomness = __group.random_exponent()          # r
+        commitment = __group.generate(randomness)       # g ^ r
+
+        challenge  = __group.fiatshamir(
+            public,
+            commitment,
+            *extras)     # c = g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp
+
+        response = __group.add_exponents(randomness, challenge * secret) # r + c * x
+
+        proof = self._set_schnorr_proof(commitment, challenge, response)
+        return proof
+
+    def _schnorr_verify(self, proof, public, *extras):
+        """
+        Implementation of Schnorr protocol from the verifier's side (non-interactive)
+
+        Validates the demonstrated (Schnorr) proof-of-knowledge `proof` of the discrete
+        logarithm of y (`public`), with `*extras` assumed to have been used in the
+        Fiat-Shamir heuristic
+
+        :type proof: dict
+        :type public: modPrimeElement
+        :type *extras: mpz or int or ModPrimeElement
+        """
+        __group = self.__group
+
+        # g ^ r, c, s
+        commitment, challenge, response = self._extract_schnorr_proof(proof)
+
+        # Check correctness of chalenge:
+        # c == g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp ?
+        _challenge = __group.fiatshamir(
+            public,
+            commitment,
+            *extras)
+
+        if _challenge != challenge:
+            return False
+
+        # g ^ s modp == (g ^ r) * (y ^ c) modp ?
+        return __group.generate(response) == commitment * (public ** challenge)
+
+
+    # Chaum-Pedersen protocol
+
+    ###################################################################
+    #                                                                 #
+    #    By Chaum-Pedersen proof is meant a dictionary of the form    #
+    #                                                                 #
+    #    {                                                            #
+    #        'base_commitment': ModPrimeElement                       #
+    #        'message_commitment': ModPrimeElement                    #
+    #        'challenge': mpz                                         #
+    #        'response': mpz                                          #
+    #    }                                                            #
+    #                                                                 #
+    ###################################################################
+
+    def _chaum_pedersen_proof(self, ddh, z):
+        """
+        Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
+
+        Returns zero-knowledge proof (Chaum-Pedersen proof) that the provided 3-ple `ddh`
+        is a DDH with respect to the generator g of the cryptosystem's underlying group,
+        i.e., of the form
+
+                        (g ^ x modp, g ^ z modp, g ^ (x * z) modp)
+
+        for some integers 0 <= x, z < q
+
+        :type ddh: (ModPrimeElement, ModPrimeElement, ModPrimeElement)
+        :type z: mpz
+        :rtype: dict
+        """
+
+        __group = self.__group
+
+        u, v, w = ddh
+
+        randomness = __group.random_exponent()
+
+        g_commitment = __group.generate(randomness)                     # g ^ r
+        u_commitment = u ** randomness                                  # u ^ r
+
+        challenge = __group.fiatshamir(
+            u, v, w,
+            g_commitment,
+            u_commitment)   # c = g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp
+
+        response = __group.add_exponents(randomness, challenge * z)      # s = r + c * z  modq
+
+        proof = self._set_chaum_pedersen_proof(g_commitment, u_commitment, challenge, response)
+        return proof
+
+    def _chaum_pedersen_verify(self, ddh, proof):
+        """
+        Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
+
+        Verifies that the demonstrated `proof` proves knowledge that the provided 3-ple `ddh`
+        is a DDH with respect to the generator g of the cryptosystem's underlying group, i.e., of
+        the form
+
+                                (u, v, g ^ (x * z) modp)
+
+
+        where u = g ^ x (modp), v = g ^ z (modp) with 0 <= x, z < q
+
+        The provided `ddh` is of the form
+
+                    (ModPrimeElement, ModPrimeElement, ModPrimeElement)
+
+        and the provided `proof` of the form
+
+        {
+            'base_commitment': ModPrimeElement
+            'message_commitment': ModPrimeElement
+            'challenge': mpz
+            'response': mpz
+        }
+
+        :type ddh: tuple
+        :type proof: dict
+        :rtype: bool
+        """
+
+        __group = self.__group
+
+        u, v, w = ddh
+
+        # g ^ r, u ^ r, c, s
+        g_commitment, u_commitment, challenge, response =\
+            self._extract_chaum_pedersen_proof(proof)
+
+        # Check correctness of challenge:
+        # c == g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp ?
+        _challenge = __group.fiatshamir(
+            u, v, w,
+            g_commitment,
+            u_commitment)
+
+        if _challenge != challenge:
+            return False
+
+        # Verify prover's commitment to presumed randomness:
+        # g ^ s == g ^ r * v ^ c  modp ?
+        if __group.generate(response) != g_commitment * (v ** challenge):
+            return False
+
+        # Verify that the provided u is of the form g ^ (k * z) for some k (and
+        # thus k = x due to prover's verified commitment to randomness r):
+        # u ^ s == u ^ r * w ^ c  modp ?
+        return u ** response == u_commitment * (w ** challenge)
+
+
     # Key management
 
     ######################################################################
@@ -1512,74 +1697,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         return public_key
 
 
-    # Text-message signatures
-
-    #####################################################################
-    #                                                                   #
-    #    By signed message is meant a dictionary of the form            #
-    #                                                                   #
-    #    {                                                              #
-    #        'message': str,                                            #
-    #        'signature': {                                             #
-    #            'exponent': mpz,                                       #
-    #            'commitments': {                                       #
-    #               'c_1': mpz,                                         #
-    #               'c_2': mpz                                          #
-    #        }                                                          #
-    #    }                                                              #
-    #                                                                   #
-    #####################################################################
-
-    def sign_text_message(self, message, private_key):
-        """
-        Signs the provided `message` m with the provided `private_key` x,
-        returning the signed message
-
-        {
-            'message': m,
-            'signature': {
-                'exponent': H(m),
-                'commitments': {
-                    'c_1': (g ^ r modp) modq,
-                    'c_2': (H(m) + x * c_1)/r modq
-                }
-            }
-        }
-
-        for a once used randomness 1 < r < q.
-
-        NOTE: The original message m gets hashed as H(m) before being signed for
-        defence against existential forgery.
-
-        :type message: str
-        :type private_key: mpz
-        :rtype: dict
-        """
-        hashed_message = self.__group.exponent_from_texts(message)
-        signature = self._dsa_signature(hashed_message, private_key)
-
-        signed_message = self._set_signed_message(message, signature)
-        return signed_message
-
-    def verify_text_signature(self, signed_message, public_key):
-        """
-        Given a signed message `signed_message`, verifies the attached signature
-        under the provided public key `public_key`
-
-        :type signed_message: dict
-        :type public_key: dict
-        :rtype: bool
-        """
-        message, signature = self._extract_message_signature(signed_message)
-        public_key = self._get_value(public_key)
-
-        # Verify signature
-        hashed_message = self.__group.exponent_from_texts(message)              # H(m)
-        verified = self._dsa_verify(hashed_message, signature, public_key)
-
-        return verified
-
-
     # Digital Signature Algorithm
 
     ############################################################
@@ -1663,247 +1780,73 @@ class ModPrimeCrypto(ElGamalCrypto):
         return element % __q == c_1
 
 
-    # Schnorr protocol
+    # Text-message signatures
 
-    ############################################################
-    #                                                          #
-    #    By Schnorr-proof is meant a dictionary of the form    #
-    #                                                          #
-    #    {                                                     #
-    #       'commitment': ModPrimeElement                      #
-    #       'challenge': mpz                                   #
-    #       'response': mpz                                    #
-    #    }                                                     #
-    #                                                          #
-    ############################################################
+    #####################################################################
+    #                                                                   #
+    #    By signed message is meant a dictionary of the form            #
+    #                                                                   #
+    #    {                                                              #
+    #        'message': str,                                            #
+    #        'signature': {                                             #
+    #            'exponent': mpz,                                       #
+    #            'commitments': {                                       #
+    #               'c_1': mpz,                                         #
+    #               'c_2': mpz                                          #
+    #             }                                                     #
+    #         }                                                         #
+    #     }                                                             #
+    #                                                                  #
+    #####################################################################
 
-
-    def _set_schnorr_proof(self, commitment, challenge, response):
+    def sign_text_message(self, message, private_key):
         """
-        :type commitment: ModPrimeElement
-        :type challenge: mpz
-        :type response: mpz
-        :rtype: dict
-        """
-        proof = {
-            'commitment': commitment,
-            'challenge': challenge,
-            'response': response
-        }
-
-        return proof
-
-    def _extract_schnorr_proof(self, proof):
-        """
-        :type proof: dict
-        :rtype: (ModPrimElement, mpz, mpz)
-        """
-        commitment = proof['commitment']
-        challenge = proof['challenge']
-        response = proof['response']
-
-        return commitment, challenge, response
-
-
-    def _schnorr_proof(self, secret, public, *extras):
-        """
-        Implementation of Schnorr protocol from the prover's side (non-interactive)
-
-        Returns proof-of-knowldge (Schnorr-proof) of the discrete logarithm x (`secret`)
-        of y (`public`), with `*extras` being used in the Fiat-Shamir heuristic
-
-        :type secret: mpz
-        :type public: modPrimeElement
-        :type *extras: mpz or int or ModPrimeElement
-        :rtype: dict
-        """
-
-        __group = self.__group
-
-        randomness = __group.random_exponent()          # r
-        commitment = __group.generate(randomness)       # g ^ r
-
-        challenge  = __group.fiatshamir(
-            public,
-            commitment,
-            *extras)     # c = g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp
-
-        response = __group.add_exponents(randomness, challenge * secret) # r + c * x
-
-        proof = self._set_schnorr_proof(commitment, challenge, response)
-        return proof
-
-
-    def _schnorr_verify(self, proof, public, *extras):
-        """
-        Implementation of Schnorr protocol from the verifier's side (non-interactive)
-
-        Validates the demonstrated (Schnorr) proof-of-knowledge `proof` of the discrete
-        logarithm of y (`public`), with `*extras` assumed to have been used in the
-        Fiat-Shamir heuristic
-
-        :type proof: dict
-        :type public: modPrimeElement
-        :type *extras: mpz or int or ModPrimeElement
-        """
-        __group = self.__group
-
-        # g ^ r, c, s
-        commitment, challenge, response = self._extract_schnorr_proof(proof)
-
-        # Check correctness of chalenge:
-        # c == g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp ?
-        _challenge = __group.fiatshamir(
-            public,
-            commitment,
-            *extras)
-
-        if _challenge != challenge:
-            return False
-
-        # g ^ s modp == (g ^ r) * (y ^ c) modp ?
-        return __group.generate(response) == commitment * (public ** challenge)
-
-
-    # Chaum-Pedersen protocol
-
-    ###################################################################
-    #                                                                 #
-    #    By Chaum-Pedersen proof is meant a dictionary of the form    #
-    #                                                                 #
-    #    {                                                            #
-    #        'base_commitment': ModPrimeElement                       #
-    #        'message_commitment': ModPrimeElement                    #
-    #        'challenge': mpz                                         #
-    #        'response': mpz                                          #
-    #    }                                                            #
-    #                                                                 #
-    ###################################################################
-
-    def _set_chaum_pedersen_proof(self, base_commitment, message_commitment,
-        challenge, response):
-        """
-        :type base_commitment: ModPrimeElement
-        :type message_commitment: ModPrimeElement
-        :challenge: mpz
-        :response: mpz
-        :rtype: dict
-        """
-        proof = {
-            'base_commitment': base_commitment,
-            'message_commitment': message_commitment,
-            'challenge': challenge,
-            'response': response
-        }
-
-        return proof
-
-    def _extract_chaum_pedersen_proof(self, proof):
-        """
-        :type proof: dict
-        :rtype: (ModPrimElement, ModPrimElement, mpz, mpz)
-        """
-        base_commitment = proof['base_commitment']
-        message_commitment = proof['message_commitment']
-        challenge = proof['challenge']
-        response = proof['response']
-
-        return base_commitment, message_commitment, challenge, response
-
-    def _chaum_pedersen_proof(self, ddh, z):
-        """
-        Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
-
-        Returns zero-knowledge proof (Chaum-Pedersen proof) that the provided 3-ple `ddh`
-        is a DDH with respect to the generator g of the cryptosystem's underlying group,
-        i.e., of the form
-
-                        (g ^ x modp, g ^ z modp, g ^ (x * z) modp)
-
-        for some integers 0 <= x, z < q
-
-        :type ddh: (ModPrimeElement, ModPrimeElement, ModPrimeElement)
-        :type z: mpz
-        :rtype: dict
-        """
-
-        __group = self.__group
-
-        u, v, w = ddh
-
-        randomness = __group.random_exponent()
-
-        g_commitment = __group.generate(randomness)                     # g ^ r
-        u_commitment = u ** randomness                                  # u ^ r
-
-        challenge = __group.fiatshamir(
-            u, v, w,
-            g_commitment,
-            u_commitment)   # c = g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp
-
-        response = __group.add_exponents(randomness, challenge * z)      # s = r + c * z  modq
-
-        proof = self._set_chaum_pedersen_proof(g_commitment, u_commitment, challenge, response)
-        return proof
-
-    def _chaum_pedersen_verify(self, ddh, proof):
-        """
-        Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
-
-        Verifies that the demonstrated `proof` proves knowledge that the provided 3-ple `ddh`
-        is a DDH with respect to the generator g of the cryptosystem's underlying group, i.e., of
-        the form
-
-                                (u, v, g ^ (x * z) modp)
-
-
-        where u = g ^ x (modp), v = g ^ z (modp) with 0 <= x, z < q
-
-        The provided `ddh` is of the form
-
-                    (ModPrimeElement, ModPrimeElement, ModPrimeElement)
-
-        and the provided `proof` of the form
+        Signs the provided `message` m with the provided `private_key` x,
+        returning the signed message
 
         {
-            'base_commitment': ModPrimeElement
-            'message_commitment': ModPrimeElement
-            'challenge': mpz
-            'response': mpz
+            'message': m,
+            'signature': {
+                'exponent': H(m),
+                'commitments': {
+                    'c_1': (g ^ r modp) modq,
+                    'c_2': (H(m) + x * c_1)/r modq
+                }
+            }
         }
 
-        :type ddh: tuple
-        :type proof: dict
+        for a once used randomness 1 < r < q.
+
+        NOTE: The original message m gets hashed as H(m) before being signed for
+        defence against existential forgery.
+
+        :type message: str
+        :type private_key: mpz
+        :rtype: dict
+        """
+        hashed_message = self.__group.exponent_from_texts(message)
+        signature = self._dsa_signature(hashed_message, private_key)
+
+        signed_message = self._set_signed_message(message, signature)
+        return signed_message
+
+    def verify_text_signature(self, signed_message, public_key):
+        """
+        Given a signed message `signed_message`, verifies the attached signature
+        under the provided public key `public_key`
+
+        :type signed_message: dict
+        :type public_key: dict
         :rtype: bool
         """
+        message, signature = self._extract_message_signature(signed_message)
+        public_key = self._get_value(public_key)
 
-        __group = self.__group
+        # Verify signature
+        hashed_message = self.__group.exponent_from_texts(message)              # H(m)
+        verified = self._dsa_verify(hashed_message, signature, public_key)
 
-        u, v, w = ddh
-
-        # g ^ r, u ^ r, c, s
-        g_commitment, u_commitment, challenge, response =\
-            self._extract_chaum_pedersen_proof(proof)
-
-        # Check correctness of challenge:
-        # c == g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp ?
-        _challenge = __group.fiatshamir(
-            u, v, w,
-            g_commitment,
-            u_commitment)
-
-        if _challenge != challenge:
-            return False
-
-        # Verify prover's commitment to presumed randomness:
-        # g ^ s == g ^ r * v ^ c  modp ?
-        if __group.generate(response) != g_commitment * (v ** challenge):
-            return False
-
-        # Verify that the provided u is of the form g ^ (k * z) for some k (and
-        # thus k = x due to prover's verified commitment to randomness r):
-        # u ^ s == u ^ r * w ^ c  modp ?
-        return u ** response == u_commitment * (w ** challenge)
+        return verified
 
 
     # El-Gamal encryption and decryption

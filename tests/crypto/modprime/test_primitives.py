@@ -3,6 +3,7 @@ from copy import deepcopy
 from gmpy2 import mpz, powmod, invert
 
 from crypto.modprime import ModPrimeElement
+from crypto.exceptions import InvalidKeyError
 from utils.random import random_integer
 
 from tests.constants import (MESSAGE,
@@ -11,46 +12,138 @@ from tests.constants import (MESSAGE,
     _4096_SYSTEM, _4096_KEY, _4096_PUBLIC, _4096_DDH)
 
 
-# Key generation and validation
+# Schnorr protocol
 
-__system__secret__public = [
-    # (RES11_SYSTEM, RES11_KEY, RES11_PUBLIC),
-    (_2048_SYSTEM, _2048_KEY, _2048_PUBLIC),
-    (_4096_SYSTEM, _4096_KEY, _4096_PUBLIC)
-]
+extras = [0, 7, 11, 666]
 
-@pytest.mark.parametrize('system, secret, public', __system__secret__public)
-def test_keygen_with_non_random_private(system, secret, public):
-    keypair = system.keygen(private_key=secret)
-    public_key = keypair['public']
-    proof = public_key['proof']
-    public_key = public_key['value']
+__system__proof__public__extras__verified = []
 
-    valid = system._schnorr_verify(proof, public_key)
+for (system, secret) in (
+    (_2048_SYSTEM, _2048_KEY),
+    (_4096_SYSTEM, _4096_KEY),
+):
+    secret = mpz(secret)
+    public = system.group.generate(secret)
 
-    assert secret == keypair['private'] and public_key.value == public and valid
+    # Valid case
+    proof = system._schnorr_proof(secret, public, *extras)
+    __system__proof__public__extras__verified.append(
+        (system, proof, public, extras, True))
+
+    # Corrupt logarithm
+    corrupt_secret = secret + 1
+    corrupt_proof = system._schnorr_proof(corrupt_secret, public, *extras)
+    __system__proof__public__extras__verified.append(
+        (system, corrupt_proof, public, extras, False))
+
+    # Corrupt extras
+    corrupt_extras = deepcopy(extras)
+    corrupt_extras[0] += 1
+    __system__proof__public__extras__verified.append(
+        (system, proof, public, corrupt_extras, False))
+
+    # Corrupt proof by tampering commitment
+    corrupt_proof = deepcopy(proof)
+    corrupt_proof['commitment'].reduce_value()
+    __system__proof__public__extras__verified.append(
+        (system, corrupt_proof, public, extras, False))
+
+    # Corrupt proof by tampering challenge
+    corrupt_proof = deepcopy(proof)
+    corrupt_proof['challenge'] += 1
+    __system__proof__public__extras__verified.append(
+        (system, corrupt_proof, public, extras, False))
+
+    # Corrupt proof by tampering response
+    corrupt_proof = deepcopy(proof)
+    corrupt_proof['response'] += 1
+    __system__proof__public__extras__verified.append(
+        (system, corrupt_proof, public, extras, False))
+
+@pytest.mark.parametrize('system, proof, public, extras, verified',
+    __system__proof__public__extras__verified)
+def test_schnorr_protocol(system, proof, public, extras, verified):
+    assert system._schnorr_verify(proof, public, *extras) is verified
 
 
-__system = [
-    # RES11_SYSTEM,
-    _2048_SYSTEM,
-    _4096_SYSTEM
-]
+# Chaum-Pedersen protocol
 
-@pytest.mark.parametrize('system', __system)
+__system__ddh__z__result = []
+
+for (system, DDH) in (
+    (_2048_SYSTEM, _2048_DDH),
+    (_4096_SYSTEM, _4096_DDH),
+):
+    modulus = system.group.modulus
+
+    ddh = [ModPrimeElement(elem, modulus) for elem in DDH['ddh']]
+    z = mpz(DDH['log'])
+    __system__ddh__z__result.append((system, ddh, z, True))
+
+    # Invalidate tuple by corrupting first member
+    corrupt = ddh[0].clone()
+    corrupt.reduce_value()
+    corrupt_ddh = [corrupt, ddh[1], ddh[2]]
+    __system__ddh__z__result.append((system, corrupt_ddh, z, False))
+
+    # Invalidate tuple by corrupting second member
+    corrupt = ddh[1].clone()
+    corrupt.reduce_value()
+    corrupt_ddh = [ddh[0], corrupt, ddh[2]]
+    __system__ddh__z__result.append((system, corrupt_ddh, z, False))
+
+    # Invalidate tuple by corrupting third member
+    corrupt = ddh[2].clone()
+    corrupt.reduce_value()
+    corrupt_ddh = [ddh[0], ddh[1], corrupt]
+    __system__ddh__z__result.append((system, corrupt_ddh, z, False))
+
+    # Corrupt logarithm
+    __system__ddh__z__result.append((system, ddh, z - 1, False))
+
+@pytest.mark.parametrize('system, ddh, z, result', __system__ddh__z__result)
+def test_chaum_pedersen_protocol(system, ddh, z, result):
+    proof = system._chaum_pedersen_proof(ddh, z)
+    valid = system._chaum_pedersen_verify(ddh, proof)
+
+    assert valid is result
+
+
+# Key generation
+
+def test_keygen_with_InvalidKeyError():
+    with pytest.raises(InvalidKeyError):
+        _2048_SYSTEM.keygen(_2048_SYSTEM.group.order)
+
+@pytest.mark.parametrize('system', [_2048_SYSTEM, _4096_SYSTEM,])
 def test_keygen_with_random_private(system):
     keypair = system.keygen()
-    public_key = keypair['public']
-    proof = public_key['proof']
-    public_key = public_key['value']
+    _, public_key = system._extract_keypair(keypair)
+    public_key, proof = system._extract_public_key(public_key)
 
     assert system._schnorr_verify(proof, public_key)
 
 
+__system__secret__public = [
+    (_2048_SYSTEM, _2048_KEY, _2048_PUBLIC),
+    (_4096_SYSTEM, _4096_KEY, _4096_PUBLIC),
+]
+
+@pytest.mark.parametrize('system, secret, public', __system__secret__public)
+def test_keygen_with_non_random_private(system, secret, public):
+    keypair = system.keygen(secret)
+    _, public_key = system._extract_keypair(keypair)
+    public_key, proof = system._extract_public_key(public_key)
+
+    valid = system._schnorr_verify(proof, public_key)
+    assert secret == keypair['private'] and public_key.value == public and valid
+
+
+# Key validation
+
 __system__public_key__result = []
 
 for system in (
-    # RES11_SYSTEM,
     _2048_SYSTEM,
     _4096_SYSTEM
 ):
@@ -72,41 +165,6 @@ for system in (
 @pytest.mark.parametrize('system, public_key, result', __system__public_key__result)
 def test_validate_public_key(system, public_key, result):
     assert system.validate_public_key(public_key) is result
-
-
-# Text-message signatures
-
-__system__signed_message__public_key__verified = []
-
-for (system, private_key) in (
-    (_2048_SYSTEM, _2048_KEY),
-    (_4096_SYSTEM, _4096_KEY),
-):
-    keypair = system.keygen(mpz(private_key))
-
-    # Valid case
-    private_key, public_key = system._extract_keypair(keypair)
-    message = MESSAGE
-    signed_message = system.sign_text_message(message, private_key)
-    __system__signed_message__public_key__verified.append(
-        (system, signed_message, public_key, True))
-
-    # Invalid identity (Authentication check)
-    wrong_secret = private_key + 1
-    signed_message = system.sign_text_message(message, wrong_secret)
-    __system__signed_message__public_key__verified.append(
-        (system, signed_message, public_key, False))
-
-    # Tampered message (Integrity check)
-    signed_message = system.sign_text_message(message, private_key)
-    signed_message['message'] += '__corrupt_part'
-    __system__signed_message__public_key__verified.append(
-        (system, signed_message, public_key, False))
-
-@pytest.mark.parametrize('system, signed_message, public_key, verified',
-    __system__signed_message__public_key__verified)
-def test_text_message_signature(system, signed_message, public_key, verified):
-    assert system.verify_text_signature(signed_message, public_key) is verified
 
 
 # Digital Signature Algorithm
@@ -152,114 +210,39 @@ def test_text_message_signature(system, exponent, signature, public_key, verifie
     assert system._dsa_verify(exponent, signature, public_key) is verified
 
 
-# Schnorr protocol
+# Text-message signatures
 
-__system__secret__public__extras__result = [
-    (
-        _2048_SYSTEM,
-        _2048_KEY,
-        _2048_PUBLIC,
-        [0, 7, 11, 666],
-        [0, 7, 11, 666],
-        True
-    ),
-    (
-        _2048_SYSTEM,
-        12345,                                                 # Wrong logarithm
-        _2048_PUBLIC,
-        [0, 7, 11, 666],
-        [0, 7, 11, 666],
-        False
-    ),
-    (
-        _2048_SYSTEM,
-        _2048_KEY,
-        _2048_PUBLIC,
-        [0, 7, 11, 666],
-        [1, 7, 11, 666],                                       # Wrong extras
-        False
-    ),
-    (
-        _4096_SYSTEM,
-        _4096_KEY,
-        _4096_PUBLIC,
-        [0, 7, 11, 666],
-        [0, 7, 11, 666],
-        True
-    ),
-    (
-        _4096_SYSTEM,
-        12345,                                                 # Wrong logarithm
-        _4096_PUBLIC,
-        [0, 7, 11, 666],
-        [0, 7, 11, 666],
-        False
-    ),
-    (
-        _4096_SYSTEM,
-        _2048_KEY,
-        _2048_PUBLIC,
-        [0, 7, 11, 666],
-        [1, 7, 11, 666],                                       # Wrong extras
-        False
-    ),
-]
+__system__signed_message__public_key__verified = []
 
-@pytest.mark.parametrize('system, secret, public, extras_1, extras_2, result',
-    __system__secret__public__extras__result)
-def test_schnorr_protocol(system, secret, public, extras_1, extras_2, result):
-
-    secret = mpz(secret)
-    public = ModPrimeElement(public, system.group.modulus)
-
-    proof = system._schnorr_proof(secret, public, *extras_1)
-    valid = system._schnorr_verify(proof, public, *extras_2)
-
-    assert valid is result
-
-
-# Chaum-Pedersen protocol
-
-__system__ddh__z__result = []
-
-for (system, DDH) in (
-    # (RES11_SYSTEM, RES11_DDH),
-    (_2048_SYSTEM, _2048_DDH),
-    (_4096_SYSTEM, _4096_DDH),
+for (system, private_key) in (
+    (_2048_SYSTEM, _2048_KEY),
+    (_4096_SYSTEM, _4096_KEY),
 ):
-    modulus = system.group.modulus
-    ddh = [ModPrimeElement(elem, modulus) for elem in DDH['ddh']]
-    z = mpz(DDH['log'])
-    __system__ddh__z__result.append((system, ddh, z, True))
+    keypair = system.keygen(mpz(private_key))
 
-    # Corrupt first member
-    corrupt = ddh[0].clone()
-    corrupt.reduce_value()
-    corrupt_ddh = [corrupt, ddh[1], ddh[2]]
-    __system__ddh__z__result.append((system, corrupt_ddh, z, False))
+    # Valid case
+    private_key, public_key = system._extract_keypair(keypair)
+    message = MESSAGE
+    signed_message = system.sign_text_message(message, private_key)
+    __system__signed_message__public_key__verified.append(
+        (system, signed_message, public_key, True))
 
-    # Corrupt second member
-    corrupt = ddh[1].clone()
-    corrupt.reduce_value()
-    corrupt_ddh = [ddh[0], corrupt, ddh[2]]
-    __system__ddh__z__result.append((system, corrupt_ddh, z, False))
+    # Invalid identity (Authentication check)
+    wrong_secret = private_key + 1
+    signed_message = system.sign_text_message(message, wrong_secret)
+    __system__signed_message__public_key__verified.append(
+        (system, signed_message, public_key, False))
 
-    # Corrupt third member
-    corrupt = ddh[2].clone()
-    corrupt.reduce_value()
-    corrupt_ddh = [ddh[0], ddh[1], corrupt]
-    __system__ddh__z__result.append((system, corrupt_ddh, z, False))
+    # Tampered message (Integrity check)
+    signed_message = system.sign_text_message(message, private_key)
+    signed_message['message'] += '__corrupt_part'
+    __system__signed_message__public_key__verified.append(
+        (system, signed_message, public_key, False))
 
-    # Corrupt logarithm
-    __system__ddh__z__result.append((system, ddh, z - 1, False))
-
-@pytest.mark.parametrize('system, ddh, z, result', __system__ddh__z__result)
-def test_chaum_pedersen_protocol(system, ddh, z, result):
-
-    proof = system._chaum_pedersen_proof(ddh, z)
-    valid = system._chaum_pedersen_verify(ddh, proof)
-
-    assert valid is result
+@pytest.mark.parametrize('system, signed_message, public_key, verified',
+    __system__signed_message__public_key__verified)
+def test_text_message_signature(system, signed_message, public_key, verified):
+    assert system.verify_text_signature(signed_message, public_key) is verified
 
 
 # El-Gamal encryption
