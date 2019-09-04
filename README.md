@@ -14,3 +14,7 @@ python3 sessions/modprime/primitives.py
 python3 sessions/modprime/voting.py
 python3 sessions/zeus_sk.py
 ```
+
+## Running elections
+
+python3 election/election.py

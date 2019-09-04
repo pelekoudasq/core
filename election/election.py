@@ -77,25 +77,3 @@ class ZeusCoreElection(object):
 
 if __name__ == '__main__':
     ZeusCoreElection().run()
-    # class Stage_0(Stage):
-    #     def run(self):
-    #         print('Stage 0')
-    #     def next(self, input):
-    #         if input == 0:
-    #             return Stage_0()
-    #         else:
-    #             return Stage_1()
-    # class Stage_1(Stage):
-    #     def run(self):
-    #         print('Stage 1')
-    #     def next(self, input):
-    #         if input == 1:
-    #             return Stage_1()
-    #         else:
-    #             return Stage_2()
-    # class Stage_2(FinalStage):
-    #     def run(self):
-    #         print('Stage 2')
-    #         print('Process finished\n')
-    #
-    # StageController(initial_stage=Stage_0()).run_all([0, 1, 2])
