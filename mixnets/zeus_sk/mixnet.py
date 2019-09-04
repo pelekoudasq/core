@@ -1,6 +1,7 @@
 """
 """
 
+from Crypto import Random
 from gmpy2 import mpz
 
 from crypto import ModPrimeCrypto, ModPrimeElement, WrongCryptoError
@@ -247,14 +248,6 @@ class Zeus_sk(Mixnet):
         res['original_ciphers'] = [(c['alpha'], c['beta'])
             for c in cipher_collection['original_ciphers']]
 
-        # if 'mixed_ciphers' in cipher_collection:
-        #     res['mixed_ciphers'] = [(c['alpha'], c['beta'])
-        #         for c in cipher_collection['mixed_ciphers']]
-        # else:
-        #     res['mixed_ciphers'] = res['original_ciphers']
-        #
-        # if 'proof' in cipher_collection:
-        #     res['proof'] = cipher_collection['proof']
         try:
             res['mixed_ciphers'] = [(c['alpha'], c['beta'])
                 for c in cipher_collection['mixed_ciphers']]

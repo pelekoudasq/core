@@ -70,6 +70,7 @@ def write_all(fd, data):
     written = 0
     while written < size:
         w = write(fd, buffer(data, written, size-written))
+        # w = write(fd, memoryview(bytes(data[written: size], 'utf-8')))
         if not w:
             m = "Write EOF"
             raise EOF(m)

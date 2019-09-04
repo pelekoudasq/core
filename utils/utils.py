@@ -14,3 +14,11 @@ def extract_value(dictionary, key, cast, default=None):
 	        return None
 	    value = cast(dictionary[key])
 	return value
+
+#TODO
+def to_relative_answers(choices, nr_candidates):
+	pass
+
+#TODO
+def get_random_party_selection(nr_elements, nr_parties):
+	pass

@@ -19,3 +19,11 @@ def bit_iterator(nr, infinite=True):
 
     while 1:
         yield 0
+
+
+#TODO
+def directory_to_binary(directory):
+    pass
+
+def binary_to_directory(output_dir, data):
+    pass

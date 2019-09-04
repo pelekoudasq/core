@@ -1625,11 +1625,10 @@ class ModPrimeCrypto(ElGamalCrypto):
         If `shnorr` is left to its default value `True`, the public part
         will include proof-of-knowledge of the private part
 
-        :type private_key: mpz
+        :type private_key: mpz or int
         :type schnorr: bool
         :rtype: dict
         """
-
         __group = self.__group
 
         if private_key is None:
@@ -1638,6 +1637,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         elif not 1 < private_key < self.__order:
             e = 'Provided private key exceeds the allowed range'
             raise InvalidKeyError(e)
+        else:
+            private_key = mpz(private_key)               # in case int was given
 
         public_key = __group.generate(private_key)              # y = g ^ x modp
 

@@ -16,6 +16,7 @@ def _exit(message, code=1):
     print(message)
     print('\nVoting session incomplete: CHECK FAILED\n')
     sys.exit(code)
+    
 
 if __name__=='__main__':
 
