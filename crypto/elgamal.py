@@ -6,6 +6,20 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
     Abstract class for ElGamal cryptosystems
     """
 
+    # ----------------------------- Initialization -----------------------------
+
+    @classmethod
+    @abstractmethod
+    def _validate_system(cls, *params):
+        """
+        """
+
+    @classmethod
+    @abstractmethod
+    def _extract_config(cls, config):
+        """
+        """
+
     # ------------------------------- Primitives -------------------------------
 
     # Schnorr protocol

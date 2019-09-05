@@ -27,6 +27,7 @@ _10_ = ModPrimeElement(10, 11)
 # -- Cryptosystems --
 
 RES11_SYSTEM = ModPrimeCrypto(11, 2, allow_weakness=True)
+RES11_SYSTEM = ModPrimeCrypto(11, 2, allow_weakness=True)
 _2048_SYSTEM = ModPrimeCrypto(_2048_PRIME, _2048_PRIMITIVE)
 _4096_SYSTEM = ModPrimeCrypto(_4096_PRIME, _4096_PRIMITIVE)
 

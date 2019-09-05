@@ -455,6 +455,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type min_gen_size: int
         :type allow_weakness: bool
         """
+
         modulus = mpz(modulus)                                   # p
         primitive = ModPrimeElement(mpz(primitive), modulus)     # g0
         root_order = mpz(root_order)                             # r
@@ -489,6 +490,22 @@ class ModPrimeCrypto(ElGamalCrypto):
         # Validate system
         self.__class__._validate_system(modulus, group.order, group.generator,
             root_order, prime_order, min_mod_size, min_gen_size, allow_weakness)
+
+    @classmethod
+    def _extract_config(cls, config):
+        """
+        :type config: dict
+        :rtype: tuple
+        """
+        modulus = config['modulus']
+        primitive = config['primitive']
+        root_order = config['root_order'] if 'root_order' in config else 2
+        prime_order = config['prime_order'] if 'prime_order' in config else True
+        min_mod_size = config['min_mod_size'] if 'min_mod_size' in config else None
+        min_gen_size = config['min_gen_size'] if 'min_gen_size' in config else None
+        allow_weakness = config['allow_weakness'] if 'allow_weakness' in config else None
+
+        return modulus, primitive, root_order, prime_order, min_mod_size, min_gen_size, allow_weakness
 
     @classmethod
     def _validate_system(cls, modulus, order, generator,
@@ -1128,9 +1145,9 @@ class ModPrimeCrypto(ElGamalCrypto):
         _, decryption_factors = self._extract_trustee_factors(trustee_factors)
 
         # Delete this snipset in alterative version
-        # if not trustee_public or not trustee_factors:
-        #     e = 'Malformed trustee factors'
-        #     raise InvalidFactorError(e)
+        if not trustee_public or not trustee_factors:
+            e = 'Malformed trustee factors'
+            raise InvalidFactorError(e)
 
         trustee_public = self._get_value(trustee_public)
 

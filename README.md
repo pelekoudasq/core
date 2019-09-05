@@ -17,4 +17,6 @@ python3 sessions/zeus_sk.py
 
 ## Running elections
 
+```shell
 python3 election/election.py
+```
