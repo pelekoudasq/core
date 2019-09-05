@@ -8,8 +8,8 @@ from utils.random import random_integer
 
 from tests.constants import (MESSAGE,
     RES11_SYSTEM, RES11_KEY, RES11_PUBLIC, RES11_DDH,
-    _2048_SYSTEM, _2048_KEY, _2048_PUBLIC, _2048_DDH,
-    _4096_SYSTEM, _4096_KEY, _4096_PUBLIC, _4096_DDH)
+    _2048_SYSTEM, _2048_SECRET, _2048_PUBLIC, _2048_DDH,
+    _4096_SYSTEM, _4096_SECRET, _4096_PUBLIC, _4096_DDH)
 
 
 # Schnorr protocol
@@ -19,8 +19,8 @@ extras = [0, 7, 11, 666]
 __system__proof__public__extras__verified = []
 
 for (system, secret) in (
-    (_2048_SYSTEM, _2048_KEY),
-    (_4096_SYSTEM, _4096_KEY),
+    (_2048_SYSTEM, _2048_SECRET),
+    (_4096_SYSTEM, _4096_SECRET),
 ):
     secret = mpz(secret)
     public = system.group.generate(secret)
@@ -125,8 +125,8 @@ def test_keygen_with_random_private(system):
 
 
 __system__secret__public = [
-    (_2048_SYSTEM, _2048_KEY, _2048_PUBLIC),
-    (_4096_SYSTEM, _4096_KEY, _4096_PUBLIC),
+    (_2048_SYSTEM, _2048_SECRET, _2048_PUBLIC),
+    (_4096_SYSTEM, _4096_SECRET, _4096_PUBLIC),
 ]
 
 @pytest.mark.parametrize('system, secret, public', __system__secret__public)
@@ -174,8 +174,8 @@ exponent = 919228301823987238476870928301982103978254287481928123817398172931839
 __system__exponent__signature__public_key__verified = []
 
 for (system, private_key) in (
-    (_2048_SYSTEM, _2048_KEY),
-    (_4096_SYSTEM, _4096_KEY),
+    (_2048_SYSTEM, _2048_SECRET),
+    (_4096_SYSTEM, _4096_SECRET),
 ):
     keypair = system.keygen(mpz(private_key))
     private_key, public_key = system._extract_keypair(keypair)
@@ -216,8 +216,8 @@ def test_text_message_signature(system, exponent, signature, public_key, verifie
 __system__signed_message__public_key__verified = []
 
 for (system, private_key) in (
-    (_2048_SYSTEM, _2048_KEY),
-    (_4096_SYSTEM, _4096_KEY),
+    (_2048_SYSTEM, _2048_SECRET),
+    (_4096_SYSTEM, _4096_SECRET),
 ):
     keypair = system.keygen(mpz(private_key))
 
@@ -253,8 +253,8 @@ __element = 79238749287349287349287942879482797346583768712319480294382039477457
 __system__element__private_key__public_key = []
 
 for (system, private_key) in (
-    (_2048_SYSTEM, _2048_KEY),
-    (_4096_SYSTEM, _4096_KEY),
+    (_2048_SYSTEM, _2048_SECRET),
+    (_4096_SYSTEM, _4096_SECRET),
 ):
     element = ModPrimeElement(mpz(__element), system.group.modulus)
     keypair = system.keygen(private_key)

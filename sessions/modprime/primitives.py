@@ -10,8 +10,8 @@ from utils import random_integer
 from crypto.modprime import ModPrimeElement
 from crypto.exceptions import (InvalidVoteError, InvalidSignatureError)
 
-from tests.constants import (_2048_SYSTEM, _2048_KEY, _2048_DDH, _4096_SYSTEM,
-    _4096_KEY, _4096_DDH, MESSAGE)
+from tests.constants import (_2048_SYSTEM, _2048_SECRET, _2048_DDH, _4096_SYSTEM,
+    _4096_SECRET, _4096_DDH, MESSAGE)
 
 def _exit(message, code=1):
     print(message)
@@ -24,7 +24,7 @@ if __name__=='__main__':
     sleep(.5)
 
     system = _4096_SYSTEM
-    secret = _4096_KEY
+    secret = _4096_SECRET
     DDH    = _4096_DDH
 
     print('\nSchnorr protocol\n')

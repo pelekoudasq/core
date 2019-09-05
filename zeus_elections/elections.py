@@ -6,7 +6,7 @@ from zeus_elections.stages import Uninitialized
 # from gmpy2 import mpz
 # from .modprime import ModPrimeCrypto
 #
-# def _2048_crypto(private_key=_2048_KEY):
+# def _2048_crypto(private_key=_2048_SECRET):
 #     """
 #     :private_key: int
 #     :rtype dict:

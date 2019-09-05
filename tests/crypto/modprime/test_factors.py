@@ -12,8 +12,8 @@ from crypto.exceptions import InvalidFactorError, InvalidBallotDecryption
 from utils import random_integer
 
 from tests.constants import (RES11_SYSTEM, RES11_KEY,
-    _2048_SYSTEM, _2048_KEY,
-    _4096_SYSTEM, _4096_KEY)
+    _2048_SYSTEM, _2048_SECRET,
+    _4096_SYSTEM, _4096_SECRET)
 
 
 # Factor combination
@@ -43,7 +43,7 @@ def test__combine_decryption_factors(system, factors_collections, elems, nr_trus
 __system__ciphers__secret__public = []
 
 for (system, key) in (
-    (RES11_SYSTEM, RES11_KEY), (_2048_SYSTEM, _2048_KEY), (_4096_SYSTEM, _4096_KEY)):
+    (RES11_SYSTEM, RES11_KEY), (_2048_SYSTEM, _2048_SECRET), (_4096_SYSTEM, _4096_SECRET)):
     group = system.group
     ciphers = [{'alpha': group.random_element(), 'beta': group.random_element()}
         for _ in range(random_integer(2, 12))]
@@ -62,8 +62,8 @@ __failure_cases = []
 
 for (system, key) in (
     # (RES11_SYSTEM, RES11_KEY),
-    (_2048_SYSTEM, _2048_KEY),
-    (_4096_SYSTEM, _4096_KEY)
+    (_2048_SYSTEM, _2048_SECRET),
+    (_4096_SYSTEM, _4096_SECRET)
 ):
     group = system.group
     ciphers = [{'alpha': group.random_element(), 'beta': group.random_element()}
@@ -131,8 +131,8 @@ __failure_cases__ = []
 
 for (system, key) in (
     # (RES11_SYSTEM, RES11_KEY),
-    (_2048_SYSTEM, _2048_KEY),
-    (_4096_SYSTEM, _4096_KEY),
+    (_2048_SYSTEM, _2048_SECRET),
+    (_4096_SYSTEM, _4096_SECRET),
 ):
     group = system.group
     mixed_ballots = [{'alpha': group.random_element(), 'beta': group.random_element()}
