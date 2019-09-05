@@ -2,7 +2,7 @@ import pytest
 from hashlib import sha256
 from itertools import chain
 
-from crypto import ModPrimeElement
+from crypto.modprime import ModPrimeElement
 from mixnets.zeus_sk.utils import (compute_mix_challenge, shuffle_ciphers,
     verify_mix_round)
 from mixnets.exceptions import RoundNotVerifiedError

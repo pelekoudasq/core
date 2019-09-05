@@ -4,7 +4,7 @@
 from Crypto import Random
 from gmpy2 import mpz
 
-from crypto import ModPrimeCrypto, ModPrimeElement, WrongCryptoError
+from crypto.modprime import ModPrimeCrypto
 from utils import random_permutation, AsyncController, _teller, bit_iterator
 
 from ..abstracts import Mixnet
@@ -33,7 +33,7 @@ class Zeus_sk(Mixnet):
         mixnet's underlying ElGamal cryptosystem, 'nr_rounds' the number of
         rounds to be performed at each mixing and 'nr_mixes' the fixed length
         of cipher-collections to mix. If the provided `cryptosystem` is not of
-        type ModPrimeCrypto, then a `WrongCryptoError` will be raised.
+        type ModPrimeCrypto, then a `MixnetError` will be raised.
 
         Provided `election_key` should be a structure of the form
 
@@ -54,7 +54,7 @@ class Zeus_sk(Mixnet):
 
         if not self.supports_cryptosystem(cryptosystem):
             e = 'Provided crypto type is not supported by Zeus SK mixnet'
-            raise WrongCryptoError(e)
+            raise MixnetError(e)
 
         # Crypto parameters
 

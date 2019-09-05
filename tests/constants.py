@@ -101,7 +101,7 @@ les valeurs morales pré-existent à l’homme'
 
 RES11_DDH = {
     'ddh': (5, 3, 9),
-    'log': 9            # the second member's logarithm
+    'log': 9                # the second member's logarithm
 }
 
 # DDH in mod _2048_PRIME cryptosystem --

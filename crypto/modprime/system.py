@@ -9,7 +9,7 @@ from .algebra import ModPrimeElement, ModPrimeSubgroup
 from ..abstracts import ElGamalCrypto
 from ..exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
     InvalidKeyError, InvalidVoteError, InvalidSignatureError, InvalidFactorError,
-    InvalidBallotDecryption)
+    BallotDecryptionError)
 from zeus_elections.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION, V_ZEUS_PUBLIC,
     V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER, V_ALPHA, V_BETA,
     V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX, V_CAST_VOTE,
@@ -1467,7 +1467,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         # Lengths check
         if len(trustees_factors) is not len(public_shares):
             e = 'Unequal number of public shares and trustees'
-            raise InvalidBallotDecryption(e)
+            raise BallotDecryptionError(e)
 
         # Remove proofs from trustees' public keys
         aux_factors = {}
@@ -1484,17 +1484,17 @@ class ModPrimeCrypto(ElGamalCrypto):
                 trustee_factors = trustees_factors[trustee_public]
             except KeyError:
                 e = 'Trustee mismatch with public shares'
-                raise InvalidBallotDecryption(e)
+                raise BallotDecryptionError(e)
 
             if not self._verify_decryption_factors(trustee_public, mixed_ballots, trustee_factors):
                 e = 'Trustee\'s factors could not be verified'
-                raise InvalidBallotDecryption(e)
+                raise BallotDecryptionError(e)
 
         # Verify zeus's factors
         zeus_public_key = self._get_value(zeus_public_key)
         if not self._verify_decryption_factors(zeus_public_key, mixed_ballots, zeus_factors):
             e = 'Zeus\'s factors could not be verified'
-            raise InvalidBallotDecryption(e)
+            raise BallotDecryptionError(e)
 
         return True
 

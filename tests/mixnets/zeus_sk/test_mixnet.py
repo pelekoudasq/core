@@ -3,7 +3,6 @@ from copy import deepcopy
 
 from mixnets import Zeus_sk
 from mixnets.exceptions import MixnetError, MixNotVerifiedError
-from crypto import WrongCryptoError
 from utils.binutils import bit_iterator
 
 from tests.constants import (RES11_ELECTION_KEY, _2048_ELECTION_KEY,
@@ -17,14 +16,14 @@ MIXES = 20
 
 # Test construction errors
 
-def test__MixnetError__at__Zeus_sk__construction():
+def test_MixnetError_with_invalid_params():
     with pytest.raises(MixnetError):
         Zeus_sk({'key_1': 0}, 1)
 
-def test__WrongCryptoError__at__Zeus_sk__construction():
+def test_MixnetError_with_unsupported_crypto_type():
     class EllipticCrypto(object): pass
     system = EllipticCrypto()
-    with pytest.raises(WrongCryptoError):
+    with pytest.raises(MixnetError):
         Zeus_sk({'cryptosystem': system,
             'nr_rounds': ROUNDS,
             'nr_mixes': MIXES

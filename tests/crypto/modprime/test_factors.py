@@ -8,7 +8,8 @@ from functools import reduce
 from itertools import permutations
 from gmpy2 import mpz
 
-from crypto.exceptions import InvalidFactorError, InvalidBallotDecryption
+from crypto.modprime import ModPrimeElement
+from crypto.exceptions import InvalidFactorError, BallotDecryptionError
 from utils import random_integer
 
 from tests.constants import (RES11_SYSTEM, RES11_KEY,
@@ -167,7 +168,6 @@ for (system, key) in (
     # Corrupt public key
     corrupt_public = trustee_public.clone()
     corrupt_public.reduce_value()
-    from crypto import ModPrimeElement
     __failure_cases__.append((system, corrupt_public, mixed_ballots, trustee_factors))
 
 @pytest.mark.parametrize('system, trustee_public, mixed_ballots, trustee_factors', __failure_cases__)
@@ -271,5 +271,5 @@ def test_validate_ballots_decryption(system, mixed_ballots, trustees_factors, pu
     if result:
         assert system.validate_ballots_decryption(mixed_ballots, trustees_factors, public_shares, zeus_factors, zeus_public_key)
     else:
-        with pytest.raises(InvalidBallotDecryption):
+        with pytest.raises(BallotDecryptionError):
             system.validate_ballots_decryption(mixed_ballots, trustees_factors, public_shares, zeus_factors,zeus_public_key)

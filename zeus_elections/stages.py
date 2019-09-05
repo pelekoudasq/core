@@ -4,31 +4,31 @@ class Uninitialized(Stage):
     def run(self):
         print('Uninitialized')
     def next(self, input):
-        return Creating()
+        return Creating(controller=self.controller)
 
 class Creating(Stage):
     def run(self):
         print('Creating...')
     def next(self, input):
-        return Voting()
+        return Voting(controller=self.controller)
 
 class Voting(Stage):
     def run(self):
         print('Voting...')
     def next(self, input):
-        return Mixing()
+        return Mixing(controller=self.controller)
 
 class Mixing(Stage):
     def run(self):
         print('Mixing...')
     def next(self, input):
-        return Decrypting()
+        return Decrypting(controller=self.controller)
 
 class Decrypting(Stage):
     def run(self):
         print('Decyrpting...')
     def next(self, input):
-        return Finalized()
+        return Finalized(controller=self.controller)
 
 class Finalized(FinalStage):
     def run(self):

@@ -10,9 +10,9 @@ pytest tests/
 and
 
 ```shell
-python3 sessions/modprime/primitives.py
-python3 sessions/modprime/voting.py
-python3 sessions/zeus_sk.py
+python3 tests/sessions/modprime/primitives.py
+python3 tests/sessions/modprime/voting.py
+python3 tests/sessions/zeus_sk.py
 ```
 
 ## Running elections

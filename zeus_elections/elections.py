@@ -17,11 +17,10 @@ from zeus_elections.stages import Uninitialized
 
 class ZeusCoreElection(object):
 
-    def __init__(self, crypto_params, mixnet_class, teller=_teller, **kw):
-        # crypto_class =
-        from crypto import system_class
-        from mixnets import mixnet_class
-        self.stageController = StageController(initial_stage=Uninitialized())
+    def __init__(self, teller=_teller, **kw):
+        # self.stageController = StageController(initial_stage=Uninitialized(controller=self))
+        from zeus_elections.stages import Uninitialized
+        self.stageController = StageController(initial_cls=object)
 
     def run(self):
         self.stageController.run_all([0, 0, 0, 0, 0])

@@ -40,7 +40,7 @@ class InvalidFactorError(BaseException):
     """
     pass
 
-class InvalidBallotDecryption(BaseException):
+class BallotDecryptionError(BaseException):
     """
     Raised when decryption of a ballot collection could not be validated
     """
