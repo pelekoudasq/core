@@ -1,8 +1,8 @@
 import pytest
 from copy import deepcopy
 
-from mixnets import Zeus_sk, MixnetError
-from mixnets.zeus_sk.mixnet import MixNotVerifiedError
+from mixnets import Zeus_sk
+from mixnets.exceptions import MixnetError, MixNotVerifiedError
 from crypto import WrongCryptoError
 from utils.binutils import bit_iterator
 

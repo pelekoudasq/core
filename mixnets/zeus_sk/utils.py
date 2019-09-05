@@ -2,16 +2,11 @@ from itertools import chain
 from hashlib import sha256
 from Crypto import Random
 
+from ..exceptions import MixNotVerifiedError, RoundNotVerifiedError
 from utils.random import random_permutation
 
 ALPHA = 0
 BETA  = 1
-
-class RoundNotVerifiedError(BaseException):
-    """
-    Raised when a mix round fails to be verified
-    """
-    pass
 
 def _raise_RoundNotVerifiedError(round_nr, cipher_nr, bit):
     """

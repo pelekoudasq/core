@@ -7,16 +7,9 @@ from gmpy2 import mpz
 from crypto import ModPrimeCrypto, ModPrimeElement, WrongCryptoError
 from utils import random_permutation, AsyncController, _teller, bit_iterator
 
-from ..abstracts import Mixnet, MixnetError
-from .utils import (shuffle_ciphers, compute_mix_challenge,
-    RoundNotVerifiedError, verify_mix_round)
-
-
-class MixNotVerifiedError(BaseException):
-    """
-    Raised when a cipher-mix fails to be verified
-    """
-    pass
+from ..abstracts import Mixnet
+from ..exceptions import MixnetError, MixNotVerifiedError, RoundNotVerifiedError
+from .utils import (shuffle_ciphers, compute_mix_challenge, verify_mix_round)
 
 
 class Zeus_sk(Mixnet):
@@ -36,7 +29,7 @@ class Zeus_sk(Mixnet):
 
         {'cryptosystem': ModPrimeCrypto, 'nr_rounds': int, 'nr_mixes': int}
 
-        (otherwise a `MixNetError` will be raised) where `cryptosystem` is the
+        (otherwise a `MixnetError` will be raised) where `cryptosystem` is the
         mixnet's underlying ElGamal cryptosystem, 'nr_rounds' the number of
         rounds to be performed at each mixing and 'nr_mixes' the fixed length
         of cipher-collections to mix. If the provided `cryptosystem` is not of

@@ -4,7 +4,8 @@ from itertools import chain
 
 from crypto import ModPrimeElement
 from mixnets.zeus_sk.utils import (compute_mix_challenge, shuffle_ciphers,
-    RoundNotVerifiedError, verify_mix_round)
+    verify_mix_round)
+from mixnets.exceptions import RoundNotVerifiedError
 from utils.random import random_integer, random_permutation
 
 from tests.constants import (RES11_ZEUS_SK, RES11_ELECTION_KEY,
