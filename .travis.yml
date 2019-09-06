@@ -4,11 +4,10 @@ python:
   - "3.6"
 
 install:
-  # - sudo apt-get install build-essential autoconf libtool pkg-config python-opengl python-imaging python-pyrex python-pyside.qtopengl idle-python2.7 qt4-dev-tools qt4-designer libqtgui4 libqtcore4 libqt4-xml libqt4-test libqt4-script libqt4-network libqt4-dbus python-qt4 python-qt4-gl libgle3 python-dev
-  # - sudo apt-get install python3-dev
-  - sudo pip install -r requirements.txt
-  - sudo pip install -r dev-requirements.txt
-  - sudo pip install codecov
+  - apt install python3 python3-dev libffi-dev libssl-dev
+  - pip install -r requirements.txt
+  - pip install -r dev-requirements.txt
+  - pip install codecov
 
 script:
   - pytest tests/
