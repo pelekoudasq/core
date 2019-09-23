@@ -1,4 +1,23 @@
 from zeus_elections.elections import ZeusCoreElection
 
+from crypto import ModPrimeCrypto
+from crypto.constants import _2048_PRIME, _2048_PRIMITIVE
+from mixnets import Zeus_sk
+
 if __name__ == '__main__':
-    ZeusCoreElection({'a': 0, 'b': 1}).run()
+    ZeusCoreElection({
+        'crypto': {
+            'cls': ModPrimeCrypto,
+            'config': {
+                'modulus': _2048_PRIME,
+                'primitive': _2048_PRIMITIVE
+            }
+        },
+        'mixnet': {
+            'cls': Zeus_sk,
+            'config': {
+                'nr_rounds': 12,
+                'nr_mixes': 12
+            }
+        }
+    }, nr_parallel=0).run()

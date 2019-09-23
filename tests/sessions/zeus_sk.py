@@ -50,7 +50,7 @@ if __name__=='__main__':
         'cryptosystem': cryptosystem,
         'nr_rounds': ROUNDS,
         'nr_mixes': MIXES
-    }, election_key)
+    }, election_key=election_key)
 
     ciphers = _make_ciphers(cryptosystem)
 

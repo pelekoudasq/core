@@ -10,10 +10,10 @@ from ..abstracts import ElGamalCrypto
 from ..exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
     InvalidKeyError, InvalidVoteError, InvalidSignatureError, InvalidFactorError,
     BallotDecryptionError)
-from zeus_elections.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION, V_ZEUS_PUBLIC,
-    V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER, V_ALPHA, V_BETA,
-    V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX, V_CAST_VOTE,
-    V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED)
+from zeus_elections.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION,
+    V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER,
+    V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX,
+    V_CAST_VOTE, V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED)
 from utils import hash_texts, hash_encode, hash_decode, extract_value
 
 
@@ -28,19 +28,18 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     __slots__ = ('__group', '__GroupElement',
 
-        # ~ Group params included for mpz computations
-        # ~ outside the group interface
+        # Group params included for mpz computations outside the group interface
         '__modulus', '__order', '__generator')
 
 
     def __init__(self, modulus, primitive, root_order=2, prime_order=True,
             min_mod_size=None, min_gen_size=None, allow_weakness=False):
         """
-        Assumes the provided `primitive` g0 to be a primitive mod p, i.e.,
+        Assumes the provided `primitive` g_0 to be a primitive mod p, i.e.,
         a generator of the multiplicative group Z*_p or, equivalently, a
         primitive (p - 1)-root of 1, i.e.,
 
-        g0 ^ (p - 1) = 1 and g0 ^ k != 1 for all 0 < k < p - 1
+        g_0 ^ (p - 1) = 1 and g_0 ^ k != 1 for all 0 < k < p - 1
 
         :type modulus: int
         :type primitive: int
@@ -52,7 +51,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
 
         modulus = mpz(modulus)                                   # p
-        primitive = ModPrimeElement(mpz(primitive), modulus)     # g0
+        primitive = ModPrimeElement(mpz(primitive), modulus)     # g_0
         root_order = mpz(root_order)                             # r
 
         # Resolve group
@@ -69,8 +68,8 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # Resolve generator
 
-        # Algebraic fact: given a primitive g0 of Z*_p, p > 2 smooth, and 1 < r < p - 1
-        # with r | p - 1, then g0 ^ r generates the q-subgroup of Z*_p, q = (p - 1)/r
+        # Algebraic fact: given a primitive g_0 of Z*_p, p > 2 smooth, and 1 < r < p - 1
+        # with r | p - 1, then g_0 ^ r generates the q-subgroup of Z*_p, q = (p - 1)/r
         generator = primitive ** root_order
 
         try:
@@ -146,7 +145,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     def parameters(self):
         """
         Returns the modulus p, order q and fixed generator g of the underlying
-        group as a dictionary with integer values (external usage)
+        group as a dictionary with integer values
 
         :rtype: dict
         """
@@ -157,7 +156,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     def _parameters(self):
         """
         Returns the modulus p, order q and fixed generator g of the underlying
-        group as a tuple of the form (mpz, mpz, mpz) (internal usage)
+        group as a tuple of the form (mpz, mpz, mpz)
 
         :rtype: tuple
         """
@@ -839,7 +838,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     # ----------------------------- Elections API -----------------------------
 
-    # Voting
+    # Creating
 
     def create_zeus_keypair(self, zeus_secret_key=None):
         """
@@ -894,6 +893,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         election_key = self._get_value(election_key)
         test_key = self.compute_election_key(trustees, zeus_keypair)
         return election_key == self._get_value(test_key)
+
+    # Voting
 
     def vote(self, election_key, voter, plaintext,
                 audit_code=None, publish=None):

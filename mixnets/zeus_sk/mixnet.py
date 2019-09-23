@@ -21,7 +21,7 @@ class Zeus_sk(Mixnet):
 
     __slots__ = ('__cryptosystem', '__group', '__nr_rounds', '__nr_mixes', '__election_key')
 
-    def __init__(self, config, election_key):
+    def __init__(self, config, election_key=None):
         """
         Constructs a Sako-Killian mixnet
 
@@ -72,8 +72,12 @@ class Zeus_sk(Mixnet):
         self.__nr_mixes = nr_mixes
 
         # Set election key
+        if election_key:
+            self.__election_key = self.__cryptosystem._get_value(election_key)
 
+    def set_election_key(election_key):
         self.__election_key = self.__cryptosystem._get_value(election_key)
+
 
     @classmethod
     def supports_cryptosystem(cls, cryptosystem):
