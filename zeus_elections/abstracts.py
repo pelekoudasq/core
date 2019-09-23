@@ -1,63 +1,100 @@
 from abc import ABCMeta, abstractmethod
 import warnings
-import logging
-
-def log_warning(message, category=None, filename=None, lineno=None, file=None, line=None):
-    logging.warning(' %s' % (message,))
 
 class MissingInputError(BaseException):
     pass
 
 class Stage(object, metaclass=ABCMeta):
 
-    def __init__(self, controller):
-        self.controller = controller
-        controller.stage = self
+    def __init__(self, controller, input, next_stage_cls):
+        self._set(*self._extract(input)) # store external input (i.e., set before the procedure's initiation)
+        self.controller = controller # for deriving internal input (i.e., produced during procedure)
+        controller.stage = self # set controller's stage to be the currently executed one
+
+        if not issubclass(next_stage_cls, Stage):
+            raise AssertionError('No valid next stage provided')
+        self.next_stage_cls = next_stage_cls
+
+    def _get_controller(self):
+        return self.controller
+
+    def get_next_stage_cls(self):
+        return self.next_stage_cls
 
     @abstractmethod
     def run(self):
         """
         """
+        # Should call _make
+
+    def next(self):
+        controller = self._get_controller()
+        try:
+            next_input = controller._get_next_input()
+        except StopIteration:
+            raise
+        NextStage = self.get_next_stage_cls()
+        return NextStage(controller, next_input)
 
     @abstractmethod
-    def next(self, input):
+    def _make(self):
+        """
+        """
+        # Should call _get_controller
+
+    @abstractmethod
+    def _extract(self, input):
         """
         """
 
+    @abstractmethod
+    def _set(self, *extracted):
+        """
+        """
+
+
 class FinalStage(Stage, metaclass=ABCMeta):
+    def __init__(self, controller, input):
+        super().__init__(controller, input, next_stage_cls=self.__class__)
+
     def next(self, input):
         return self
 
 
 class StageController(object):
-    def __init__(self, initial_stage, initial_cls):
-        if not isinstance(initial_stage, initial_cls):
-            raise AssertionError('No valid stage provided to start with')
-        self.current_stage = initial_stage
-        self.__class__.configure_warning()
 
-    @classmethod
-    def configure_warning(cls):
-        logging.basicConfig(level=logging.INFO)
-        warnings.showwarning = log_warning
+    def __init__(self, initial_cls, inputs):
+        if not issubclass(initial_cls, Stage):
+            raise AssertionError('No initial stage provided')
+        self.inputs = inputs
+        first_input = next(self.inputs)
+        self.current_stage = initial_cls(self, first_input)
 
-    def run_all(self, inputs):
-        inputs = iter(inputs)
-        current_stage = self.current_stage
-
+    def run(self):
+        current_stage = self._get_current_stage()
         current_stage.run()
         while not isinstance(current_stage, FinalStage):
             try:
-                input = next(inputs)
+                current_stage = current_stage.next()
             except StopIteration:
                 raise MissingInputError('Not enough input')
-
-            current_stage = current_stage.next(input)
             current_stage.run()
 
         try:
-            extra_input = next(inputs)
+            extra_input = self._get_next_input()
         except StopIteration:
             pass                                                   # Normal case
         else:
             warnings.warn('There were extra inputs')
+
+    # Generic API
+
+    def _get_current_stage(self):
+        return self.current_stage
+
+    def _get_next_input(self):
+        try:
+            input = next(self.inputs)
+        except StopIteration:
+            raise
+        return input

@@ -840,6 +840,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     # Creating
 
+    # TODO: REMOVE (included only here for testing)
     def create_zeus_keypair(self, zeus_secret_key=None):
         """
         Creates and returns a key pair for zeus
@@ -850,6 +851,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         zeus_keypair = self.keygen(zeus_secret_key)
         return zeus_keypair
 
+    # TODO: REMOVE (included only here for testing)
     def generate_trustees(self, nr_trustees):
         """
         :type nr_trustees: int
