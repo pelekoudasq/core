@@ -136,7 +136,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         min_gen_size = config['min_gen_size'] if 'min_gen_size' in config else None
         allow_weakness = config['allow_weakness'] if 'allow_weakness' in config else None
 
-        return modulus, primitive, root_order, prime_order, min_mod_size, min_gen_size, allow_weakness
+        return (modulus, primitive, root_order, prime_order, min_mod_size,
+            min_gen_size, allow_weakness)
 
 
     # ------------------------------ Cryptosystem ------------------------------

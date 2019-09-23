@@ -43,7 +43,7 @@ class GroupElement(object, metaclass=ABCMeta):
     def inverse(self):
         """
         """
-        
+
 
 class ElGamalCrypto(object, metaclass=ABCMeta):
     """

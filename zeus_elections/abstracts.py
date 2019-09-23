@@ -6,16 +6,13 @@ def log_warning(message, category=None, filename=None, lineno=None, file=None, l
     logging.warning(' %s' % (message,))
 
 class MissingInputError(BaseException):
-    """
-    """
     pass
 
 class Stage(object, metaclass=ABCMeta):
 
     def __init__(self, controller):
-        """
-        """
         self.controller = controller
+        controller.stage = self
 
     @abstractmethod
     def run(self):
@@ -27,38 +24,36 @@ class Stage(object, metaclass=ABCMeta):
         """
         """
 
-
 class FinalStage(Stage, metaclass=ABCMeta):
     def next(self, input):
         return self
 
 
 class StageController(object):
-    def __init__(self, initial_cls):
-        if not issubclass(initial_cls, Stage):
-            raise AssertionError('No stage provided to start with')
-        self.current_stage = initial_cls(self)
+    def __init__(self, initial_stage, initial_cls):
+        if not isinstance(initial_stage, initial_cls):
+            raise AssertionError('No valid stage provided to start with')
+        self.current_stage = initial_stage
         self.__class__.configure_warning()
-
 
     @classmethod
     def configure_warning(cls):
         logging.basicConfig(level=logging.INFO)
         warnings.showwarning = log_warning
 
-
     def run_all(self, inputs):
         inputs = iter(inputs)
+        current_stage = self.current_stage
 
-        self.current_stage.run()
-        while not isinstance(self.current_stage, FinalStage):
+        current_stage.run()
+        while not isinstance(current_stage, FinalStage):
             try:
                 input = next(inputs)
             except StopIteration:
                 raise MissingInputError('Not enough input')
 
-            self.current_stage = self.current_stage.next(input)
-            self.current_stage.run()
+            current_stage = current_stage.next(input)
+            current_stage.run()
 
         try:
             extra_input = next(inputs)
