@@ -7,37 +7,30 @@ class MissingInputError(BaseException):
 class Stage(object, metaclass=ABCMeta):
 
     def __init__(self, controller, input, next_stage_cls):
-        self._set(*self._extract(input))
-        self.controller = controller
-        controller.stage = self
-
         if not issubclass(next_stage_cls, Stage):
             raise AssertionError('No valid next stage provided')
+        self.controller = controller
+        controller.stage = self
         self.next_stage_cls = next_stage_cls
+        self._store(input)
 
     def _get_controller(self):
         return self.controller
 
-    def get_next_stage_cls(self):
+    def _get_next_stage_cls(self):
         return self.next_stage_cls
 
-    @abstractmethod
     def run(self):
-        """
-        """
-        # Should call _make
+        self._modify_controller(*self._generate())
 
     def next(self):
         controller = self._get_controller()
         next_input = controller._get_next_input()
-        NextStage = self.get_next_stage_cls()
+        NextStage = self._get_next_stage_cls()
         return NextStage(controller, next_input)
 
-    @abstractmethod
-    def _make(self):
-        """
-        """
-        # Should call _get_controller
+    def _store(self, input):
+        self._set(*self._extract(input))
 
     @abstractmethod
     def _extract(self, input):
@@ -46,6 +39,16 @@ class Stage(object, metaclass=ABCMeta):
 
     @abstractmethod
     def _set(self, *extracted):
+        """
+        """
+
+    @abstractmethod
+    def _generate(self):
+        """
+        """
+
+    @abstractmethod
+    def _modify_controller(self, *generated):
         """
         """
 
@@ -64,8 +67,7 @@ class StageController(object):
         if not issubclass(initial_cls, Stage):
             raise AssertionError('No initial stage provided')
         self.inputs = inputs
-        first_input = next(self.inputs)
-        self.current_stage = initial_cls(self, first_input)
+        self.current_stage = initial_cls(self, next(self.inputs))
 
     def run(self):
         current_stage = self._get_current_stage()
@@ -77,12 +79,6 @@ class StageController(object):
                 raise MissingInputError('Not enough input')
             current_stage.run()
 
-        try:
-            extra_input = self._get_next_input()
-        except StopIteration:
-            pass                                                   # Normal case
-        else:
-            warnings.warn('There were extra inputs')
 
     # Generic API
 
