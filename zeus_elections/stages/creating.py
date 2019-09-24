@@ -9,22 +9,14 @@ class Creating(Stage):
     def __init__(self, controller, input):
         super().__init__(controller, input, next_stage_cls=Voting)
 
-    def _extract(self, input):
-        zeus_private_key = None
+    def _extract_data(self, input):
         try:
-            zeus_private_key = input['zeus_private_key']
+            self.zeus_private_key = input['zeus_private_key']
         except KeyError:
-            pass
-        trustees = input['trustees']
-        candidates = input['candidates']
-        voters = input['voters']
-        return (zeus_private_key, trustees, candidates, voters)
-
-    def _set(self, zeus_private_key, trustees, candidates, voters):
-        self.zeus_private_key = zeus_private_key
-        self.trustees = trustees
-        self.candidates = candidates
-        self.voters = voters
+            self.zeus_private_key = None
+        self.trustees = input['trustees']
+        self.candidates = input['candidates']
+        self.voters = input['voters']
 
     def _generate(self):
         system = self.controller.get_cryptosys()

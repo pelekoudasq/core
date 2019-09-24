@@ -3,10 +3,7 @@ from zeus_elections.abstracts import FinalStage
 
 class Finalized(FinalStage):
 
-    def _extract(self, config):
-        return []
-
-    def _set(self, *extracted):
+    def _extract_data(self, config):
         pass
 
     def _generate(self):
@@ -20,10 +17,7 @@ class Finalized(FinalStage):
 
 class Aborted(FinalStage):
 
-    def _extract(self, config):
-        return []
-
-    def _set(self, *extracted):
+    def _extract_data(self, config):
         pass
 
     def _generate(self):

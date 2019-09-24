@@ -7,10 +7,7 @@ class Voting(Stage):
     def __init__(self, controller, input):
         super().__init__(controller, input, next_stage_cls=Mixing)
 
-    def _extract(self, config):
-        return []
-
-    def _set(self, *extracted):
+    def _extract_data(self, config):
         pass
 
     def _generate(self):

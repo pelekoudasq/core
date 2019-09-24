@@ -12,7 +12,7 @@ class Stage(object, metaclass=ABCMeta):
         self.controller = controller
         controller.stage = self
         self.next_stage_cls = next_stage_cls
-        self._store(input)
+        self._extract_data(input)
 
     def _get_controller(self):
         return self.controller
@@ -29,16 +29,8 @@ class Stage(object, metaclass=ABCMeta):
         NextStage = self._get_next_stage_cls()
         return NextStage(controller, next_input)
 
-    def _store(self, input):
-        self._set(*self._extract(input))
-
     @abstractmethod
-    def _extract(self, input):
-        """
-        """
-
-    @abstractmethod
-    def _set(self, *extracted):
+    def _extract_data(self, input):
         """
         """
 

@@ -10,19 +10,11 @@ class Uninitialized(Stage):
     def __init__(self, controller, input):
         super().__init__(controller, input, next_stage_cls=Creating)
 
-    def _extract(self, input):
-        crypto_cls = input['crypto']['cls']
-        crypto_config = input['crypto']['config']
-        mixnet_cls = input['mixnet']['cls']
-        mixnet_config = input['mixnet']['config']
-
-        return (crypto_cls, crypto_config, mixnet_cls, mixnet_config)
-
-    def _set(self, crypto_cls, crypto_config, mixnet_cls, mixnet_config):
-        self.crypto_cls = crypto_cls
-        self.crypto_config = crypto_config
-        self.mixnet_cls = mixnet_cls
-        self.mixnet_config = mixnet_config
+    def _extract_data(self, input):
+        self.crypto_cls = input['crypto']['cls']
+        self.crypto_config = input['crypto']['config']
+        self.mixnet_cls = input['mixnet']['cls']
+        self.mixnet_config = input['mixnet']['config']
 
     def _generate(self):
         cryptosys = make_crypto(self.crypto_cls, self.crypto_config)
@@ -32,6 +24,7 @@ class Uninitialized(Stage):
 
     def _modify_controller(self, cryptosys, mixnet):
         election = self._get_controller()
+        
         election.set_cryptosys(cryptosys)
         election.set_mixnet(mixnet)
 
