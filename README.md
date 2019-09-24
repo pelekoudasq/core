@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.com/FoteinosMerg/core.svg?branch=master)](https://travis-ci.com/FoteinosMerg/core)
-[![codecov](https://codecov.io/gh/FoteinosMerg/core/branch/master/graph/badge.svg)](https://codecov.io/gh/FoteinosMerg/core)
+<!-- [![Build Status](https://travis-ci.com/FoteinosMerg/core.svg?branch=master)](https://travis-ci.com/FoteinosMerg/core)
+[![codecov](https://codecov.io/gh/FoteinosMerg/core/branch/master/graph/badge.svg)](https://codecov.io/gh/FoteinosMerg/core) -->
 
 ## Requirements
 
@@ -25,6 +25,8 @@ python tests/sessions/zeus_sk.py
 
 ## Running elections
 
+From inside the repository's root directory run
+
 ```shell
-python zeus_elections
+python3 .
 ```

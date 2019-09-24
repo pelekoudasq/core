@@ -7,9 +7,9 @@ class MissingInputError(BaseException):
 class Stage(object, metaclass=ABCMeta):
 
     def __init__(self, controller, input, next_stage_cls):
-        self._set(*self._extract(input)) # store external input (i.e., set before the procedure's initiation)
-        self.controller = controller # for deriving internal input (i.e., produced during procedure)
-        controller.stage = self # set controller's stage to be the currently executed one
+        self._set(*self._extract(input))
+        self.controller = controller
+        controller.stage = self
 
         if not issubclass(next_stage_cls, Stage):
             raise AssertionError('No valid next stage provided')
@@ -29,10 +29,7 @@ class Stage(object, metaclass=ABCMeta):
 
     def next(self):
         controller = self._get_controller()
-        try:
-            next_input = controller._get_next_input()
-        except StopIteration:
-            raise
+        next_input = controller._get_next_input()
         NextStage = self.get_next_stage_cls()
         return NextStage(controller, next_input)
 
@@ -93,8 +90,4 @@ class StageController(object):
         return self.current_stage
 
     def _get_next_input(self):
-        try:
-            input = next(self.inputs)
-        except StopIteration:
-            raise
-        return input
+        return next(self.inputs)
