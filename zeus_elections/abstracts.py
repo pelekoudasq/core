@@ -80,7 +80,7 @@ class StageController(object):
             current_stage.run()
 
 
-    # Generic API
+    # Generic backend API
 
     def _get_current_stage(self):
         return self.current_stage

@@ -18,6 +18,10 @@ class ZeusCoreElection(StageController):
         # Make input for stage Creating
         inputs[1] = {}
         inputs[1].update({'zeus_private_key': config['zeus_private_key']})
+        inputs[1].update({'trustees': config['trustees']})
+        inputs[1].update({'candidates': config['candidates']})
+        inputs[1].update({'voters': config['voters']})
+
         # Make input for stage Voting
         inputs[2] = {}
         # Make input for stage Mixing
@@ -29,7 +33,7 @@ class ZeusCoreElection(StageController):
 
         return inputs
 
-    # Uninitialized stage API
+    # Uninitialized backend API
 
     def set_cryptosys(self, cryptosys):
         self.cryptosys = cryptosys
@@ -43,7 +47,7 @@ class ZeusCoreElection(StageController):
     def get_mixnet(self):
         return self.mixnet
 
-    # Creating stage API
+    # Creating backend API
 
     def set_zeus_keypair(self, zeus_keypair):
         system = self.get_cryptosys()
@@ -61,6 +65,9 @@ class ZeusCoreElection(StageController):
     def set_trustees(self, trustees):
         self.trustees = trustees
 
+    def set_election_key(self, election_key):
+        self.election_key = election_key
+
     def set_candidates(self, candidates):
         self.candidates = candidates
 
@@ -70,7 +77,7 @@ class ZeusCoreElection(StageController):
     def set_audit_codes(self, audit_codes):
         self.audit_codes = audit_codes
 
-    # Voting stage API
-    # Mixing stage API
-    # Decrypting stage API
-    # Finalized stage API
+    # Voting backend API
+    # Mixing backend API
+    # Decrypting backend API
+    # Finalized backend API
