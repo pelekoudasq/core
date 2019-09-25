@@ -1,9 +1,9 @@
-from zeus_elections.abstracts import FinalStage
+from elections.abstracts import FinalStage
 
 
 class Finalized(FinalStage):
 
-    def _extract_data(self, config):
+    def _extract_data(self):
         pass
 
     def _generate(self):
@@ -17,7 +17,7 @@ class Finalized(FinalStage):
 
 class Aborted(FinalStage):
 
-    def _extract_data(self, config):
+    def _extract_data(self):
         pass
 
     def _generate(self):

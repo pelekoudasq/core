@@ -1,4 +1,4 @@
-from zeus_elections.elections import ZeusCoreElection
+from elections import ZeusCoreElection
 
 from crypto import ModPrimeCrypto
 from crypto.constants import _2048_PRIME, _2048_PRIMITIVE

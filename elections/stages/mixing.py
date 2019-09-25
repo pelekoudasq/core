@@ -1,13 +1,11 @@
-from zeus_elections.abstracts import Stage
+from elections.abstracts import Stage
 from .decrypting import Decrypting
 from .finals import Aborted
 
 
 class Mixing(Stage):
-    def __init__(self, controller, input):
-        super().__init__(controller, input, next_stage_cls=Decrypting)
 
-    def _extract_data(self, config):
+    def _extract_data(self):
         pass
 
     def _generate(self):
@@ -15,5 +13,9 @@ class Mixing(Stage):
 
     def _modify_controller(self, *generated):
         from time import sleep
-        print('Mixing')
+        print('Mixing...')
         sleep(.5)
+
+    def next(self):
+        election = self._get_controller()
+        return Decrypting(controller=election)
