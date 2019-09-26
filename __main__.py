@@ -6,7 +6,7 @@ from mixnets import Zeus_sk
 
 if __name__ == '__main__':
     ZeusCoreElection(
-        config={
+        {
             'crypto': {
                 'cls': ModPrimeCrypto,
                 'config': {

@@ -5,7 +5,7 @@ import warnings
 class Stage(object, metaclass=ABCMeta):
 
     def __init__(self, controller):
-        controller.stage = self
+        controller.current_stage = self
         self.controller = controller
         self._extract_data()
 
@@ -43,7 +43,7 @@ class FinalStage(Stage, metaclass=ABCMeta):
 
     def next(self):
         return self
-        
+
 
 class StageController(object):
 
