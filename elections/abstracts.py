@@ -13,9 +13,11 @@ class Stage(object, metaclass=ABCMeta):
         try:
             next_stage_cls = kwargs['next_stage_cls']
         except KeyError:
-            raise TypeError("Missing keyword argument: 'next_stage_cls'")
+            err = "Missing keyword argument: 'next_stage_cls'"
+            raise TypeError(err)
         if not issubclass(next_stage_cls, self.__class__.__base__):
-            raise AssertionError('No valid next stage specified')
+            err = "No valid next stage specified"
+            raise AssertionError(err)
         self.next_stage_cls = next_stage_cls
 
         try:
@@ -114,23 +116,31 @@ class Aborted(FinalStage):
         return ()
 
     def _update_controller(self, *generated):
-        print('Aborted:', self._get_message())
+        print('sorry...:', self._get_message())
 
 
+from time import sleep # just for loop testing
 class StageController(object):
 
     def __init__(self, initial_cls, config):
         if not issubclass(initial_cls, Stage):
-            raise AssertionError('No initial stage provided')
+            err = "No initial stage provided"
+            raise AssertionError(err)
         self.config = config
         self.current_stage = initial_cls(self)
 
     def run(self):
         current_stage = self._get_current_stage()   # Initial stage
         current_stage.run()
+        # test
+        print(self._get_current_stage().__class__.__name__)
+        sleep(.5)
         while not isinstance(current_stage, FinalStage):
             current_stage = current_stage.next()
             current_stage.run()
+            # test
+            print(self._get_current_stage().__class__.__name__)
+            sleep(.5)
 
     def _get_current_stage(self):
         return self.current_stage

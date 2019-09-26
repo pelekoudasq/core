@@ -21,20 +21,16 @@ class Uninitialized(Stage):
         return crypto_cls, crypto_config, mixnet_cls, mixnet_config
 
     def _generate(self, crypto_cls, crypto_config, mixnet_cls, mixnet_config):
-        from time import sleep
-        print('Uninitialized...')
-        sleep(.5)
-
         try:
             cryptosys = make_crypto(crypto_cls, crypto_config)
-        except (AlgebraError, WrongCryptoError, WeakCryptoError) as exc:
-            raise Abortion(exc)
+        except (AlgebraError, WrongCryptoError, WeakCryptoError) as err:
+            raise Abortion(err)
 
         mixnet_config.update({'cryptosystem': cryptosys})
         try:
             mixnet = make_mixnet(mixnet_cls, mixnet_config)
-        except MixnetError as exc:
-            raise Abortion(exc)
+        except MixnetError as err:
+            raise Abortion(err)
 
         return cryptosys, mixnet
 

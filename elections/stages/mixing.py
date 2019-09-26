@@ -11,10 +11,6 @@ class Mixing(Stage):
         return ()
 
     def _generate(self, *data):
-        from time import sleep
-        print('Mixing...')
-        sleep(.5)
-
         return ()
 
     def _update_controller(self, *generated):
