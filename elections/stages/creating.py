@@ -1,5 +1,7 @@
 from gmpy2 import mpz
 
+from crypto.exceptions import InvalidKeyError
+
 from elections.abstracts import Stage, Abortion
 from .voting import Voting
 
@@ -25,12 +27,44 @@ class Creating(Stage):
         print('Creating...')
         sleep(.5)
 
-        zeus_keypair = self.create_zeus_keypair(zeus_private_key)
+        # Zeus keypair creation
+        try:
+            zeus_keypair = self.create_zeus_keypair(zeus_private_key)
+        except InvalidKeyError as exc:
+            raise Abortion(exc)
+
+        # Trustees validation
         trustees = self.create_trustees(trustees)
-        assert self.validate_trustees(trustees)
+        election = self._get_controller()
+        cryptosys = election.get_cryptosys()
+        validate_public_key = cryptosys.validate_public_key
+        for trustee in trustees:
+            if not validate_public_key(trustee):
+                raise Abortion('Invalid trustee detected: %x' % trustee['value'].value)
+
+        # Election key computation
         election_key = self.compute_election_key(trustees, zeus_keypair)
         candidates = candidates
         voters = voters
+
+        # Candidates validation
+        nr_candidates = len(candidates)
+        if nr_candidates < 1:
+            raise Abortion('Insufficient number of candidates')
+        output = []
+        for candidate in candidates:
+            if candidate in output:
+                raise Abortion('Duplicate candidate detected')
+            if '%' in candidate:
+                raise Abortion("Candidate name cannot contain character '%'")
+            if '\n' in candidate:
+                raise Abortion("Candidate name cannot contain character '\\n'")
+            output.append(candidate)
+        canidates = output
+
+        # Voters validation
+        if not voters:
+            raise Abortion('No voters provided')
 
         return zeus_keypair, trustees, election_key, candidates, voters
 
@@ -68,13 +102,6 @@ class Creating(Stage):
             }
             output.append(trustee)
         return output
-
-    def validate_trustees(self, trustees):
-        election = self._get_controller()
-        cryptosys = election.get_cryptosys()
-        validate_public_key = cryptosys.validate_public_key
-
-        return all(validate_public_key(trustee) for trustee in trustees)
 
     def compute_election_key(self, trustees, zeus_keypair):
         election = self._get_controller()

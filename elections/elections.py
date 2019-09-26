@@ -77,8 +77,11 @@ class ZeusCoreElection(StageController, *backend_apis):
     def __init__(self, config, **kwargs):
         self.options = kwargs
 
+        # Exported at stage Uninitialized
         self.cryptosys = None
         self.mixnet = None
+
+        # Exported at stage Creating
         self.zeus_keypair = None
         self.zeus_private_key = None
         self.zeus_public_key = None
