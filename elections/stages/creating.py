@@ -1,46 +1,46 @@
 from gmpy2 import mpz
-from elections.abstracts import Stage
+
+from elections.abstracts import Stage, Abortion
 from .voting import Voting
-from .finals import Aborted
 
 
 class Creating(Stage):
 
-    def _extract_data(self):
-        config = self._get_config()
-        try:
-            self.zeus_private_key = config['zeus_private_key']
-        except KeyError:
-            self.zeus_private_key = None
-        self.trustees = config['trustees']
-        self.candidates = config['candidates']
-        self.voters = config['voters']
+    def __init__(self, controller):
+        super().__init__(controller, next_stage_cls=Voting)
 
-    def _generate(self):
-        zeus_keypair = self.create_zeus_keypair(self.zeus_private_key)
-        trustees = self.create_trustees(self.trustees)
+    def _extract_data(self, config):
+        try:
+            zeus_private_key = config['zeus_private_key']
+        except KeyError:
+            zeus_private_key = None
+        trustees = config['trustees']
+        candidates = config['candidates']
+        voters = config['voters']
+
+        return zeus_private_key, trustees, candidates, voters
+
+    def _generate(self, zeus_private_key, trustees, candidates, voters):
+        from time import sleep
+        print('Creating...')
+        sleep(.5)
+
+        zeus_keypair = self.create_zeus_keypair(zeus_private_key)
+        trustees = self.create_trustees(trustees)
         assert self.validate_trustees(trustees)
         election_key = self.compute_election_key(trustees, zeus_keypair)
-        candidates = self.candidates
-        voters = self.voters
+        candidates = candidates
+        voters = voters
 
         return zeus_keypair, trustees, election_key, candidates, voters
 
-    def _modify_controller(self, zeus_keypair, trustees, election_key, candidates, voters):
+    def _update_controller(self, zeus_keypair, trustees, election_key, candidates, voters):
         election = self._get_controller()
         election.set_zeus_keypair(zeus_keypair)
         election.set_trustees(trustees)
         election.set_election_key(election_key)
         election.set_candidates(candidates)
         election.set_voters(voters)
-
-        from time import sleep
-        print('Creating...')
-        sleep(.5)
-
-    def next(self):
-        election = self._get_controller()
-        return Voting(controller=election)
 
     # ------
 
@@ -93,3 +93,7 @@ class Creating(Stage):
         election_key = cryptosys._get_value(election_key)
         test_key = cryptosys.compute_election_key(trustees, zeus_keypair)
         return election_key == cryptosys._get_value(test_key)
+
+    def invalidate_election_key():
+        election = self._get_controller()
+        election.set_election_key(None)

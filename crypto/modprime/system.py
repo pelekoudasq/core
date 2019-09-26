@@ -10,10 +10,10 @@ from ..abstracts import ElGamalCrypto
 from ..exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
     InvalidKeyError, InvalidVoteError, InvalidSignatureError, InvalidFactorError,
     BallotDecryptionError)
-# from elections.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION,
-#     V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER,
-#     V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX,
-#     V_CAST_VOTE, V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED)
+from elections.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION,
+    V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER,
+    V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX,
+    V_CAST_VOTE, V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED)
 from utils import hash_texts, hash_encode, hash_decode, extract_value
 
 

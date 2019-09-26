@@ -1,21 +1,21 @@
-from elections.abstracts import Stage
+from elections.abstracts import Stage, Abortion
 from .decrypting import Decrypting
-from .finals import Aborted
 
 
 class Mixing(Stage):
 
-    def _extract_data(self):
-        pass
+    def __init__(self, controller):
+        super().__init__(controller, next_stage_cls=Decrypting)
 
-    def _generate(self):
-        return []
+    def _extract_data(self, config):
+        return ()
 
-    def _modify_controller(self, *generated):
+    def _generate(self, *data):
         from time import sleep
         print('Mixing...')
         sleep(.5)
 
-    def next(self):
-        election = self._get_controller()
-        return Decrypting(controller=election)
+        return ()
+
+    def _update_controller(self, *generated):
+        pass
