@@ -11,7 +11,7 @@ pip install -r requirements
 
 ## Tests
 
-```shell
+<!-- ```shell
 pytest tests/
 ```
 
@@ -21,12 +21,12 @@ and
 python tests/sessions/modprime/primitives.py
 python tests/sessions/modprime/voting.py
 python tests/sessions/zeus_sk.py
-```
+``` -->
 
 ## Running elections
 
-From inside the repository's root directory run
+<!-- From inside the repository's root directory run
 
 ```shell
-python3 .
+python3 . -->
 ```

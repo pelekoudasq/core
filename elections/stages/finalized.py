@@ -1,4 +1,5 @@
-from elections.abstracts import FinalStage, Abortion
+from elections.abstracts import FinalStage
+from elections.exceptions import Abortion
 
 
 class Finalized(FinalStage):

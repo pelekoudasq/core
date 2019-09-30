@@ -1,4 +1,5 @@
-from elections.abstracts import Stage, Abortion
+from elections.abstracts import Stage
+from elections.exceptions import Abortion
 from .finalized import Finalized
 
 

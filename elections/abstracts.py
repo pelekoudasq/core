@@ -1,8 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import warnings
 
-class Abortion(BaseException):
-    pass
+from .exceptions import Abortion
 
 class Stage(object, metaclass=ABCMeta):
 
@@ -51,7 +50,7 @@ class Stage(object, metaclass=ABCMeta):
     def _get_next_stage_message(self):
         return self.next_stage_message
 
-    def _to_abort(self, abort_message):
+    def abort(self, abort_message):
         self._set_next_stage_cls(Aborted)
         self._set_next_stage_message(abort_message)
 
@@ -61,13 +60,13 @@ class Stage(object, metaclass=ABCMeta):
         try:
             data = self._extract_data(config)
         except Abortion as err:
-            self._to_abort(err)
+            self.abort(err)
             return
 
         try:
             entities = self._generate(*data)
         except Abortion as err:
-            self._to_abort(err)
+            self.abort(err)
             return
 
         self._update_controller(*entities)

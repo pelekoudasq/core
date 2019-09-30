@@ -1,4 +1,5 @@
-from elections.abstracts import Stage, Abortion
+from elections.abstracts import Stage
+from elections.exceptions import Abortion
 from .creating import Creating
 
 from crypto import make_crypto
@@ -21,16 +22,8 @@ class Uninitialized(Stage):
         return crypto_cls, crypto_config, mixnet_cls, mixnet_config
 
     def _generate(self, crypto_cls, crypto_config, mixnet_cls, mixnet_config):
-        try:
-            cryptosys = make_crypto(crypto_cls, crypto_config)
-        except (AlgebraError, WrongCryptoError, WeakCryptoError) as err:
-            raise Abortion(err)
-
-        mixnet_config.update({'cryptosystem': cryptosys})
-        try:
-            mixnet = make_mixnet(mixnet_cls, mixnet_config)
-        except MixnetError as err:
-            raise Abortion(err)
+        cryptosys = self.init_cryptosys(crypto_cls, crypto_config)
+        mixnet = self.init_mixnet(mixnet_cls, mixnet_config, cryptosys)
 
         return cryptosys, mixnet
 
@@ -38,3 +31,20 @@ class Uninitialized(Stage):
         election = self._get_controller()
         election.set_cryptosys(cryptosys)
         election.set_mixnet(mixnet)
+
+    # ---------
+
+    def init_cryptosys(self, crypto_cls, crypto_config):
+        try:
+            cryptosys = make_crypto(crypto_cls, crypto_config)
+        except (AlgebraError, WrongCryptoError, WeakCryptoError) as err:
+            raise Abortion(err)
+        return cryptosys
+
+    def init_mixnet(self, mixnet_cls, mixnet_config, cryptosys):
+        mixnet_config.update({'cryptosystem': cryptosys})
+        try:
+            mixnet = make_mixnet(mixnet_cls, mixnet_config)
+        except MixnetError as err:
+            raise Abortion(err)
+        return mixnet

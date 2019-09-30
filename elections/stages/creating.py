@@ -3,7 +3,8 @@ from gmpy2 import mpz
 from crypto.exceptions import InvalidKeyError
 from utils import random_integer
 
-from elections.abstracts import Stage, Abortion
+from elections.abstracts import Stage
+from elections.exceptions import Abortion
 from elections.constants import VOTER_KEY_CEIL, VOTER_SLOT_CEIL
 from .voting import Voting
 
@@ -68,6 +69,7 @@ class Creating(Stage):
             err = 'Zero number of candidates provided'
             raise Abortion(err)
         new_candidates = []
+        append = new_candidates.append
         for candidate in candidates:
             if candidate in new_candidates:
                 err = 'Duplicate candidate detected'
@@ -78,7 +80,7 @@ class Creating(Stage):
             if '\n' in candidate:
                 err = "Candidate name cannot contain character '\\n'"
                 raise Abortion(err)
-            new_candidates.append(candidate)
+            append(candidate)
         canidates = new_candidates
         return candidates
 
