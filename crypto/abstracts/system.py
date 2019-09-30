@@ -1,153 +1,9 @@
 from abc import ABCMeta, abstractmethod
 
-class Group(object, metaclass=ABCMeta):
-
-    @abstractmethod
-    def __repr__(self):
-        """
-        """
-    @abstractmethod
-    def __hash__(self):
-        """
-        """
-    @property
-    @abstractmethod
-    def order(self):
-        """
-        """
-    @abstractmethod
-    def contains(self, element):
-        """
-        """
-
-class GroupElement(object, metaclass=ABCMeta):
-
-    @abstractmethod
-    def __repr__(self):
-        """
-        """
-    @abstractmethod
-    def __hash__(self):
-        """
-        """
-    @abstractmethod
-    def __mul__(self, other):
-        """
-        """
-    @abstractmethod
-    def __pow__(self, exp):
-        """
-        """
-    @property
-    @abstractmethod
-    def inverse(self):
-        """
-        """
-
-
-class ElGamalCrypto(object, metaclass=ABCMeta):
+class KeyManager(object, metaclass=ABCMeta):
     """
-    Abstract class for ElGamal cryptosystems
+    Key-management interface
     """
-
-    # ----------------------------- Initialization -----------------------------
-
-    @classmethod
-    @abstractmethod
-    def _validate_system(cls, *params):
-        """
-        """
-
-    @classmethod
-    @abstractmethod
-    def _extract_config(cls, config):
-        """
-        """
-
-    # ------------------------------- Primitives -------------------------------
-
-    # Schnorr protocol
-
-    @abstractmethod
-    def _schnorr_proof(self, secret, public, *extras):
-        """
-        """
-
-    @abstractmethod
-    def _schnorr_verify(self, proof, public, *extras):
-        """
-        """
-        pass
-
-    def _set_schnorr_proof(self, commitment, challenge, response):
-        """
-        :type commitment: ModPrimeElement
-        :type challenge: mpz
-        :type response: mpz
-        :rtype: dict
-        """
-        proof = {
-            'commitment': commitment,
-            'challenge': challenge,
-            'response': response
-        }
-
-        return proof
-
-    def _extract_schnorr_proof(self, proof):
-        """
-        :type proof: dict
-        :rtype: (ModPrimElement, mpz, mpz)
-        """
-        commitment = proof['commitment']
-        challenge = proof['challenge']
-        response = proof['response']
-
-        return commitment, challenge, response
-
-    # Chaum-Pedersen protocol
-
-    @abstractmethod
-    def _chaum_pedersen_proof(self, ddh, z):
-        """
-        """
-
-    @abstractmethod
-    def _chaum_pedersen_verify(self, ddh, proof):
-        """
-        """
-
-    def _set_chaum_pedersen_proof(self, base_commitment, message_commitment,
-            challenge, response):
-        """
-        :type base_commitment: ModPrimeElement
-        :type message_commitment: ModPrimeElement
-        :challenge: mpz
-        :response: mpz
-        :rtype: dict
-        """
-        proof = {
-            'base_commitment': base_commitment,
-            'message_commitment': message_commitment,
-            'challenge': challenge,
-            'response': response
-        }
-
-        return proof
-
-    def _extract_chaum_pedersen_proof(self, proof):
-        """
-        :type proof: dict
-        :rtype: (ModPrimElement, ModPrimElement, mpz, mpz)
-        """
-        base_commitment = proof['base_commitment']
-        message_commitment = proof['message_commitment']
-        challenge = proof['challenge']
-        response = proof['response']
-
-        return base_commitment, message_commitment, challenge, response
-
-    # Key management
 
     @abstractmethod
     def keygen(self, private_key=None):
@@ -236,6 +92,94 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
         value = public_key['value'] if type(public_key) is dict else public_key
         return value.to_integer()
 
+class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
+    """
+    Abstract class for ElGamal cryptosystems
+    """
+
+    # Initialization
+
+    @classmethod
+    @abstractmethod
+    def _validate_system(cls, *params):
+        """
+        """
+
+    @classmethod
+    @abstractmethod
+    def _extract_config(cls, config):
+        """
+        """
+
+    # Schnorr protocol
+
+    @abstractmethod
+    def _schnorr_proof(self, secret, public, *extras):
+        """
+        """
+
+    @abstractmethod
+    def _schnorr_verify(self, proof, public, *extras):
+        """
+        """
+        pass
+
+    def _set_schnorr_proof(self, commitment, challenge, response):
+        """
+        """
+        proof = {'commitment': commitment,
+                 'challenge': challenge,
+                 'response': response}
+
+        return proof
+
+    def _extract_schnorr_proof(self, proof):
+        """
+        :type proof: dict
+        :rtype: (ModPrimElement, mpz, mpz)
+        """
+        commitment = proof['commitment']
+        challenge = proof['challenge']
+        response = proof['response']
+
+        return commitment, challenge, response
+
+    # Chaum-Pedersen protocol
+
+    @abstractmethod
+    def _chaum_pedersen_proof(self, ddh, z):
+        """
+        """
+
+    @abstractmethod
+    def _chaum_pedersen_verify(self, ddh, proof):
+        """
+        """
+
+    def _set_chaum_pedersen_proof(self, base_commitment, message_commitment,
+            challenge, response):
+        """
+        """
+        proof = {'base_commitment': base_commitment,
+                 'message_commitment': message_commitment,
+                 'challenge': challenge,
+                 'response': response}
+
+        return proof
+
+    def _extract_chaum_pedersen_proof(self, proof):
+        """
+        :type proof: dict
+        :rtype: (ModPrimElement, ModPrimElement, mpz, mpz)
+        """
+        base_commitment = proof['base_commitment']
+        message_commitment = proof['message_commitment']
+        challenge = proof['challenge']
+        response = proof['response']
+
+        return base_commitment, message_commitment, challenge, response
+
+
     # Digital Signature Algorithm
 
     @abstractmethod
@@ -250,10 +194,6 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
 
     def _set_dsa_signature(self, exponent, c_1, c_2):
         """
-        :exponent: mpz
-        :type c_1: mpz
-        :type c_2: mpz
-        :rtype: dict
         """
         signature = {
             'exponent': exponent,
@@ -268,7 +208,7 @@ class ElGamalCrypto(object, metaclass=ABCMeta):
     def _extract_dsa_signature(self, signature):
         """
         :type signature: dict
-        :rtype: tuple
+        :rtype: (mpz, mpz, mpz)
         """
         exponent = signature['exponent']
         commitments = signature['commitments']

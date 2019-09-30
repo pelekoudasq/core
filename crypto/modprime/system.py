@@ -10,10 +10,10 @@ from ..abstracts import ElGamalCrypto
 from ..exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
     InvalidKeyError, InvalidVoteError, InvalidSignatureError, InvalidFactorError,
     BallotDecryptionError)
-from elections.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION,
-    V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER,
-    V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX,
-    V_CAST_VOTE, V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED)
+# from elections.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION,
+#     V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER,
+#     V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX,
+#     V_CAST_VOTE, V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED)
 from utils import hash_texts, hash_encode, hash_decode, extract_value
 
 
@@ -183,6 +183,104 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: class
         """
         return self.__GroupElement
+
+
+    # ----------------------------- Key Management -----------------------------
+
+    ######################################################################
+    #                                                                    #
+    #    By keypair is meant a dictionary of the form                    #
+    #                                                                    #
+    #    {                                                               #
+    #        'private': mpz,                                             #
+    #        'public': {                                                 #
+    #            'value': ModPrimeElement,                               #
+    #            'proof': ...                                            #
+    #        }                                                           #
+    #    }                                                               #
+    #                                                                    #
+    #   where tha value of `proof` is either `None` or a Schnorr-proof   #
+    #                                                                    #
+    ######################################################################
+
+    def keygen(self, private_key=None, schnorr=True):
+        """
+        Generates and returns a keypair
+
+        If `shnorr` is left to its default value `True`, the public part
+        will include proof-of-knowledge of the private part
+
+        :type private_key: mpz or int
+        :type schnorr: bool
+        :rtype: dict
+        """
+        __group = self.__group
+
+        if private_key is None:
+            private_key = __group.random_exponent(min=3)
+
+        elif not 1 < private_key < self.__order:
+            e = 'Provided private key exceeds the allowed range'
+            raise InvalidKeyError(e)
+        else:
+            private_key = mpz(private_key)               # in case int was given
+
+        public_key = __group.generate(private_key)              # y = g ^ x modp
+
+        proof = None
+        if schnorr:
+            proof = self._schnorr_proof(private_key, public_key)
+
+        public_key = self._set_public_key(public_key, proof)
+        keypair = self._set_keypair(private_key, public_key)
+
+        return keypair
+
+
+    #####################################################################
+    #                                                                   #
+    #    By public-key is meant a dictionary of the form                #
+    #                                                                   #
+    #    {                                                              #
+    #        'value': ModPrimeElement,                                  #
+    #        'proof': ...                                               #
+    #    }                                                              #
+    #                                                                   #
+    #    where the value of 'proof' is either None or a Schnorr-proof   #
+    #                                                                   #
+    #####################################################################
+
+    def validate_public_key(self, public_key):
+        """
+        Verifies that the 'proof' field proves knowledge of the private counterpart
+
+        :type public_key: dict
+        :rtype: bool
+        """
+        try:
+            proof = public_key['proof']
+        except KeyError:
+            # No proof has been provided together with the public key
+            return False
+
+        public_key = public_key['value']
+
+        if not public_key.contained_in(self.__group):
+            return False
+
+        return self._schnorr_verify(proof=proof, public=public_key)
+
+    def _set_public_key_from_value(self, value, proof=None):
+        """
+        :type value: mpz
+        :type proof: dict
+        :rtype: dict
+        """
+        public_key = {
+            'value': self.__GroupElement(value, self.__modulus),
+            'proof': proof
+        }
+        return public_key
 
 
     # ------------------------------- Primitives -------------------------------
@@ -370,104 +468,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         # thus k = x due to prover's verified commitment to randomness r):
         # u ^ s == u ^ r * w ^ c  modp ?
         return u ** response == u_commitment * (w ** challenge)
-
-
-    # Key management
-
-    ######################################################################
-    #                                                                    #
-    #    By keypair is meant a dictionary of the form                    #
-    #                                                                    #
-    #    {                                                               #
-    #        'private': mpz,                                             #
-    #        'public': {                                                 #
-    #            'value': ModPrimeElement,                               #
-    #            'proof': ...                                            #
-    #        }                                                           #
-    #    }                                                               #
-    #                                                                    #
-    #   where tha value of `proof` is either `None` or a Schnorr-proof   #
-    #                                                                    #
-    ######################################################################
-
-    def keygen(self, private_key=None, schnorr=True):
-        """
-        Generates and returns a keypair
-
-        If `shnorr` is left to its default value `True`, the public part
-        will include proof-of-knowledge of the private part
-
-        :type private_key: mpz or int
-        :type schnorr: bool
-        :rtype: dict
-        """
-        __group = self.__group
-
-        if private_key is None:
-            private_key = __group.random_exponent(min=3)
-
-        elif not 1 < private_key < self.__order:
-            e = 'Provided private key exceeds the allowed range'
-            raise InvalidKeyError(e)
-        else:
-            private_key = mpz(private_key)               # in case int was given
-
-        public_key = __group.generate(private_key)              # y = g ^ x modp
-
-        proof = None
-        if schnorr:
-            proof = self._schnorr_proof(private_key, public_key)
-
-        public_key = self._set_public_key(public_key, proof)
-        keypair = self._set_keypair(private_key, public_key)
-
-        return keypair
-
-
-    #####################################################################
-    #                                                                   #
-    #    By public-key is meant a dictionary of the form                #
-    #                                                                   #
-    #    {                                                              #
-    #        'value': ModPrimeElement,                                  #
-    #        'proof': ...                                               #
-    #    }                                                              #
-    #                                                                   #
-    #    where the value of 'proof' is either None or a Schnorr-proof   #
-    #                                                                   #
-    #####################################################################
-
-    def validate_public_key(self, public_key):
-        """
-        Verifies that the 'proof' field proves knowledge of the private counterpart
-
-        :type public_key: dict
-        :rtype: bool
-        """
-        try:
-            proof = public_key['proof']
-        except KeyError:
-            # No proof has been provided together with the public key
-            return False
-
-        public_key = public_key['value']
-
-        if not public_key.contained_in(self.__group):
-            return False
-
-        return self._schnorr_verify(proof=proof, public=public_key)
-
-    def _set_public_key_from_value(self, value, proof=None):
-        """
-        :type value: mpz
-        :type proof: dict
-        :rtype: dict
-        """
-        public_key = {
-            'value': self.__GroupElement(value, self.__modulus),
-            'proof': proof
-        }
-        return public_key
 
 
     # Digital Signature Algorithm

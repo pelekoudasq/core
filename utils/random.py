@@ -1,7 +1,7 @@
 from Crypto import Random
 from gmpy2 import mpz
 
-from .utils import int_from_bytes, to_relative_answers
+from .utils import int_from_bytes
 
 _random_generator_file = Random.new()
 
@@ -145,7 +145,9 @@ def _selection_to_permutation(selection):
 
 
 def get_random_party_selection(nr_elements, nr_parties):
-	party = random_integer(0, nr_parties)
+    """
+    """
+    party = random_integer(0, nr_parties)
     per_party = nr_elements // nr_parties
     low = party * per_party
     high = (party + 1) * per_party
@@ -161,3 +163,19 @@ def get_random_party_selection(nr_elements, nr_parties):
             continue
         appen(i)
     return to_relative_answers(choices, nr_elements)
+
+def to_relative_answers(choices, nr_candidates):
+	"""
+    Answer choices helper, convert absolute indexed answers to relative.
+
+    e.g. for candidates [A, B, C] absolute choices [1, 2, 0] will be converted
+    to [1, 1, 0].
+    """
+	relative = []
+	candidates = list(range(nr_candidates))
+	choices = [candidates.index(c) for c in choices]
+	for choice in choices:
+		index = candidates.index(choice)
+		relative.append(index)
+		candidates.remove(choice)
+	return relative

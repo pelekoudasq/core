@@ -5,6 +5,16 @@ from .async import AsyncController
 from .teller import _teller
 from .binutils import bit_iterator
 
-__all__ = ('random_integer', 'random_permutation', 'int_from_bytes',
-    'extract_value', 'hash_encode', 'hash_decode', 'hash_nums', 'hash_texts',
-    'AsyncController', '_teller', 'bit_iterator')
+__all__ = (
+    'random_integer',
+    'random_permutation',
+    'int_from_bytes',
+    'extract_value',
+    'hash_encode',
+    'hash_decode',
+    'hash_nums',
+    'hash_texts',
+    'AsyncController',
+    '_teller',
+    'bit_iterator'
+)

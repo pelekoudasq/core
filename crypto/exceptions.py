@@ -12,7 +12,8 @@ class WrongCryptoError(BaseException):
 
 class WeakCryptoError(BaseException):
     """
-    Raised when the requested cryptosystem does not meet the required security standards
+    Raised when the requested cryptosystem does not meet
+    the required security standards
     """
     pass
 

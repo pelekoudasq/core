@@ -107,7 +107,6 @@ class ModPrimeElement(GroupElement):
         else:
             return self.__value == other
 
-
     def __mul__(self, other):
         """
         :type other: ModPrimeElement
@@ -123,8 +122,8 @@ class ModPrimeElement(GroupElement):
         """
         __modulus = self.__modulus
 
-        # result = self.__value ** exp % __modulus # ---> "...outrageous exponent"
-        # ~ Use gmpy2.powmod instead in order to avoid overflow in mpz type
+        # result = self.__value ** exp % __modulus ---> "...outrageous exponent"
+        # Use gmpy2.powmod instead in order to avoid overflow in mpz type
         result = powmod(self.__value, exp, __modulus)
         return self.__class__(result, __modulus)
 
