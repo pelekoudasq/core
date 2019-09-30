@@ -41,6 +41,83 @@ class Creating(Stage):
         election.set_candidates(candidates)
         election.set_voters(voters)
 
+
+    # ------
+
+    def mk_random_vote(self, selection=None voter=None, audit_code=None, publish=None):
+        election_key = self.get_election_key()
+        nr_candidates = len(self.get_candidates)
+        if selection is None:
+            r = random_integer(0, 4)
+            if r & 1:
+                selection = random_selection(nr_candidates, full=False)
+            else:
+                selection = random_party_selection(nr_candidates, 2)
+        voters = None
+        if noter is None:
+            voters = self.get_voters()
+            voter = rand_choice(voters.keys())
+        encoded_selection = encode_selection(selection, nr_candidates)
+        valid = True
+        if audit_code:
+            if voters is None:
+                voters = self.get_voters()
+            voter_audit_codes = self.get_voter_audit_codes()
+            if audit_code < 0:
+                if voter not in voters:
+                    err = "Valid audit code requested but voter not found!"
+                    raise ValueError(err)
+                audit_code = voter_audit_codes[0]
+            elif voter not in voters:
+                valid = False
+            elif audit_code not in voter_audit_codes:
+                valid = False
+        vote = vote_from_encoded(encoded_selection,
+                        election_key, voter, audit_code, publish)
+        rnd = vote['voter_secret']
+        if not publish:
+            del vote['voter_secret']
+        return vote, selection, encoded if valid else None, rnd
+
+    def vote_from_encoded(encoded_selection, election_key, voter,
+                audit_code=None, publish=None):
+        system = self.get_cryptosys()
+        modulus, order, generator = system._parameters()
+
+        ciphertext, randomness = system._encrypt(encoded_selection,
+                election_key, get_secret=True)
+        alpha, beta = system._extract_ciphertext(ciphertext)
+
+        proof = system._prove_encryption(ciphertext, randomness)
+        commitment, challenge, response = system._extract_schnorr_proof(proof)
+
+        eb = {'modulus': modulus,
+              'order': order,
+              'generator': generator,
+              'public': election_key,
+              'alpha': alpha,
+              'beta': beta,
+              'commitment': commitment,
+              'challenge': challenge,
+              'response': response,}
+
+        fingerprint = system._make_fingerprint({
+            'ciphertext': ciphertext,
+            'proof': proof
+        })
+
+        # Use _set_vote() instead?
+        vote = {'voter': voter,
+                'fingerprint': fingerprint,
+                'encrypted_ballot': eb}
+
+        if audit_code:
+            vote['audit_code'] = audit_code
+        if publish:
+            vote['voter_secret'] = randomness
+
+        return vote
+
     # ------
 
     def create_zeus_keypair(self, zeus_private_key):

@@ -60,14 +60,14 @@ class Stage(object, metaclass=ABCMeta):
 
         try:
             data = self._extract_data(config)
-        except Abortion as message:
-            self._to_abort(message)
+        except Abortion as err:
+            self._to_abort(err)
             return
 
         try:
             entities = self._generate(*data)
-        except Abortion as message:
-            self._to_abort(message)
+        except Abortion as err:
+            self._to_abort(err)
             return
 
         self._update_controller(*entities)
@@ -119,7 +119,6 @@ class Aborted(FinalStage):
         print('sorry...:', self._get_message())
 
 
-from time import sleep # just for loop testing
 class StageController(object):
 
     def __init__(self, initial_cls, config):
@@ -130,15 +129,14 @@ class StageController(object):
         self.current_stage = initial_cls(self)
 
     def run(self):
+        from time import sleep
         current_stage = self._get_current_stage()   # Initial stage
         current_stage.run()
-        # test
         print(self._get_current_stage().__class__.__name__)
         sleep(.5)
         while not isinstance(current_stage, FinalStage):
             current_stage = current_stage.next()
             current_stage.run()
-            # test
             print(self._get_current_stage().__class__.__name__)
             sleep(.5)
 

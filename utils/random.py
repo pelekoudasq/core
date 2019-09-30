@@ -1,7 +1,7 @@
 from Crypto import Random
 from gmpy2 import mpz
 
-from .utils import int_from_bytes
+from .utils import int_from_bytes, to_relative_answers
 
 _random_generator_file = Random.new()
 
@@ -31,10 +31,10 @@ def random_permutation(nr_elements):
     :type nr_elements: int
     :type: list[mpz]
     """
-    return _selection_to_permutation(_random_selection(nr_elements, full=True))
+    return _selection_to_permutation(random_selection(nr_elements, full=True))
 
 
-def _random_selection(nr_elements, full=True):
+def random_selection(nr_elements, full=True):
     """
     Generates and returns a random list of non-negative integers
 
@@ -72,7 +72,7 @@ def _selection_to_permutation(selection):
 
     The generated permutation is determined by the `selection` argument, which
     should be a list of non-negative integers like the one returned by the
-    `_random_selection()` function
+    `random_selection()` function
 
     :type selection: list[int]
     :rtype: list[int]
@@ -142,3 +142,22 @@ def _selection_to_permutation(selection):
 			append(left)
 
 	return permutation
+
+
+def get_random_party_selection(nr_elements, nr_parties):
+	party = random_integer(0, nr_parties)
+    per_party = nr_elements // nr_parties
+    low = party * per_party
+    high = (party + 1) * per_party
+    if nr_elements - high < per_party:
+        high = nr_elements
+    choices = []
+    append = choices.append
+    r = random_integer(0, 2 ** (high - low))
+    for i in range(low, high):
+        skip = r & 1
+        r >>= 1
+        if skip:
+            continue
+        appen(i)
+    return to_relative_answers(choices, nr_elements)

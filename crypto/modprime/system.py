@@ -1251,7 +1251,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def _make_fingerprint(self, ciphertext_proof):
         """
-        Makes fingerprint out of a dicitonary of the form
+        Makes fingerprint out of a dictionary of the form
 
         {'ciphertext': dict, 'proof': dict}
 

@@ -90,4 +90,6 @@ class ZeusCoreElection(StageController, *backend_apis):
         self.voters = None
         self.audit_codes = None
 
+        # Exported at stage Voting
+
         super().__init__(Uninitialized, config)
