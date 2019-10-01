@@ -19,9 +19,12 @@ class Creating(Stage):
             zeus_private_key = config['zeus_private_key']
         except KeyError:
             zeus_private_key = None
-        trustees = config['trustees']
-        candidates = config['candidates']
-        voters = config['voters']
+        try:
+            trustees = config['trustees']
+            candidates = config['candidates']
+            voters = config['voters']
+        except KeyError as err:
+            raise Abortion(err)
 
         return zeus_private_key, trustees, candidates, voters
 
@@ -34,7 +37,8 @@ class Creating(Stage):
 
         return zeus_keypair, trustees, election_key, candidates, voters, audit_codes
 
-    def _update_controller(self, zeus_keypair, trustees, election_key, candidates, voters, audit_codes):
+    def _update_controller(self, zeus_keypair, trustees, election_key,
+            candidates, voters, audit_codes):
         election = self._get_controller()
         election.set_zeus_keypair(zeus_keypair)
         election.set_trustees(trustees)
@@ -52,6 +56,16 @@ class Creating(Stage):
         except InvalidKeyError as err:
             raise Abortion(err)
         return zeus_keypair
+
+    def compute_election_key(self, trustees, zeus_keypair):
+        election = self._get_controller()
+        cryptosys = election.get_cryptosys()
+
+        public_shares = cryptosys._get_public_shares(trustees)
+        zeus_public_key = cryptosys._get_public_value(zeus_keypair)
+        combined = cryptosys._combine_public_keys(zeus_public_key, public_shares)
+        election_key = cryptosys._set_public_key(combined)
+        return election_key
 
     def validate_trustees(self, trustees):
         trustees = self.deserialize_trustees(trustees)
@@ -84,7 +98,8 @@ class Creating(Stage):
         canidates = new_candidates
         return candidates
 
-    def create_voters_and_audit_codes(self, voters):
+    def create_voters_and_audit_codes(self, voters,
+            voter_slot_ceil=VOTER_SLOT_CEIL):
         if not voters:
             err = 'Zero number of voters provided'
             raise Abortion(err)
@@ -94,18 +109,18 @@ class Creating(Stage):
             raise Abortion(err)
         new_voters = {}
         audit_codes = {}
-        generate_random = lambda CEIL: '%x' % random_integer(2, CEIL)
+        generate_random = lambda ceil: '%x' % random_integer(2, ceil)
         for name, weight in voters:
             voter_key = generate_random(VOTER_KEY_CEIL)
-            # ~ Avoid duplicate voter keys
-            # ~ Note for dev: this may lead to infinite loop for small
-            # ~ values of VOTER_KEY_CEIL! (not the case in production)
             while voter_key in new_voters:
+                # ~ Avoid duplicate voter keys
+                # ~ Note for dev: this may lead to infinite loop for small
+                # ~ values of VOTER_KEY_CEIL! (not the case in production)
                 voter_key = generate_random(VOTER_KEY_CEIL)
-            voter_codes = list(generate_random(VOTER_SLOT_CEIL) for _ in range(3))
+            voter_codes = list(generate_random(voter_slot_ceil) for _ in range(3))
             new_voters[voter_key] = (name, weight)
             audit_codes[voter_key] = voter_codes
-        audit_code_set = set(tuple(codes) for codes in audit_codes.values())
+        audit_code_set = set(tuple(values) for values in audit_codes.values())
         if len(audit_code_set) < 0.5 * len(new_voters):
             err = 'Insufficient slot variation attained'
             raise Abortion(err)
@@ -116,30 +131,21 @@ class Creating(Stage):
     def deserialize_trustees(self, trustees):
         election = self._get_controller()
         cryptosys = election.get_cryptosys()
+        modulus = cryptosys.parameters()['modulus']
+        GroupElement = cryptosys.GroupElement
 
         output = []
-        for _trustee in trustees:
-            modulus = cryptosys.parameters()['modulus']
-            trustee = {
-                'value': cryptosys.GroupElement(mpz(_trustee['value']), modulus),
-                'proof': {
-                    'commitment': cryptosys.GroupElement(mpz(_trustee['proof']['commitment']), modulus),
-                    'challenge': mpz(_trustee['proof']['challenge']),
-                    'response': mpz(_trustee['proof']['response'])
-                }
+        for _ in trustees:
+            trustee = {}
+            proof = _['proof']
+            trustee['value'] = GroupElement(mpz(_['value']), modulus)
+            trustee['proof'] = {
+                'commitment': GroupElement(mpz(proof['commitment']), modulus),
+                'challenge': mpz(proof['challenge']),
+                'response': mpz(proof['response'])
             }
             output.append(trustee)
         return output
-
-    def compute_election_key(self, trustees, zeus_keypair):
-        election = self._get_controller()
-        cryptosys = election.get_cryptosys()
-
-        public_shares = cryptosys._get_public_shares(trustees)
-        zeus_public_key = cryptosys._get_public_value(zeus_keypair)
-        combined = cryptosys._combine_public_keys(zeus_public_key, public_shares)
-        election_key = cryptosys._set_public_key(combined)
-        return election_key
 
     # def validate_election_key(self, election_key, trustees, zeus_keypair):
     #     election = self._get_controller()

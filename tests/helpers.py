@@ -193,11 +193,11 @@ def corrupt_implicit_signature(vote_signature, private_key, system):
     return corrupted_signature
 
 def _make_ciphers(mixnet, nr_ciphers=12):
-    random_element = mixnet.cryptosystem.group.random_element
+    random_element = mixnet.cryptosys.group.random_element
     return [(random_element(), random_element()) for _ in range(nr_ciphers)]
 
 def _make_ciphers_to_mix(mixnet, election_key, nr_ciphers=12):
-    params = mixnet.cryptosystem.parameters()
+    params = mixnet.cryptosys.parameters()
     ciphers_to_mix = {
         'modulus': params['modulus'],
         'order': params['order'],

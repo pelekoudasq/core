@@ -60,19 +60,19 @@ _4096_ELECTION_KEY = _4096_SYSTEM.group.random_element()
 # -- Sako-Killian Mixnets --
 
 RES11_ZEUS_SK = Zeus_sk({
-    'cryptosystem': RES11_SYSTEM,
+    'cryptosys': RES11_SYSTEM,
     'nr_rounds': 100,
     'nr_mixes': 24
 }, election_key=RES11_ELECTION_KEY)
 
 _2048_ZEUS_SK = Zeus_sk({
-    'cryptosystem': _2048_SYSTEM,
+    'cryptosys': _2048_SYSTEM,
     'nr_rounds': 20,
     'nr_mixes': 24
 }, election_key=_2048_ELECTION_KEY)
 
 _4096_ZEUS_SK = Zeus_sk({
-    'cryptosystem': _4096_SYSTEM,
+    'cryptosys': _4096_SYSTEM,
     'nr_rounds': 7,
     'nr_mixes': 24
 }, election_key=_4096_ELECTION_KEY)

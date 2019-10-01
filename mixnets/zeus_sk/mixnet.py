@@ -19,7 +19,7 @@ class Zeus_sk(Mixnet):
 
     supported_crypto = (ModPrimeCrypto,)
 
-    __slots__ = ('__cryptosystem', '__group', '__nr_rounds', '__nr_mixes', '__election_key')
+    __slots__ = ('__cryptosys', '__group', '__nr_rounds', '__nr_mixes', '__election_key')
 
     def __init__(self, config, election_key=None):
         """
@@ -27,12 +27,12 @@ class Zeus_sk(Mixnet):
 
         Provided `config` should be a structure of the form
 
-        {'cryptosystem': ModPrimeCrypto, 'nr_rounds': int, 'nr_mixes': int}
+        {'cryptosys': ModPrimeCrypto, 'nr_rounds': int, 'nr_mixes': int}
 
-        (otherwise a `MixnetError` will be raised) where `cryptosystem` is the
-        mixnet's underlying ElGamal cryptosystem, 'nr_rounds' the number of
+        (otherwise a `MixnetError` will be raised) where `cryptosys` is the
+        mixnet's underlying ElGamal cryptosys, 'nr_rounds' the number of
         rounds to be performed at each mixing and 'nr_mixes' the fixed length
-        of cipher-collections to mix. If the provided `cryptosystem` is not of
+        of cipher-collections to mix. If the provided `cryptosys` is not of
         type ModPrimeCrypto, then a `MixnetError` will be raised.
 
         Provided `election_key` should be a structure of the form
@@ -45,23 +45,23 @@ class Zeus_sk(Mixnet):
         :type election_key: dict
         """
         try:
-            cryptosystem = config['cryptosystem']
+            cryptosys = config['cryptosys']
             nr_rounds = config['nr_rounds']
             nr_mixes = config['nr_mixes']
         except KeyError:
             e = 'Malformed parameters for Zeus SK mixnet'
             raise MixnetError(e)
 
-        if not self.supports_cryptosystem(cryptosystem):
+        if not self.supports_cryptosys(cryptosys):
             e = 'Provided crypto type is not supported by Zeus SK mixnet'
             raise MixnetError(e)
 
         # Crypto parameters
 
-        self.__cryptosystem = cryptosystem
-        self.__group = self.__cryptosystem.group
+        self.__cryptosys = cryptosys
+        self.__group = self.__cryptosys.group
 
-        parameters = cryptosystem.parameters()
+        parameters = cryptosys.parameters()
         self.__modulus = parameters['modulus']
         self.__order = parameters['order']
         self.__generator = parameters['generator']
@@ -73,28 +73,35 @@ class Zeus_sk(Mixnet):
 
         # Set election key
         if election_key:
-            self.__election_key = self.__cryptosystem._get_value(election_key)
+            self.__election_key = self.__cryptosys._get_value(election_key)
 
     def set_election_key(election_key):
-        self.__election_key = self.__cryptosystem._get_value(election_key)
+        self.__election_key = self.__cryptosys._get_value(election_key)
 
 
     @classmethod
-    def supports_cryptosystem(cls, cryptosystem):
+    def supports_cryptosys(cls, cryptosys):
         """
-        :type cryptosystem:
+        :type cryptosys:
         :rtype: bool
         """
-        return cryptosystem.__class__ in cls.supported_crypto
+        return cryptosys.__class__ in cls.supported_crypto
 
     @property
-    def cryptosystem(self):
+    def cryptosys(self):
         """
-        Returns the mixnet's underlying cryptosystem
+        Returns the mixnet's underlying cryptosys
 
         :rtype: ModPrimeCrypto
         """
-        return self.__cryptosystem
+        return self.__cryptosys
+
+    def parameters(self):
+        parameters = {}
+        parameters['cryptosys'] = self.__cryptosys
+        parameters['nr_rounds'] = self.__nr_rounds
+        parameters['nr_mixes'] = self.__nr_mixes
+        return parameters
 
 
     # API
@@ -219,7 +226,7 @@ class Zeus_sk(Mixnet):
     #   }                                                                                     #
     #                                                                                         #
     #   where 'modulus', 'order', 'generator' are thought of as the underying                 #
-    #   cryptosystem's parameters and 'public' as the mixnet's election key                   #
+    #   cryptosys's parameters and 'public' as the mixnet's election key                   #
     #                                                                                         #
     ###########################################################################################
 

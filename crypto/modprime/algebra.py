@@ -128,6 +128,13 @@ class ModPrimeElement(GroupElement):
         return self.__class__(result, __modulus)
 
 
+    def to_hex(self):
+        """
+        :rtype: str
+        """
+        return '%x' % self.__value
+
+
     def clone(self):
         """
         :rtype: ModPrimeElement

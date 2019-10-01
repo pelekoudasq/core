@@ -26,6 +26,21 @@ class GenericAPI(object):
     def get_zeus_public_key(self):
         return self.zeus_public_key
 
+    def get_trustees(self):
+        return self.trustees
+
+    def get_election_key(self):
+        return self.election_key
+
+    def get_candidates(self):
+        return self.candidates
+
+    def get_voters(self):
+        return self.voters
+
+    def get_audit_codes(self):
+        return self.audit_codes
+
 class UninitializedAPI(object):
 
     def set_cryptosys(self, cryptosys):
@@ -86,6 +101,7 @@ class ZeusCoreElection(StageController, *backend_apis):
         self.zeus_private_key = None
         self.zeus_public_key = None
         self.trustees = None
+        self.election_key = None
         self.candidates = None
         self.voters = None
         self.audit_codes = None

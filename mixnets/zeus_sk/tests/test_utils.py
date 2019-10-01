@@ -15,8 +15,8 @@ def test_compute_mix_challenge():
     mixnet = RES11_ZEUS_SK
     public = RES11_ELECTION_KEY
 
-    parameters = mixnet.cryptosystem.parameters()
-    group = mixnet.cryptosystem.group
+    parameters = mixnet.cryptosys.parameters()
+    group = mixnet.cryptosys.group
 
     modulus = parameters['modulus']
     order = parameters['order']
@@ -67,7 +67,7 @@ for mixnet, election_key in (
     encrypt_func = mixnet._reencrypt
     public = election_key
 
-    group = mixnet.cryptosystem.group
+    group = mixnet.cryptosys.group
     modulus = group.modulus
     random_exponent = group.random_exponent
     random_element = group.random_element

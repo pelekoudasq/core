@@ -28,6 +28,10 @@ class GroupElement(object, metaclass=ABCMeta):
         """
         """
     @abstractmethod
+    def to_hex():
+        """
+        """
+    @abstractmethod
     def contained_in(self, group):
         """
         """

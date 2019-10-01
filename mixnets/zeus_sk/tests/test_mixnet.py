@@ -24,7 +24,7 @@ def test_MixnetError_with_unsupported_crypto_type():
     class EllipticCrypto(object): pass
     system = EllipticCrypto()
     with pytest.raises(MixnetError):
-        Zeus_sk({'cryptosystem': system,
+        Zeus_sk({'cryptosys': system,
             'nr_rounds': ROUNDS,
             'nr_mixes': MIXES
         }, _4096_ELECTION_KEY)
@@ -38,7 +38,7 @@ for (mixnet, public) in (
         (RES11_ZEUS_SK, RES11_ELECTION_KEY),
         (_2048_ZEUS_SK, _2048_ELECTION_KEY),
         (_4096_ZEUS_SK, _4096_ELECTION_KEY)):
-    group = mixnet.cryptosystem.group
+    group = mixnet.cryptosys.group
 
     alpha = group.random_element()
     beta = group.random_element()
@@ -52,7 +52,7 @@ for (mixnet, public) in (
     __mixnet__alpha__beta__public__randomness)
 def test__reencrypt(mixnet, alpha, beta, public, randomness):
 
-    system = mixnet.cryptosystem
+    system = mixnet.cryptosys
 
     ciphertext = system._reencrypt(ciphertext={
         'alpha': alpha,
@@ -73,9 +73,9 @@ __mixnet__cipher_collection__result = [
             'original_ciphers': [{'alpha': 0, 'beta': 1}, {'alpha': 2, 'beta': 3}]
         },
         {
-            'modulus': RES11_ZEUS_SK.cryptosystem.group.modulus,
-            'order': RES11_ZEUS_SK.cryptosystem.group.order,
-            'generator': RES11_ZEUS_SK.cryptosystem.group.generator.value,
+            'modulus': RES11_ZEUS_SK.cryptosys.group.modulus,
+            'order': RES11_ZEUS_SK.cryptosys.group.order,
+            'generator': RES11_ZEUS_SK.cryptosys.group.generator.value,
             'public': RES11_ELECTION_KEY,
             'original_ciphers': [(0, 1), (2, 3)],
             'mixed_ciphers': [(0, 1), (2, 3)]
@@ -88,9 +88,9 @@ __mixnet__cipher_collection__result = [
             'mixed_ciphers': [{'alpha': 0, 'beta': 1}, {'alpha': 2, 'beta': 3}]
         },
         {
-            'modulus': _4096_ZEUS_SK.cryptosystem.group.modulus,
-            'order': _4096_ZEUS_SK.cryptosystem.group.order,
-            'generator': _4096_ZEUS_SK.cryptosystem.group.generator.value,
+            'modulus': _4096_ZEUS_SK.cryptosys.group.modulus,
+            'order': _4096_ZEUS_SK.cryptosys.group.order,
+            'generator': _4096_ZEUS_SK.cryptosys.group.generator.value,
             'public': _4096_ELECTION_KEY,
             'original_ciphers': [(4, 5), (6, 7)],
             'mixed_ciphers': [(0, 1), (2, 3)]
@@ -103,9 +103,9 @@ __mixnet__cipher_collection__result = [
             'proof': 666
         },
         {
-            'modulus': _2048_ZEUS_SK.cryptosystem.group.modulus,
-            'order': _2048_ZEUS_SK.cryptosystem.group.order,
-            'generator': _2048_ZEUS_SK.cryptosystem.group.generator.value,
+            'modulus': _2048_ZEUS_SK.cryptosys.group.modulus,
+            'order': _2048_ZEUS_SK.cryptosys.group.order,
+            'generator': _2048_ZEUS_SK.cryptosys.group.generator.value,
             'public': _2048_ELECTION_KEY,
             'original_ciphers': [(8, 9), (0, 1)],
             'mixed_ciphers': [(8, 9), (0, 1)],
@@ -129,9 +129,9 @@ __mixnet__mixed_collection__result = [
             'proof': 666
         },
         {
-            'modulus': RES11_ZEUS_SK.cryptosystem.group.modulus,
-            'order': RES11_ZEUS_SK.cryptosystem.group.order,
-            'generator': RES11_ZEUS_SK.cryptosystem.group.generator.value,
+            'modulus': RES11_ZEUS_SK.cryptosys.group.modulus,
+            'order': RES11_ZEUS_SK.cryptosys.group.order,
+            'generator': RES11_ZEUS_SK.cryptosys.group.generator.value,
             'public': RES11_ELECTION_KEY,
             'original_ciphers': [{'alpha': 0, 'beta': 1}, {'alpha': 2, 'beta': 3}],
             'mixed_ciphers': [{'alpha': 4, 'beta': 5}, {'alpha': 6, 'beta': 7}],
