@@ -45,6 +45,7 @@ class Creating(Stage):
         election.set_election_key(election_key)
         election.set_candidates(candidates)
         election.set_voters(voters)
+        election.set_audit_codes(audit_codes)
 
     # ------
 
@@ -61,7 +62,7 @@ class Creating(Stage):
         election = self._get_controller()
         cryptosys = election.get_cryptosys()
 
-        public_shares = cryptosys._get_public_shares(trustees)
+        public_shares = cryptosys.get_public_shares(trustees)
         zeus_public_key = cryptosys._get_public_value(zeus_keypair)
         combined = cryptosys._combine_public_keys(zeus_public_key, public_shares)
         election_key = cryptosys._set_public_key(combined)
@@ -151,9 +152,9 @@ class Creating(Stage):
     #     election = self._get_controller()
     #     cryptosys = election.get_cryptosys()
     #
-    #     election_key = cryptosys._get_value(election_key)
+    #     election_key = cryptosys.get_value(election_key)
     #     test_key = cryptosys.compute_election_key(trustees, zeus_keypair)
-    #     return election_key == cryptosys._get_value(test_key)
+    #     return election_key == cryptosys.get_value(test_key)
     #
     # def invalidate_election_key():
     #     election = self._get_controller()

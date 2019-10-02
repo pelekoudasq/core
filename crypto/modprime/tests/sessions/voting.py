@@ -28,7 +28,7 @@ if __name__=='__main__':
     print('Key generation...\n')
     sleep(.5)
     zeus_keypair = system.create_zeus_keypair()
-    zeus_private_key, zeus_public_key = system._extract_keypair(zeus_keypair)
+    zeus_private_key, zeus_public_key = system.extract_keypair(zeus_keypair)
     trustees = system.generate_trustees(7)
     election_key = system.compute_election_key(trustees, zeus_keypair)
 

@@ -37,7 +37,8 @@ __mixnet__alpha__beta__public__randomness = []
 for (mixnet, public) in (
         (RES11_ZEUS_SK, RES11_ELECTION_KEY),
         (_2048_ZEUS_SK, _2048_ELECTION_KEY),
-        (_4096_ZEUS_SK, _4096_ELECTION_KEY)):
+        (_4096_ZEUS_SK, _4096_ELECTION_KEY),
+    ):
     group = mixnet.cryptosys.group
 
     alpha = group.random_element()
@@ -61,7 +62,7 @@ def test__reencrypt(mixnet, alpha, beta, public, randomness):
 
     alpha, beta = mixnet._reencrypt(alpha, beta, public, randomness=randomness)
 
-    assert alpha, beta == system._extract_ciphertext(alpha, beta)
+    assert alpha, beta == system.extract_ciphertext(alpha, beta)
 
 
 # Test formats
@@ -155,7 +156,7 @@ __mixnet__ciphers_to_mix = []
 for (mixnet, election_key) in (
     # (RES11_ZEUS_SK, RES11_ELECTION_KEY),
     (_2048_ZEUS_SK, _2048_ELECTION_KEY),
-    (_4096_ZEUS_SK, _4096_ELECTION_KEY),
+    # (_4096_ZEUS_SK, _4096_ELECTION_KEY),
 ):
     __mixnet__ciphers_to_mix.append(
         (mixnet, _make_ciphers_to_mix(mixnet, election_key)))
@@ -172,7 +173,7 @@ __failure_cases = []
 
 for (mixnet, election_key) in (
     (_2048_ZEUS_SK, _2048_ELECTION_KEY),
-    (_4096_ZEUS_SK, _4096_ELECTION_KEY)
+    # (_4096_ZEUS_SK, _4096_ELECTION_KEY)
 ):
     ciphers_to_mix = _make_ciphers_to_mix(mixnet, election_key)
     cipher_mix = mixnet.mix_ciphers(ciphers_to_mix)

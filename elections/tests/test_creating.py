@@ -28,6 +28,7 @@ def test_stage_finalization():
         election.get_election_key() == None,
         election.get_candidates() == None,
         election.get_voters() == None,
+        election.get_audit_codes() == None,
     ])
     creating.run()
     assert all([
@@ -37,6 +38,7 @@ def test_stage_finalization():
         election.get_election_key() != None,
         election.get_candidates() != None,
         election.get_voters() != None,
+        election.get_audit_codes() != None,
     ])
 
 

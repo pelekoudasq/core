@@ -20,7 +20,7 @@ class KeyManager(object, metaclass=ABCMeta):
         keypair = {'private': private_key, 'public': public_key}
         return keypair
 
-    def _extract_keypair(self, keypair):
+    def extract_keypair(self, keypair):
         """
         Returns a tuple with the private and public part of the provided key in
         the form of a numerical value (mpz) and a dict respectively
@@ -77,7 +77,7 @@ class KeyManager(object, metaclass=ABCMeta):
         """
         return public_key['value'], public_key['proof']
 
-    def _get_value(self, public_key):
+    def get_key(self, public_key):
         """
         :type public_key: dict or ModPrimeElement
         :rtype: ModPrimeElement
@@ -111,6 +111,13 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
         """
 
+    # Encoding
+
+    @abstractmethod
+    def encode_integer(self, integer):
+        """
+        """
+
     # Schnorr protocol
 
     @abstractmethod
@@ -127,13 +134,15 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
     def _set_schnorr_proof(self, commitment, challenge, response):
         """
         """
-        proof = {'commitment': commitment,
-                 'challenge': challenge,
-                 'response': response}
+        proof = {
+            'commitment': commitment,
+            'challenge': challenge,
+            'response': response
+        }
 
         return proof
 
-    def _extract_schnorr_proof(self, proof):
+    def extract_schnorr_proof(self, proof):
         """
         :type proof: dict
         :rtype: (ModPrimElement, mpz, mpz)
@@ -160,10 +169,12 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
             challenge, response):
         """
         """
-        proof = {'base_commitment': base_commitment,
-                 'message_commitment': message_commitment,
-                 'challenge': challenge,
-                 'response': response}
+        proof = {
+            'base_commitment': base_commitment,
+            'message_commitment': message_commitment,
+            'challenge': challenge,
+            'response': response
+        }
 
         return proof
 
@@ -246,7 +257,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         return message, signature
 
 
-    def _extract_signed_message(self, signed_message):
+    def extract_signed_message(self, signed_message):
         """
         :type signed_message: dict
         :rtype: tuple
@@ -269,7 +280,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def _prove_encryption(self, ciphertext, randomness):
+    def prove_encryption(self, ciphertext, randomness):
         """
         """
 
@@ -293,7 +304,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
         """
 
-    def _set_ciphertext(self, alpha, beta):
+    def set_ciphertext(self, alpha, beta):
         """
         :type alpha: ModPrimeElement
         :type beta: ModPrimeElement
@@ -301,7 +312,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
         return {'alpha': alpha, 'beta': beta}
 
-    def _extract_ciphertext(self, ciphertext):
+    def extract_ciphertext(self, ciphertext):
         """
         :type ciphertext: dict
         :rtype: (ModPrimeElement, ModPrimeElement)
@@ -310,7 +321,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         beta = ciphertext['beta']
         return alpha, beta
 
-    def _set_ciphertext_proof(self, ciphertext, proof):
+    def set_ciphertext_proof(self, ciphertext, proof):
         """
         :type ciphertext: dict
         :type proof: dict
@@ -318,7 +329,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
         return {'ciphertext': ciphertext, 'proof': proof}
 
-    def _extract_ciphertext_proof(self, ciphertext_proof):
+    def extract_ciphertext_proof(self, ciphertext_proof):
         """
         Extracts values from a dictionary of the form
 

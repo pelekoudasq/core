@@ -343,7 +343,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         __group = self.__group
 
         # g ^ r, c, s
-        commitment, challenge, response = self._extract_schnorr_proof(proof)
+        commitment, challenge, response = self.extract_schnorr_proof(proof)
 
         # Check correctness of chalenge:
         # c == g ^ ( H( p | g | q | y | g ^ r | extras ) modq ) modp ?
@@ -613,7 +613,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: bool
         """
         message, signature = self._extract_message_signature(signed_message)
-        public_key = self._get_value(public_key)
+        public_key = self.get_key(public_key)
 
         # Verify signature
         hashed_message = self.__group.exponent_from_texts(message)              # H(m)
@@ -663,7 +663,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         alpha = __group.generate(randomness)            # g ^ r (modp)
         beta = element * public_key ** randomness       # m * y ^ r (modp)
 
-        ciphertext = self._set_ciphertext(alpha, beta)
+        ciphertext = self.set_ciphertext(alpha, beta)
 
         if get_secret:
             return ciphertext, randomness
@@ -716,18 +716,18 @@ class ModPrimeCrypto(ElGamalCrypto):
         if randomness is None:
             randomness = __group.random_exponent(min=3)
 
-        alpha, beta = self._extract_ciphertext(ciphertext)
+        alpha, beta = self.extract_ciphertext(ciphertext)
 
         alpha = alpha * __group.generate(randomness)                # a * g ^ r
         beta = beta * public_key ** randomness                      # b * y ^ r
 
-        ciphertext = self._set_ciphertext(alpha, beta)
+        ciphertext = self.set_ciphertext(alpha, beta)
 
         if get_secret:
             return ciphertext, randomness
         return ciphertext
 
-    def _prove_encryption(self, ciphertext, randomness):
+    def prove_encryption(self, ciphertext, randomness):
         """
         Generates proof-of-knowledge of the `randomness` r involved in the
         ElGamal encryption yielding the provided ciphertext `ciphertext`
@@ -736,7 +736,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type randomness: mpz
         :rtype: dict
         """
-        alpha, beta = self._extract_ciphertext(ciphertext)
+        alpha, beta = self.extract_ciphertext(ciphertext)
         proof = self._schnorr_proof(randomness, alpha, beta)
 
         return proof
@@ -753,8 +753,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type ciphertext_proof: dict
         :rtype: bool
         """
-        ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
-        alpha, beta = self._extract_ciphertext(ciphertext)
+        ciphertext, proof = self.extract_ciphertext_proof(ciphertext_proof)
+        alpha, beta = self.extract_ciphertext(ciphertext)
         verified = self._schnorr_verify(proof, alpha, beta)
 
         return verified
@@ -779,7 +779,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type private_key: mpz
         :rtype: ModPrimeElement
         """
-        alpha, beta = self._extract_ciphertext(ciphertext)
+        alpha, beta = self.extract_ciphertext(ciphertext)
         original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
 
         return original
@@ -801,7 +801,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         .. note:: specializes to standard ElGamal decryption (`.decrypt()`) if
         `decryptor` is a ^ x, where x is the private key used at ecnryption
         """
-        _, beta = self._extract_ciphertext(ciphertext)
+        _, beta = self.extract_ciphertext(ciphertext)
         encoded = decryptor.inverse * beta                      # decryptor ^ -1 * beta (modp)
 
         return encoded
@@ -829,7 +829,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type secret: mpz
         :rtype: ModPrimeElement
         """
-        _, beta = self._extract_ciphertext(ciphertext)
+        _, beta = self.extract_ciphertext(ciphertext)
         encoded = (public ** secret).inverse * beta             # (y ^ x) ^ -1 * beta (modp)
         decoded = self.group.decode_with_randomness(encoded)
 
@@ -864,8 +864,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type trustee_keypair: dict
         :rtype: dict
         """
-        private_key, public_key = self._extract_keypair(trustee_keypair)
-        public_key = self._get_value(public_key)
+        private_key, public_key = self.extract_keypair(trustee_keypair)
+        public_key = self.get_value(public_key)
         proof = self._schnorr_proof(private_key, public_key)
         return proof
 
@@ -877,7 +877,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type zeus_keypair: dict
         :rtype: dict
         """
-        public_shares = self._get_public_shares(trustees)
+        public_shares = self.get_public_shares(trustees)
         zeus_public_key = self._get_public_value(zeus_keypair)
         combined = self._combine_public_keys(zeus_public_key, public_shares)
         election_key = self._set_public_key(combined)
@@ -890,9 +890,9 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type zeus_keypair: dict
         :rtype: bool
         """
-        election_key = self._get_value(election_key)
+        election_key = self.get_value(election_key)
         test_key = self.compute_election_key(trustees, zeus_keypair)
-        return election_key == self._get_value(test_key)
+        return election_key == self.get_value(test_key)
 
     # Voting
 
@@ -908,17 +908,17 @@ class ModPrimeCrypto(ElGamalCrypto):
         :publish: None
         :rtype: dict
         """
-        election_key = self._get_value(election_key)
-        encoded_plaintext = self._encode_integer(plaintext)
+        election_key = self.get_value(election_key)
+        encoded_plaintext = self.encode_integer(plaintext)
         ciphertext, randomness = self._encrypt(encoded_plaintext, election_key,
             get_secret=True)
 
-        proof = self._prove_encryption(ciphertext, randomness)
+        proof = self.prove_encryption(ciphertext, randomness)
 
-        encrypted = self._set_ciphertext_proof(ciphertext, proof)
-        fingerprint = self._make_fingerprint(encrypted)
+        encrypted = self.set_ciphertext_proof(ciphertext, proof)
+        fingerprint = self.make_fingerprint(encrypted)
 
-        vote = self._set_vote(voter, encrypted, fingerprint, audit_code, publish, randomness)
+        vote = self.set_vote(voter, encrypted, fingerprint, audit_code, publish, randomness)
         return vote
 
     def validate_submitted_vote(self, vote):
@@ -929,13 +929,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type vote: dict
         :rtype: bytes
         """
-        _, encrypted, fingerprint, _, _, _, _, _, _ = self._extract_vote(vote)
+        _, encrypted, fingerprint, _, _, _, _, _, _ = self.extract_vote(vote)
 
         if not self._verify_encryption(encrypted):
             e = 'Invalid encryption proof'
             raise InvalidVoteError(e)
 
-        if fingerprint != self._make_fingerprint(encrypted):
+        if fingerprint != self.make_fingerprint(encrypted):
             e = 'Invalid fingerprint'
             raise InvalidVoteError(e)
 
@@ -958,16 +958,16 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         __p, __q, __g = self._parameters()
 
-        election_key = self._get_value(election_key)
+        election_key = self.get_value(election_key)
 
-        zeus_private_key, zeus_public_key = self._extract_keypair(zeus_keypair)
-        zeus_public_key = self._get_value(zeus_public_key)
+        zeus_private_key, zeus_public_key = self.extract_keypair(zeus_keypair)
+        zeus_public_key = self.get_value(zeus_public_key)
 
-        _, encrypted, fingerprint, _, _, previous, index, status, _ = self._extract_vote(vote)
+        _, encrypted, fingerprint, _, _, previous, index, status, _ = self.extract_vote(vote)
 
-        alpha, beta, commitment, challenge, response = self._extract_fingerprint_params(encrypted)
+        alpha, beta, commitment, challenge, response = self.get_fingerprint_params(encrypted)
 
-        trustees = [self._get_value(trustee) for trustee in trustees]
+        trustees = [self.get_value(trustee) for trustee in trustees]
 
         m00 = status if status is not None else 'NONE'
         m01 = '%s%s' % (V_FINGERPRINT, fingerprint)
@@ -991,7 +991,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             m08, m09, m10, m11, m12, m13, m14, m15, m16))
 
         signed_message = self.sign_text_message(message, zeus_private_key)
-        message, exponent, c_1, c_2 = self._extract_signed_message(signed_message)
+        message, exponent, c_1, c_2 = self.extract_signed_message(signed_message)
         exponent, c_1, c_2 = str(exponent), str(c_1), str(c_2)
 
         vote_signature = message
@@ -1090,9 +1090,9 @@ class ModPrimeCrypto(ElGamalCrypto):
             raise InvalidSignatureError(e)
 
         # Verify encryption proof or raise exception otherwise
-        ciphertext = self._set_ciphertext(alpha, beta)
+        ciphertext = self.set_ciphertext(alpha, beta)
         proof = self._set_schnorr_proof(commitment, challenge, response)
-        encrypted = self._set_ciphertext_proof(ciphertext, proof)
+        encrypted = self.set_ciphertext_proof(ciphertext, proof)
         # if index is not None and not self._verify_encryption(encrypted):
         if (index is not None and not self._verify_encryption(encrypted)):
             e = 'Invalid vote encryption'
@@ -1116,7 +1116,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         max_encoded = gamma_encoding_max(nr_candidates)
 
         for vote in votes:
-            _, encrypted, _, _, voter_secret, _, _, _, _ = self._extract_vote(vote)
+            _, encrypted, _, _, voter_secret, _, _, _, _ = self.extract_vote(vote)
 
             if not voter_secret:
                 missing.append(vote)
@@ -1125,7 +1125,7 @@ class ModPrimeCrypto(ElGamalCrypto):
                 failed.append(vote)
                 continue
 
-            alpha_vote, _, _, _, _ = self._extract_fingerprint_params(encrypted)
+            alpha_vote, _, _, _, _ = self.get_fingerprint_params(encrypted)
             alpha = self.group.generate(voter_secret)
 
             if alpha != alpha_vote:
@@ -1143,7 +1143,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return missing, failed
 
 
-    def _get_public_shares(self, trustees):
+    def get_public_shares(self, trustees):
         """
         Extracts public keys of the provided trustees as group elements
         and returns them in a list
@@ -1151,7 +1151,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type trustees: list[dict]
         :rtype: list[ModPrimeElement]
         """
-        public_shares = [self._get_value(public_key) for public_key in trustees]
+        get_key = self.get_key
+        public_shares = [get_key(public_key) for public_key in trustees]
         return public_shares
 
     def _combine_public_keys(self, initial, public_keys):
@@ -1168,7 +1169,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             combined = combined * public_key
         return combined
 
-    def _encode_integer(self, integer):
+    def encode_integer(self, integer):
         """
         :type integer: int
         :rtype: ModPrimeElement
@@ -1176,7 +1177,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         element = self.__group.encode_integer(integer)
         return element
 
-    def _set_vote(self, voter, encrypted, fingerprint, audit_code=None, publish=None,
+    def set_vote(self, voter, encrypted, fingerprint, audit_code=None, publish=None,
             voter_secret=None, previous=None, index=None, status=None, plaintext=None):
         """
         :type voter:
@@ -1210,7 +1211,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return vote
 
-    def _extract_vote(self, vote):
+    def extract_vote(self, vote):
         """
         :type vote: dict
         :rtype: dict
@@ -1235,7 +1236,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return voter, encrypted, fingerprint, audit_code,\
             voter_secret, previous, index, status, plaintext
 
-    def _extract_fingerprint_params(self, ciphertext_proof):
+    def get_fingerprint_params(self, ciphertext_proof):
         """
         Prepares fignerprint parameters out of a dictionary of the form
 
@@ -1244,12 +1245,12 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type ciphertext_proof: dict
         :rtype: (ModPrimeElement, ModPrimeElement, ModPrimeElement, mpz, mpz, mpz)
         """
-        ciphertext, proof = self._extract_ciphertext_proof(ciphertext_proof)
-        alpha, beta = self._extract_ciphertext(ciphertext)
-        commitment, challenge, response = self._extract_schnorr_proof(proof)
+        ciphertext, proof = self.extract_ciphertext_proof(ciphertext_proof)
+        alpha, beta = self.extract_ciphertext(ciphertext)
+        commitment, challenge, response = self.extract_schnorr_proof(proof)
         return alpha, beta, commitment, challenge, response
 
-    def _make_fingerprint(self, ciphertext_proof):
+    def make_fingerprint(self, ciphertext_proof):
         """
         Makes fingerprint out of a dictionary of the form
 
@@ -1258,7 +1259,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type ciphertext_proof: dict
         :rtype: bytes
         """
-        fingerprint_params = self._extract_fingerprint_params(ciphertext_proof)
+        fingerprint_params = self.get_fingerprint_params(ciphertext_proof)
         fingerprint = hash_texts(*[str(param) for param in fingerprint_params])
         return fingerprint
 
@@ -1374,7 +1375,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type mixed_ballots: list[dict]
         :rtype: dict
         """
-        trustee_secret, trustee_public = self._extract_keypair(trustee_keypair)
+        trustee_secret, trustee_public = self.extract_keypair(trustee_keypair)
         factors = self._compute_decryption_factors(trustee_secret, mixed_ballots)
         trustee_factors = self._set_trustee_factors(trustee_public, factors)
         return trustee_factors
@@ -1402,7 +1403,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             e = 'Malformed trustee factors'
             raise InvalidFactorError(e)
 
-        trustee_public = self._get_value(trustee_public)
+        trustee_public = self.get_value(trustee_public)
 
         if not self._verify_decryption_factors(trustee_public, mixed_ballots, decryption_factors):
             e = 'Invalid trustee factors'
@@ -1475,13 +1476,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         aux_factors = {}
         for trustee_factors in trustees_factors:
             public, factors = self._extract_trustee_factors(trustee_factors)
-            public = self._get_value(public)
+            public = self.get_value(public)
             aux_factors[public] = factors
         trustees_factors = aux_factors
 
         # Verify trustees' factors
         for share in public_shares:
-            trustee_public = self._get_value(share)
+            trustee_public = self.get_value(share)
             try:
                 trustee_factors = trustees_factors[trustee_public]
             except KeyError:
@@ -1493,7 +1494,7 @@ class ModPrimeCrypto(ElGamalCrypto):
                 raise BallotDecryptionError(e)
 
         # Verify zeus's factors
-        zeus_public_key = self._get_value(zeus_public_key)
+        zeus_public_key = self.get_value(zeus_public_key)
         if not self._verify_decryption_factors(zeus_public_key, mixed_ballots, zeus_factors):
             e = 'Zeus\'s factors could not be verified'
             raise BallotDecryptionError(e)
@@ -1537,7 +1538,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         append = factors.append
         for cipher in ciphers:
 
-            alpha, _ = self._extract_ciphertext(cipher)             # g ^ r         (mod p)
+            alpha, _ = self.extract_ciphertext(cipher)             # g ^ r         (mod p)
             data = alpha ** secret                                  # g ^ (x * r)   (mod p)
 
             ddh = (alpha, public, data)
@@ -1580,7 +1581,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             return False
 
         for cipher, factor in zip(ciphers, factors):
-            alpha, _ = self._extract_ciphertext(cipher)
+            alpha, _ = self.extract_ciphertext(cipher)
             data, proof = self._extract_factor(factor)
 
             ddh = (alpha, public, data)

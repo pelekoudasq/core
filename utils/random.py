@@ -144,7 +144,7 @@ def _selection_to_permutation(selection):
 	return permutation
 
 
-def get_random_party_selection(nr_elements, nr_parties):
+def random_party_selection(nr_elements, nr_parties):
     """
     """
     party = random_integer(0, nr_parties)
@@ -161,7 +161,7 @@ def get_random_party_selection(nr_elements, nr_parties):
         r >>= 1
         if skip:
             continue
-        appen(i)
+        append(i)
     return to_relative_answers(choices, nr_elements)
 
 def to_relative_answers(choices, nr_candidates):

@@ -28,7 +28,7 @@ def _make_ciphers_to_mix(cryptosys, nr_rounds=12):
         'modulus': params['modulus'],
         'order': params['order'],
         'generator': params['generator'],
-        'public': cryptosys._get_value(cryptosys._get_public(cryptosys.keygen())),
+        'public': cryptosys.get_value(cryptosys._get_public(cryptosys.keygen())),
         'original_ciphers': [],
         'mixed_ciphers': _make_ciphers(cryptosys),
         'cipher_collections': []

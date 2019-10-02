@@ -147,7 +147,7 @@ if __name__=='__main__':
     sleep(.5)
 
     keypair = system.keygen()
-    private_key, public_key = system._extract_keypair(keypair)
+    private_key, public_key = system.extract_keypair(keypair)
     # print('\n-- PUBLIC KEY --\n%d\n' % system.get_value(public_key))
 
     validated = system.validate_public_key(public_key)
@@ -172,7 +172,7 @@ if __name__=='__main__':
     # Valid case
     exponent = mpz(exponent)
     signature = system._dsa_signature(exponent, private_key)
-    verified = system._dsa_verify(exponent, signature, system._get_value(public_key))
+    verified = system._dsa_verify(exponent, signature, system.get_key(public_key))
     if verified:
         print(' + Valid signature successfully verified')
     else:
@@ -181,7 +181,7 @@ if __name__=='__main__':
     # Invalid identity (Authentication check)
     wrong_secret = private_key + 1
     signature = system._dsa_signature(exponent, wrong_secret)
-    verified = system._dsa_verify(exponent, signature, system._get_value(public_key))
+    verified = system._dsa_verify(exponent, signature, system.get_key(public_key))
     if not verified:
         print(' + Unauthorized signer successfully verified')
     else:
@@ -189,7 +189,7 @@ if __name__=='__main__':
 
     # Tampered message (Integrity check)
     signature = system._dsa_signature(exponent, private_key)
-    verified = system._dsa_verify(exponent + 1, signature, system._get_value(public_key))
+    verified = system._dsa_verify(exponent + 1, signature, system.get_value(public_key))
     if not verified:
         print(' + Tampered message successfully verified')
     else:
@@ -198,7 +198,7 @@ if __name__=='__main__':
     # Invalid commitments
     signature = system._dsa_signature(exponent, private_key)
     signature['commitments']['c_1'] = system.group.order
-    verified = system._dsa_verify(exponent, signature, system._get_value(public_key))
+    verified = system._dsa_verify(exponent, signature, system.get_value(public_key))
     if not verified:
         print(' + Invalid commitment successfully detected')
     else:
@@ -243,9 +243,9 @@ if __name__=='__main__':
     element = ModPrimeElement(mpz(__element), system.group.modulus)
 
     ciphertext, randomness = system._encrypt(element,
-        system._get_value(public_key), get_secret=True)
-    proof = system._prove_encryption(ciphertext, randomness)
-    ciphertext_proof = system._set_ciphertext_proof(ciphertext, proof)
+        system.get_value(public_key), get_secret=True)
+    proof = system.prove_encryption(ciphertext, randomness)
+    ciphertext_proof = system.set_ciphertext_proof(ciphertext, proof)
 
     # Valid case
     verified = system._verify_encryption(ciphertext_proof)
@@ -255,10 +255,10 @@ if __name__=='__main__':
         _exit(' - Valid encryption erroneously invalidated')
 
     # Corrupt ciphertext by tampering devryptor
-    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    ciphertext, proof = system.extract_ciphertext_proof(ciphertext_proof)
     corrupt_ciphertext = deepcopy(ciphertext)
     corrupt_ciphertext['alpha'].reduce_value()
-    corrupt_ciphertext_proof = system._set_ciphertext_proof(corrupt_ciphertext, proof)
+    corrupt_ciphertext_proof = system.set_ciphertext_proof(corrupt_ciphertext, proof)
     verified = system._verify_encryption(corrupt_ciphertext_proof)
     if not verified:
         print(' + Invalid encryption (tampered decryptor) successfully detected')
@@ -266,10 +266,10 @@ if __name__=='__main__':
         _exit(' - Invalid encryption (tampered decryptor) failed to be detected')
 
     # Corrupt ciphertext by tampering beta
-    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    ciphertext, proof = system.extract_ciphertext_proof(ciphertext_proof)
     corrupt_ciphertext = deepcopy(ciphertext)
     corrupt_ciphertext['beta'].reduce_value()
-    corrupt_ciphertext_proof = system._set_ciphertext_proof(corrupt_ciphertext, proof)
+    corrupt_ciphertext_proof = system.set_ciphertext_proof(corrupt_ciphertext, proof)
     verified = system._verify_encryption(corrupt_ciphertext_proof)
     if not verified:
         print(' + Invalid encryption (tampered beta) successfully detected')
@@ -277,10 +277,10 @@ if __name__=='__main__':
         _exit(' - Invalid encryption (tampered beta) failed to be detected')
 
     # Corrupt proof by tampering commitment
-    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    ciphertext, proof = system.extract_ciphertext_proof(ciphertext_proof)
     corrupt_proof = deepcopy(proof)
     corrupt_proof['commitment'].reduce_value()
-    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    corrupt_ciphertext_proof = system.set_ciphertext_proof(ciphertext, corrupt_proof)
     verified = system._verify_encryption(corrupt_ciphertext_proof)
     if not verified:
         print(' + Invalid encryption-proof (tampered commitment) successfully detected')
@@ -288,10 +288,10 @@ if __name__=='__main__':
         _exit(' - Invalid encryption-proof (tampered commitment) failed to be detected')
 
     # Corrupt proof by tampering challenge
-    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    ciphertext, proof = system.extract_ciphertext_proof(ciphertext_proof)
     corrupt_proof = deepcopy(proof)
     corrupt_proof['challenge'] += 1
-    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    corrupt_ciphertext_proof = system.set_ciphertext_proof(ciphertext, corrupt_proof)
     verified = system._verify_encryption(corrupt_ciphertext_proof)
     if not verified:
         print(' + Invalid encryption-proof (tampered challenge) successfully detected')
@@ -299,10 +299,10 @@ if __name__=='__main__':
         _exit(' - Invalid encryption-proof (tampered challenge) failed to be detected')
 
     # Corrupt proof by tampering response
-    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    ciphertext, proof = system.extract_ciphertext_proof(ciphertext_proof)
     corrupt_proof = deepcopy(proof)
     corrupt_proof['response'] += 1
-    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    corrupt_ciphertext_proof = system.set_ciphertext_proof(ciphertext, corrupt_proof)
     verified = system._verify_encryption(corrupt_ciphertext_proof)
     if not verified:
         print(' + Invalid encryption-proof (tampered response) successfully detected')
@@ -319,7 +319,7 @@ if __name__=='__main__':
         _exit(' - Decryption failed (did NOT yield original message)')
 
     # With decryptor a ^ x (so that it yields original message for testing purposes)
-    alpha, _ = system._extract_ciphertext(ciphertext)
+    alpha, _ = system.extract_ciphertext(ciphertext)
     decryptor = alpha ** private_key
     decrypted = system._decrypt_with_decryptor(ciphertext, decryptor)
     if decrypted == element:

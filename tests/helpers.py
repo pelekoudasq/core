@@ -23,72 +23,79 @@ def make_vote(voter, system, election_key, invalid=False):
         vote['fingerprint'] = vote['fingerprint'] + '__corrupted_part'
     return vote
 
-def mk_random_vote(self, selection=None, voter=None, audit_code=None, publish=None):
-    election_key = self.get_election_key()
-    nr_candidates = len(self.get_candidates)
+from utils import random_selection, random_party_selection, encode_selection
+from random import choice as rand_choice
+
+def mk_random_vote(election, voter_key=None, audit_code=None, selection=None, publish=None):
+    voters = election.get_voters()
+    if voter_key is None:
+        voter_key = rand_choice(list(voters.keys()))
+    voter_codes = election.get_voter_codes(voter_key)
+    if not voter_codes:
+        err = "Valid audit code requested but voter not found!"
+        raise ValueError(err)
+    if not audit_code:
+        audit_code = voter_codes[random_integer(0, 3)]
+    valid = True
+    if voter_key not in voters:
+        valid = False
+    elif audit_code not in voter_codes:
+        valid = False
+
+    nr_candidates = len(election.get_candidates())
     if selection is None:
         r = random_integer(0, 4)
         if r & 1:
             selection = random_selection(nr_candidates, full=False)
         else:
             selection = random_party_selection(nr_candidates, 2)
-    voters = None
-    if noter is None:
-        voters = self.get_voters()
-        voter = rand_choice(voters.keys())
     encoded_selection = encode_selection(selection, nr_candidates)
-    valid = True
-    if audit_code:
-        if voters is None:
-            voters = self.get_voters()
-        voter_audit_codes = self.get_voter_audit_codes()
-        if audit_code < 0:
-            if voter not in voters:
-                err = "Valid audit code requested but voter not found!"
-                raise ValueError(err)
-            audit_code = voter_audit_codes[0]
-        elif voter not in voters:
-            valid = False
-        elif audit_code not in voter_audit_codes:
-            valid = False
-    vote = vote_from_encoded(encoded_selection,
-                    election_key, voter, audit_code, publish)
-    rnd = vote['voter_secret']
-    if not publish:
-        del vote['voter_secret']
-    return vote, selection, encoded if valid else None, rnd
 
-def vote_from_encoded(encoded_selection, election_key, voter,
+    vote = vote_from_encoded_selection(voter_key, encoded_selection, election, audit_code, publish)
+
+    rnd = None
+    try:
+        rnd = vote['voter_secret']
+    except KeyError:
+        pass
+    else:
+        if not publish:
+            del vote['voter_secret']
+
+    return vote, selection, encoded_selection if valid else None, rnd
+
+def vote_from_encoded_selection(voter_key, encoded_selection, election,
             audit_code=None, publish=None):
-    system = self.get_cryptosys()
-    modulus, order, generator = system._parameters()
+    cryptosys = election.get_cryptosys()
 
-    ciphertext, randomness = system._encrypt(encoded_selection,
+    encoded_selection = cryptosys.encode_integer(encoded_selection)
+    election_key = election.get_election_key()
+    ciphertext, randomness = cryptosys._encrypt(encoded_selection,
             election_key, get_secret=True)
-    alpha, beta = system._extract_ciphertext(ciphertext)
+    alpha, beta = cryptosys.extract_ciphertext(ciphertext)
+    proof = cryptosys.prove_encryption(ciphertext, randomness)
+    commitment, challenge, response = cryptosys.extract_schnorr_proof(proof)
 
-    proof = system._prove_encryption(ciphertext, randomness)
-    commitment, challenge, response = system._extract_schnorr_proof(proof)
+    encrypted_ballot = cryptosys.parameters()
+    encrypted_ballot.update({
+        'public': election_key,
+        'alpha': alpha,
+        'beta': beta,
+        'commitment': commitment,
+        'challenge': challenge,
+        'response': response,
+    })
 
-    eb = {'modulus': modulus,
-          'order': order,
-          'generator': generator,
-          'public': election_key,
-          'alpha': alpha,
-          'beta': beta,
-          'commitment': commitment,
-          'challenge': challenge,
-          'response': response,}
-
-    fingerprint = system._make_fingerprint({
+    fingerprint = cryptosys.make_fingerprint({
         'ciphertext': ciphertext,
         'proof': proof
     })
 
-    # Use _set_vote() instead?
-    vote = {'voter': voter,
-            'fingerprint': fingerprint,
-            'encrypted_ballot': eb}
+    vote = {
+        'voter': voter_key,
+        'fingerprint': fingerprint,
+        'encrypted_ballot': encrypted_ballot
+    }
 
     if audit_code:
         vote['audit_code'] = audit_code
@@ -103,20 +110,20 @@ def make_corrupted_signature_vote(system, vote, comments, election_key,
     """
     __p, __q, __g = system._parameters()
 
-    election_key = system._get_value(election_key)
+    election_key = system.get_key(election_key)
 
-    zeus_private_key, zeus_public_key = system._extract_keypair(zeus_keypair)
-    zeus_public_key = system._get_value(zeus_public_key)
+    zeus_private_key, zeus_public_key = system.extract_keypair(zeus_keypair)
+    zeus_public_key = system.get_key(zeus_public_key)
 
-    _, encrypted, fingerprint, _, _, previous, index, status, _ = system._extract_vote(vote)
+    _, encrypted, fingerprint, _, _, previous, index, status, _ = system.extract_vote(vote)
 
-    alpha, beta, commitment, challenge, response = system._extract_fingerprint_params(encrypted)
+    alpha, beta, commitment, challenge, response = system.get_fingerprint_params(encrypted)
 
     # Corrupt alpha and index
     alpha = ModPrimeElement(alpha.value + 1, __p)
     index = 1
 
-    trustees = [system._get_value(trustee) for trustee in trustees]
+    trustees = [system.get_value(trustee) for trustee in trustees]
 
     m00 = status if status is not None else 'NONE'
     m01 = '%s%s' % (V_FINGERPRINT, fingerprint)
@@ -140,7 +147,7 @@ def make_corrupted_signature_vote(system, vote, comments, election_key,
         m08, m09, m10, m11, m12, m13, m14, m15, m16))
 
     signed_message = system.sign_text_message(message, zeus_private_key)
-    message, exponent, c_1, c_2 = system._extract_signed_message(signed_message)
+    message, exponent, c_1, c_2 = system.extract_signed_message(signed_message)
     exponent, c_1, c_2 = str(exponent), str(c_1), str(c_2)
 
     vote_signature = message

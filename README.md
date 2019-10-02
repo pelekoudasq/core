@@ -9,24 +9,15 @@ You need to have installed `python3`
 pip install -r requirements
 ```
 
+## Demo election
+
+From inside the root directory run 
+
+```shell
+python .
+```
+
 ## Tests
 
-<!-- ```shell
-pytest tests/
-```
-
-and
-
 ```shell
-python tests/sessions/modprime/primitives.py
-python tests/sessions/modprime/voting.py
-python tests/sessions/zeus_sk.py
-``` -->
-
-## Running elections
-
-<!-- From inside the repository's root directory run
-
-```shell
-python3 . -->
-```
+./tests.sh
