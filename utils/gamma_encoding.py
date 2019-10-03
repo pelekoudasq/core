@@ -111,12 +111,12 @@ def _get_choice_params(nr_choices, nr_candidates=None, max_choices=None):
         max_choices = nr_candidates
 
     if nr_choices < 0 or nr_candidates <= 0 or max_choices <= 0:
-        e = 'Invalid parameters: %d < 0 or %d <= 0 or %d <= 0' % (nr_choices, nr_candidates, max_choices)
-        raise AssertionError(e)
+        err = 'Invalid parameters: %d < 0 or %d <= 0 or %d <= 0' % (nr_choices, nr_candidates, max_choices)
+        raise AssertionError(err)
 
     if nr_choices > max_choices:
-        e = 'Invalid number of choices: %d > %d' % (nr_choices, max_choices)
-        raise AssertionError(e)
+        err = 'Invalid number of choices: %d > %d' % (nr_choices, max_choices)
+        raise AssertionError(err)
 
     return nr_candidates, max_choices
 
@@ -143,8 +143,8 @@ def gamma_encode(choices, nr_candidates=None, max_choices=None):
     try:
         sumus = offsets[nr_choices - 1]
     except IndexError:
-        e = 'Invalid number of choices'
-        raise AssertionError(e)
+        err = 'Invalid number of choices'
+        raise AssertionError(err)
 
     b = nr_candidates - nr_choices
     i = 1

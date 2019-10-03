@@ -49,12 +49,12 @@ class Zeus_sk(Mixnet):
             nr_rounds = config['nr_rounds']
             nr_mixes = config['nr_mixes']
         except KeyError:
-            e = 'Malformed parameters for Zeus SK mixnet'
-            raise MixnetError(e)
+            err = 'Malformed parameters for Zeus SK mixnet'
+            raise MixnetError(err)
 
         if not self.supports_cryptosys(cryptosys):
-            e = 'Provided crypto type is not supported by Zeus SK mixnet'
-            raise MixnetError(e)
+            err = 'Provided crypto type is not supported by Zeus SK mixnet'
+            raise MixnetError(err)
 
         # Crypto parameters
 
@@ -158,8 +158,8 @@ class Zeus_sk(Mixnet):
         :rtype bool:
         """
         if len(cipher_collections) != self.__nr_mixes:
-            e = 'Invalid number of mixes provided'
-            raise AssertionError(e)
+            err = 'Invalid number of mixes provided'
+            raise AssertionError(err)
 
         validated = True
         validate = self.validate
@@ -413,8 +413,8 @@ class Zeus_sk(Mixnet):
 
                     del offsets, randoms
                 else:
-                    e = 'This should be impossible. Something is broken'
-                    raise AssertionError(e)
+                    err = 'This should be impossible. Something is broken'
+                    raise AssertionError(err)
                 teller.advance()
 
         teller.finish('Mixing')
@@ -452,8 +452,8 @@ class Zeus_sk(Mixnet):
             mixed_ciphers = cipher_mix['mixed_ciphers']
             proof = cipher_mix['proof']
         except KeyError as error:
-            e = 'Invalid mix format: \'%s\' missing' % error.args[0]
-            raise MixNotVerifiedError(e)
+            err = 'Invalid mix format: \'%s\' missing' % error.args[0]
+            raise MixNotVerifiedError(err)
 
         try:
             cipher_collections = proof['cipher_collections']
@@ -461,31 +461,31 @@ class Zeus_sk(Mixnet):
             random_collections = proof['random_collections']
             challenge = proof['challenge']
         except KeyError as error:
-            e = 'Malformed proof provided: \'%s\' missing' % error.args[0]
-            raise MixNotVerifiedError(e)
+            err = 'Malformed proof provided: \'%s\' missing' % error.args[0]
+            raise MixNotVerifiedError(err)
 
         nr_ciphers = len(original_ciphers)
         nr_rounds = len(cipher_collections)
 
         # Validate challenge
         if challenge != compute_mix_challenge(cipher_mix):
-            e = 'Invalid challenge'
-            raise MixNotVerifiedError(e)
+            err = 'Invalid challenge'
+            raise MixNotVerifiedError(err)
 
         teller.task('Verifying mixing of %d ciphers for %d rounds'
             % (nr_ciphers, nr_rounds))
 
         # Check rounds lower boundary
         if min_rounds is not None and nr_rounds < min_rounds:
-            e = 'Invalid mix: rounds fewer than required: %d < %d' % (
+            err = 'Invalid mix: rounds fewer than required: %d < %d' % (
                     nr_rounds, min_rounds)
-            raise MixNotVerifiedError(e)
+            raise MixNotVerifiedError(err)
 
         # Check collections lengths
         if (len(offset_collections) != nr_rounds or
             len(random_collections) != nr_rounds):
-            e = 'Invalid mix format: collections not of the same size'
-            raise MixNotVerifiedError(e)
+            err = 'Invalid mix format: collections not of the same size'
+            raise MixNotVerifiedError(err)
 
         # Verify mix rounds
         total = nr_rounds * nr_ciphers
@@ -514,8 +514,8 @@ class Zeus_sk(Mixnet):
                                         ciphers, offsets, randoms, encrypt_func,
                                         public, teller=None)
                     except RoundNotVerifiedError as error:
-                        e = error.args[0]
-                        raise MixNotVerifiedError(e)
+                        err = error.args[0]
+                        raise MixNotVerifiedError(err)
 
             # TODO: Refine try/except?
             if _async:
@@ -529,8 +529,8 @@ class Zeus_sk(Mixnet):
                     for channel in channels:
                         channel.receive(wait=1)
                 except RoundNotVerifiedError as error:
-                    e = error.args[0]
-                    raise MixNotVerifiedError(e)
+                    err = error.args[0]
+                    raise MixNotVerifiedError(err)
 
                 _async.shutdown()
 

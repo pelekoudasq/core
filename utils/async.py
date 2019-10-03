@@ -239,8 +239,8 @@ def async_worker(link):
             link.send(ret)
         except Exception as e:
             import traceback
-            e = (MV_EXCEPTION, traceback.format_exc())
-            link.send_shared(e)
+            err = (MV_EXCEPTION, traceback.format_exc())
+            link.send_shared(err)
             raise
         finally:
             link.disconnect()

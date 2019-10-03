@@ -2,7 +2,8 @@ from elections.abstracts import Stage
 from elections.exceptions import Abortion
 from elections.constants import (V_FINGERPRINT, V_INDEX, V_PREVIOUS, V_VOTER,
     V_ELECTION, V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR,
-    V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS)
+    V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS,
+    V_SEPARATOR)
 from .mixing import Mixing
 
 
@@ -21,105 +22,117 @@ class Voting(Stage):
         pass
 
 
-    def verify_vote_signature(self, vote_signature):
+    def verify_vote_signature(self, cryptosys, vote_signature):
         """
-        Returns `True` if verified, otherwise raises `InvalidSignatureError`
-
-        :type vote_signature: str
-        :rtype: bool
+        Returns ``True`` if verified, otherwise raises ``InvalidSignatureError``
         """
-        message, _, exponent, c_1, c_2, _ = vote_signature.rsplit('\n', 5)
+        textified_vote, signature = self.extract_vote_signature(cryptosys, vote_signature)
+        try:
+            (_, _, index, _, zeus_public_key, _,_, _, _, _, alpha, beta,
+            commitment, challenge, response,) = \
+                self.extract_textified_vote(textified_vote)
+        except InvalidSignatureError:
+            raise
 
-        (m00, m01, m02, m03, m04, m05, m06, m07, m08, m09,
-            m10, m11, m12, m13, m14, m15, m16) = message.split('\n', 16)
+        # Validate signature, or raise exception otherwise
+        signed_message = cryptosys.set_signed_message(textified_vote, signature)
+        if not cryptosys.verify_text_signature(signed_message, zeus_public_key):
+            err = 'Invalid vote signature'
+            raise InvalidSignatureError(err)
 
-        # Check signature structure
+        # Verify proof of encryption, or raise exception otherwise
+        ciphertext = cryptosys.set_ciphertext(alpha, beta)
+        proof = cryptosys.set_schnorr_proof(commitment, challenge, response)
+        if index is not None and not cryptosys.verify_encryption({
+            'ciphertext': ciphertext,
+            'proof': proof
+        }):
+            err = 'Invalid vote encryption'
+            raise InvalidSignatureError(err)
 
-        if not ((m00.startswith(V_CAST_VOTE) or
-            m00.startswith(V_AUDIT_REQUEST) or
-            m00.startswith(V_PUBLIC_AUDIT) or
-            m00.startswith(V_PUBLIC_AUDIT_FAILED) or
-            m00.startswith('NONE')) or
-            not m01.startswith(V_FINGERPRINT) or
-            not m02.startswith(V_INDEX) or
-            not m03.startswith(V_PREVIOUS) or
-            not m04.startswith(V_ELECTION) or
-            not m05.startswith(V_ZEUS_PUBLIC) or
-            not m06.startswith(V_TRUSTEES) or
-            not m07.startswith(V_CANDIDATES) or
-            not m08.startswith(V_MODULUS) or
-            not m09.startswith(V_ORDER) or
-            not m10.startswith(V_GENERATOR) or
-            not m11.startswith(V_ALPHA) or
-            not m12.startswith(V_BETA) or
-            not m13.startswith(V_COMMITMENT) or
-            not m14.startswith(V_CHALLENGE) or
-            not m15.startswith(V_RESPONSE) or
-            not m16.startswith(V_COMMENTS)):
-            e = 'Invalid vote signature structure'
-            raise InvalidSignatureError(e)
+        return True
 
-        # Extract data
 
-        status = m00
-        fingerprint = m01[len(V_FINGERPRINT):]
+    def extract_vote_signature(self, cryptosys, vote_signature):
+        textified_vote, _, exponent, c_1, c_2, _ = vote_signature.rsplit('\n', 5)
+        exponent = cryptosys.to_exponent(exponent)
+        c_1 = cryptosys.to_exponent(c_1)
+        c_2 = cryptosys.to_exponent(c_2)
+        signature = cryptosys.set_dsa_signature(exponent, c_1, c_2)
+        return textified_vote, signature
 
-        index_str = m02[len(V_INDEX):]
+
+    def extract_textified_vote(self, textified_vote):
+        """
+        Will raise InvalidSignatureError if inscribed parameters
+        concerning the cryptosystem and election configuration
+        do not coincide with those of Zeus
+        """
+        (t00, t01, t02, t03, t04, t05, t06, t07, t08, t09,
+            t10, t11, t12, t13, t14, t15, t16) = textified_vote.split('\n', 16)
+
+        # Check structure of textified vote
+        if not ((t00.startswith(V_CAST_VOTE) or
+                 t00.startswith(V_AUDIT_REQUEST) or
+                 t00.startswith(V_PUBLIC_AUDIT) or
+                 t00.startswith(V_PUBLIC_AUDIT_FAILED) or
+                 t00.startswith('NONE')) or
+            not t01.startswith(V_FINGERPRINT) or
+            not t02.startswith(V_INDEX) or
+            not t03.startswith(V_PREVIOUS) or
+            not t04.startswith(V_ELECTION) or
+            not t05.startswith(V_ZEUS_PUBLIC) or
+            not t06.startswith(V_TRUSTEES) or
+            not t07.startswith(V_CANDIDATES) or
+            not cryptosys.verify_textified_params(t07, t08, t09) or
+            not t11.startswith(V_ALPHA) or
+            not t12.startswith(V_BETA) or
+            not t13.startswith(V_COMMITMENT) or
+            not t14.startswith(V_CHALLENGE) or
+            not t15.startswith(V_RESPONSE) or
+            not t16.startswith(V_COMMENTS)):
+            err = 'Invalid vote signature structure'
+            raise InvalidSignatureError(err)
+
+        status = t00
+        fingerprint = t01[len(V_FINGERPRINT):]
+        index_str = t02[len(V_INDEX):]
         if index_str == 'NONE':
             index = None
         elif index_str.isdigit():
             index = int(index_str)
         else:
-            e = "Invalid vote index '%s'" % index_str
-            raise InvalidSignatureError(e)
+            err = "Invalid vote index '%s'" % index_str
+            raise InvalidSignatureError(err)
+        previous = t03[len(V_PREVIOUS):]
 
-        previous = m03[len(V_PREVIOUS):]
+        # -------------------------------------------------
+        # TODO: ?
+        zeus_public_key = cryptosys.set_public_key_from_value(
+            t05[len(V_ZEUS_PUBLIC):])
+        # TODO: verify inscribed trustees
+        trustees_str = t06[len(V_TRUSTEES):]
+        trustess = [int(_) for _ in trustees_str.split(' ')] \
+            if trustees_str else []
+        # TODO: verify inscribed candidates
+        candidates_str = t07[len(V_CANDIDATES):]
+        candidates = candidates_str.split(' % ')
+        # TODO: verify inscribed crypto params
+        modulus = mpz(t08[len(V_MODULUS):])
+        order = mpz(t09[len(V_ORDER):])
+        generator = mpz(t10[len(V_GENERATOR):])
+        # -------------------------------------------------
 
-        zeus_public_key = mpz(m05[len(V_ZEUS_PUBLIC):])
-        zeus_public_key = self._set_public_key_from_value(zeus_public_key)
+        alpha = cryptosys.encode_integer(int(t11[len(V_ALPHA):]))
+        beta = cryptosys.encode_integer(int(t11[len(V_BETA):]))
+        commitment = cryptosys.to_exponent(t11[len(V_COMMITMENT):])
+        challenge = cryptosys.to_exponent(t11[len(V_CHALLENGE):])
+        response = cryptosys.to_exponent(t12[len(V_RESPONSE):])
 
-        _m06 = m06[len(V_TRUSTEES):]
-        trustess = [int(_) for _ in _m06.split(' ')] if _m06 else []
+        return (status, fingerprint, index, previous, zeus_public_key, trustees,
+                candidates, modulus, order, generator, alpha, beta,
+                commitment, challenge, response,)
 
-        _m07 = m07[len(V_CANDIDATES):]
-        candidates = _m07.split(' % ')
-
-        modulus = mpz(m08[len(V_MODULUS):])
-        order = mpz(m09[len(V_ORDER):])
-        generator = mpz(m10[len(V_GENERATOR):])
-
-        alpha = ModPrimeElement(mpz(m11[len(V_ALPHA):]), self.__modulus)
-        beta = ModPrimeElement(mpz(m11[len(V_BETA):]), self.__modulus)
-
-        commitment = mpz(m11[len(V_COMMITMENT):])
-        challenge = mpz(m11[len(V_CHALLENGE):])
-        response = mpz(m12[len(V_RESPONSE):])
-
-        comments = m16[len(V_COMMENTS):]
-
-        # Retrieve signed message
-
-        exponent = mpz(exponent)
-        c_1 = mpz(c_1)
-        c_2 = mpz(c_2)
-        signed_message = self._set_signed_message(message,
-            signature=self._set_dsa_signature(exponent, c_1, c_2))
-
-        # Validate signature or raise exception otherwise
-        if not self.verify_text_signature(signed_message, zeus_public_key):
-            e = 'Invalid vote signature'
-            raise InvalidSignatureError(e)
-
-        # Verify encryption proof or raise exception otherwise
-        ciphertext = self.set_ciphertext(alpha, beta)
-        proof = self._set_schnorr_proof(commitment, challenge, response)
-        encrypted = self.set_ciphertext_proof(ciphertext, proof)
-        # if index is not None and not self._verify_encryption(encrypted):
-        if (index is not None and not self._verify_encryption(encrypted)):
-            e = 'Invalid vote encryption'
-            raise InvalidSignatureError(e)
-
-        return True
 
     def sign_vote(self, vote, comments, cryptosys, zeus_private_key,
             zeus_public_key, trustees, candidates):
@@ -137,39 +150,36 @@ class Voting(Stage):
         return vote_signature
 
     def format_vote_signature(self, textified_vote, exponent, c_1, c_2):
-        textified_vote += '\n-----------------\n'
+        textified_vote += V_SEPARATOR
         vote_signature += '%s\n%s\n%s\n' % (str(exponent), str(c_1), str(c_2))
         return vote_signature
 
     def textify_vote(self, vote, comments,
             cryptosys, zeus_public_key, trustees, candidates):
 
-        (crypto, election_key, _, alpha, beta, commitment, challenge, response,
+        (crypto_params, election_key, _, alpha, beta, commitment, challenge, response,
             fingerprint, _, _, previous, index, status, _) = self.extract_vote(vote)
 
         t00 = status if status is not None else 'NONE'
-        t01 = '%s%s' % (V_FINGERPRINT, fingerprint)
-        t02 = '%s%s' % (V_INDEX, ('%d' % index) if index is not None else 'NONE')
-        t03 = '%s%s' % (V_PREVIOUS, (previous,)) 	# '%s%s' % (V_PREVIOUS, previous)
-        t04 = '%s%s' % (V_ELECTION, str(election_key))
-        t05 = '%s%s' % (V_ZEUS_PUBLIC, str(zeus_public_key))
-        t06 = '%s%s' % (V_TRUSTEES, ' '.join(str(_) for _ in trustees))
-        t07 = '%s%s' % (V_CANDIDATES, ' % '.join('%s' % _.encode('utf-8') for _ in candidates))
+        t01 = V_FINGERPRINT + '%s' % fingerprint
+        t02 = V_INDEX + '%d' % (index if index is not None else 'NONE')
+        t03 = V_PREVIOUS + '%s' % (previous,) 	# '%s%s' % (V_PREVIOUS, previous)
+        t04 = V_ELECTION + '%s' % str(election_key)
+        t05 = V_ZEUS_PUBLIC + '%s' % str(zeus_public_key)
+        t06 = V_TRUSTEES + '%s' % ' '.join(str(_) for _ in trustees)
+        t07 = V_CANDIDATES + '%s' % ' % '.join('%s' % _.encode('utf-8') for _ in candidates)
 
-        # TODO: Make it cryptosystem agnostic
-        t08 = ('%s%s' % (V_MODULUS, str(crypto['modulus'])),
-               '%s%s' % (V_ORDER, str(crypto['order'])),
-               '%s%s' % (V_GENERATOR, str(crypto['generator'])))
+        t08, t09, t10 = cryptosys.textify_params(crypto_params)
 
-        t09 = '%s%s' % (V_ALPHA, str(alpha))
-        t10 = '%s%s' % (V_BETA, str(beta))
-        t11 = '%s%s' % (V_COMMITMENT, str(commitment))
-        t12 = '%s%s' % (V_CHALLENGE, str(challenge))
-        t13 = '%s%s' % (V_RESPONSE, str(response))
-        t14 = '%s%s' % (V_COMMENTS, (comments,))
+        t11 = V_ALPHA + '%s' % str(alpha)
+        t12 = V_BETA + '%s' % str(beta)
+        t13 = V_COMMITMENT + '%s' % str(commitment)
+        t14 = V_CHALLENGE + '%s' % str(challenge)
+        t15 = V_RESPONSE + '%s' % str(response)
+        t16 = V_COMMENTS + '%s' % (comments,)
 
-        textified = '\n'.join((t00, t01, t02, t03, t04, t05, t06, t07, *t08,
-            t09, t10, t09, t10, t11, t12, t13, t14))
+        textified = '\n'.join((t00, t01, t02, t03, t04, t05, t06, t07, t08,
+            t09, t10, t11, t12, t13, t14, t15, t6))
         return textified
 
     def validate_submitted_vote(self, cryptosys, vote):
@@ -185,19 +195,19 @@ class Voting(Stage):
         encrypted_ballot = vote['encrypted_ballot']
         fingerprint = vote['fingerprint']
 
-        if not cryptosys._verify_encryption(encrypted_ballot):
-            e = 'Invalid ballot encryption'
-            raise InvalidVoteError(e)
+        if not cryptosys.verify_encryption(encrypted_ballot):
+            err = 'Invalid ballot encryption'
+            raise InvalidVoteError(err)
         if fingerprint != cryptosys.make_fingerprint(encrypted_ballot):
-            e = 'Invalid fingerprint'
-            raise InvalidVoteError(e)
+            err = 'Invalid fingerprint'
+            raise InvalidVoteError(err)
 
         return fingerprint
 
     def extract_vote(self, vote, encode_func, to_exponent=int):
         """
         """
-        crypto = vote['crypto']
+        crypto_params = vote['crypto']
         election_key = vote['public']
         voter_key = vote['voter']
         alpha, beta, commitment, challenge, response = \
@@ -211,21 +221,9 @@ class Voting(Stage):
         status = extract_value(vote, 'status', str)
         plaintext = extract_value(vote, 'plaintext', encode_func)
 
-        return (crypto,
-                election_key,
-                voter_key,
-                alpha,
-                beta,
-                commitment,
-                challenge,
-                response,
-                fingerprint,
-                audit_code,
-                voter_secret,
-                previous,
-                index,
-                status,
-                plaintext,)
+        return (crypto_params, election_key, voter_key, alpha, beta, commitment,
+                challenge, response, fingerprint, audit_code, voter_secret,
+                previous, index, status, plaintext,)
 
     def extract_encrypted_ballot(self, cryptosys, encrypted_ballot):
         ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)

@@ -28,3 +28,5 @@ V_COMMITMENT    =   'COMMITMENT: '
 V_CHALLENGE     =   'CHALLENGE: '
 V_RESPONSE      =   'RESPONSE: '
 V_COMMENTS      =   'COMMENTS: '
+
+V_SEPARATOR = '\n-----------------\n'

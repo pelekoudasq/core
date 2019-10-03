@@ -10,12 +10,12 @@ from ..abstracts import ElGamalCrypto
 from ..exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
     InvalidKeyError, InvalidVoteError, InvalidSignatureError, InvalidFactorError,
     BallotDecryptionError)
-# from elections.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION,
-#     V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR, V_ORDER,
-#     V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS, V_INDEX,
-#     V_CAST_VOTE, V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED)
+# from elections.constants import V_MODULUS, V_ORDER, V_GENERATOR
 from utils import hash_texts, hash_encode, hash_decode, extract_value
 
+V_MODULUS   = 'MODULUS: '
+V_ORDER     = 'ORDER: '
+V_GENERATOR = 'GENERATOR: '
 
 class ModPrimeCrypto(ElGamalCrypto):
     """
@@ -102,24 +102,24 @@ class ModPrimeCrypto(ElGamalCrypto):
             # Algebraic fact: the condition p = 3 mod 4 guarantees direct
             # solvability of the congruence x ^ 2 = a (mod p), a E Z*_p,
             # allowing for efficient verification of quadratic residues
-            e = 'Provided modulus is not 3 mod 4'
-            raise WrongCryptoError(e)
+            err = 'Provided modulus is not 3 mod 4'
+            raise WrongCryptoError(err)
 
         if prime_order and not is_prime(order):
-            e = 'Order of the requested group is not prime'
-            raise WrongCryptoError(e)
+            err = 'Order of the requested group is not prime'
+            raise WrongCryptoError(err)
 
         if not allow_weakness:
 
             MIN_MOD_SIZE = min_mod_size or cls.MIN_MOD_SIZE
             if modulus.bit_length() < MIN_MOD_SIZE:
-                e = 'Provided modulus is < %d bits long' % MIN_MOD_SIZE
-                raise WeakCryptoError(e)
+                err = 'Provided modulus is < %d bits long' % MIN_MOD_SIZE
+                raise WeakCryptoError(err)
 
             MIN_GEN_SIZE = min_gen_size or cls.MIN_GEN_SIZE
             if generator.bit_length < MIN_GEN_SIZE:
-                e = 'Generator is < %d bits long' % MIN_GEN_SIZE
-                raise WeakCryptoError(e)
+                err = 'Generator is < %d bits long' % MIN_GEN_SIZE
+                raise WeakCryptoError(err)
 
     @classmethod
     def _extract_config(cls, config):
@@ -165,6 +165,34 @@ class ModPrimeCrypto(ElGamalCrypto):
         __g = self.__generator
 
         return __p, __q, __g
+
+    def to_exponent(self, integer):
+        """
+        :type integer: int
+        :rtype: ModPrimeElement
+        """
+        return mpz(integer)
+
+    def encode_integer(self, integer):
+        """
+        :type integer: int
+        :rtype: ModPrimeElement
+        """
+        element = self.__group.encode_integer(integer)
+        return element
+
+
+    def textify_params(self, crypto_params):
+        t07 = V_MODULUS + '%s' % str(crypto_params['modulus'])
+        t08 = V_ORDER + '%s' % str(crypto_params['order'])
+        t09 = V_GENERATOR + '%s' % str(crypto_params['generator'])
+        return t07, t08, t09
+
+    def verify_textified_params(self, t07, t08, t09):
+        """
+        """
+        return t07.startswith(V_MODULUS) \
+            and t08.startswith(V_ORDER) and t09.startswith(V_GENERATOR)
 
     @property
     def group(self):
@@ -220,8 +248,8 @@ class ModPrimeCrypto(ElGamalCrypto):
             private_key = __group.random_exponent(min=3)
 
         elif not 1 < private_key < self.__order:
-            e = 'Provided private key exceeds the allowed range'
-            raise InvalidKeyError(e)
+            err = 'Provided private key exceeds the allowed range'
+            raise InvalidKeyError(err)
         else:
             private_key = mpz(private_key)               # in case int was given
 
@@ -270,14 +298,14 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return self._schnorr_verify(proof=proof, public=public_key)
 
-    def _set_public_key_from_value(self, value, proof=None):
+    def set_public_key_from_value(self, value, proof=None):
         """
-        :type value: mpz
+        :type value: int or mpz
         :type proof: dict
         :rtype: dict
         """
         public_key = {
-            'value': self.__GroupElement(value, self.__modulus),
+            'value': self.__GroupElement(mpz(value), self.__modulus),
             'proof': proof
         }
         return public_key
@@ -325,7 +353,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         response = __group.add_exponents(randomness, challenge * secret) # r + c * x
 
-        proof = self._set_schnorr_proof(commitment, challenge, response)
+        proof = self.set_schnorr_proof(commitment, challenge, response)
         return proof
 
     def _schnorr_verify(self, proof, public, *extras):
@@ -515,7 +543,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         r_inv = invert(randomness, __q)                                  # r ^ -1 modq
         c_2 = mul(exps, r_inv) % __q                                     # (e + x * c_1)/r modq
 
-        signature = self._set_dsa_signature(exponent, c_1, c_2)
+        signature = self.set_dsa_signature(exponent, c_1, c_2)
         return signature
 
 
@@ -600,7 +628,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         hashed_message = self.__group.exponent_from_texts(message)
         signature = self._dsa_signature(hashed_message, private_key)
 
-        signed_message = self._set_signed_message(message, signature)
+        signed_message = self.set_signed_message(message, signature)
         return signed_message
 
     def verify_text_signature(self, signed_message, public_key):
@@ -741,7 +769,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return proof
 
-    def _verify_encryption(self, ciphertext_proof):
+    def verify_encryption(self, ciphertext_proof):
         """
         Assuming a dictionary
 
@@ -931,13 +959,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         _, encrypted, fingerprint, _, _, _, _, _, _ = self.extract_vote(vote)
 
-        if not self._verify_encryption(encrypted):
-            e = 'Invalid encryption proof'
-            raise InvalidVoteError(e)
+        if not self.verify_encryption(encrypted):
+            err = 'Invalid encryption proof'
+            raise InvalidVoteError(err)
 
         if fingerprint != self.make_fingerprint(encrypted):
-            e = 'Invalid fingerprint'
-            raise InvalidVoteError(e)
+            err = 'Invalid fingerprint'
+            raise InvalidVoteError(err)
 
         return fingerprint
 
@@ -1035,8 +1063,8 @@ class ModPrimeCrypto(ElGamalCrypto):
             not m14.startswith(V_CHALLENGE) or
             not m15.startswith(V_RESPONSE) or
             not m16.startswith(V_COMMENTS)):
-            e = 'Invalid vote signature structure'
-            raise InvalidSignatureError(e)
+            err = 'Invalid vote signature structure'
+            raise InvalidSignatureError(err)
 
         # Extract data
 
@@ -1049,13 +1077,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         elif index_str.isdigit():
             index = int(index_str)
         else:
-            e = "Invalid vote index '%s'" % index_str
-            raise InvalidSignatureError(e)
+            err = "Invalid vote index '%s'" % index_str
+            raise InvalidSignatureError(err)
 
         previous = m03[len(V_PREVIOUS):]
 
         zeus_public_key = mpz(m05[len(V_ZEUS_PUBLIC):])
-        zeus_public_key = self._set_public_key_from_value(zeus_public_key)
+        zeus_public_key = self.set_public_key_from_value(zeus_public_key)
 
         _m06 = m06[len(V_TRUSTEES):]
         trustess = [int(_) for _ in _m06.split(' ')] if _m06 else []
@@ -1081,22 +1109,22 @@ class ModPrimeCrypto(ElGamalCrypto):
         exponent = mpz(exponent)
         c_1 = mpz(c_1)
         c_2 = mpz(c_2)
-        signed_message = self._set_signed_message(message,
-            signature=self._set_dsa_signature(exponent, c_1, c_2))
+        signed_message = self.set_signed_message(message,
+            signature=self.set_dsa_signature(exponent, c_1, c_2))
 
         # Validate signature or raise exception otherwise
         if not self.verify_text_signature(signed_message, zeus_public_key):
-            e = 'Invalid vote signature'
-            raise InvalidSignatureError(e)
+            err = 'Invalid vote signature'
+            raise InvalidSignatureError(err)
 
         # Verify encryption proof or raise exception otherwise
         ciphertext = self.set_ciphertext(alpha, beta)
-        proof = self._set_schnorr_proof(commitment, challenge, response)
+        proof = self.set_schnorr_proof(commitment, challenge, response)
         encrypted = self.set_ciphertext_proof(ciphertext, proof)
-        # if index is not None and not self._verify_encryption(encrypted):
-        if (index is not None and not self._verify_encryption(encrypted)):
-            e = 'Invalid vote encryption'
-            raise InvalidSignatureError(e)
+        # if index is not None and not self.verify_encryption(encrypted):
+        if (index is not None and not self.verify_encryption(encrypted)):
+            err = 'Invalid vote encryption'
+            raise InvalidSignatureError(err)
 
         return True
 
@@ -1121,7 +1149,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             if not voter_secret:
                 missing.append(vote)
                 continue
-            if not self._verify_encryption(encrypted):
+            if not self.verify_encryption(encrypted):
                 failed.append(vote)
                 continue
 
@@ -1168,14 +1196,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         for public_key in public_keys:
             combined = combined * public_key
         return combined
-
-    def encode_integer(self, integer):
-        """
-        :type integer: int
-        :rtype: ModPrimeElement
-        """
-        element = self.__group.encode_integer(integer)
-        return element
 
     def set_vote(self, voter, encrypted, fingerprint, audit_code=None, publish=None,
             voter_secret=None, previous=None, index=None, status=None, plaintext=None):
@@ -1400,14 +1420,14 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # Delete this snipset in alterative version
         if not trustee_public or not trustee_factors:
-            e = 'Malformed trustee factors'
-            raise InvalidFactorError(e)
+            err = 'Malformed trustee factors'
+            raise InvalidFactorError(err)
 
         trustee_public = self.get_value(trustee_public)
 
         if not self._verify_decryption_factors(trustee_public, mixed_ballots, decryption_factors):
-            e = 'Invalid trustee factors'
-            raise InvalidFactorError(e)
+            err = 'Invalid trustee factors'
+            raise InvalidFactorError(err)
 
         return True
 
@@ -1469,8 +1489,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         # Lengths check
         if len(trustees_factors) is not len(public_shares):
-            e = 'Unequal number of public shares and trustees'
-            raise BallotDecryptionError(e)
+            err = 'Unequal number of public shares and trustees'
+            raise BallotDecryptionError(err)
 
         # Remove proofs from trustees' public keys
         aux_factors = {}
@@ -1486,18 +1506,18 @@ class ModPrimeCrypto(ElGamalCrypto):
             try:
                 trustee_factors = trustees_factors[trustee_public]
             except KeyError:
-                e = 'Trustee mismatch with public shares'
-                raise BallotDecryptionError(e)
+                err = 'Trustee mismatch with public shares'
+                raise BallotDecryptionError(err)
 
             if not self._verify_decryption_factors(trustee_public, mixed_ballots, trustee_factors):
-                e = 'Trustee\'s factors could not be verified'
-                raise BallotDecryptionError(e)
+                err = 'Trustee\'s factors could not be verified'
+                raise BallotDecryptionError(err)
 
         # Verify zeus's factors
         zeus_public_key = self.get_value(zeus_public_key)
         if not self._verify_decryption_factors(zeus_public_key, mixed_ballots, zeus_factors):
-            e = 'Zeus\'s factors could not be verified'
-            raise BallotDecryptionError(e)
+            err = 'Zeus\'s factors could not be verified'
+            raise BallotDecryptionError(err)
 
         return True
 

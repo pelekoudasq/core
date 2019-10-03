@@ -66,7 +66,7 @@ class KeyManager(object, metaclass=ABCMeta):
         return public_key
 
     @abstractmethod
-    def _set_public_key_from_value(self, value, proof=None):
+    def set_public_key_from_value(self, value, proof=None):
         """
         """
 
@@ -111,7 +111,29 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
         """
 
+    # System
+
+    @abstractmethod
+    def parameters(self):
+        """
+        """
+
+    @abstractmethod
+    def textify_params(self, crypto_params):
+        """
+        """
+
+    @abstractmethod
+    def verify_textified_params(self, t07, t08, t09):
+        """
+        """
+
     # Encoding
+
+    @abstractmethod
+    def to_exponent(self, integer):
+        """
+        """
 
     @abstractmethod
     def encode_integer(self, integer):
@@ -131,7 +153,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
         pass
 
-    def _set_schnorr_proof(self, commitment, challenge, response):
+    def set_schnorr_proof(self, commitment, challenge, response):
         """
         """
         proof = {
@@ -203,7 +225,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
         """
 
-    def _set_dsa_signature(self, exponent, c_1, c_2):
+    def set_dsa_signature(self, exponent, c_1, c_2):
         """
         """
         signature = {
@@ -239,7 +261,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
         """
 
-    def _set_signed_message(self, message, signature):
+    def set_signed_message(self, message, signature):
         """
         :type message: str
         :type signature: dict
@@ -285,7 +307,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def _verify_encryption(self, ciphertext_proof):
+    def verify_encryption(self, ciphertext_proof):
         """
         """
 

@@ -178,18 +178,18 @@ class ModPrimeSubgroup(Group):
         root_order = root_order
 
         if modulus <= 2 or not is_prime(modulus):
-            e = 'Provided modulus is not an odd prime'
-            raise AlgebraError(e)
+            err = 'Provided modulus is not an odd prime'
+            raise AlgebraError(err)
 
         if root_order <= 0 or root_order >= modulus:
-            e = 'Provided order of unit root is not in the allowed range'
-            raise AlgebraError(e)
+            err = 'Provided order of unit root is not in the allowed range'
+            raise AlgebraError(err)
 
         order, s = divmod(modulus - 1, root_order)
 
         if s != 0:
-            e = 'Provided order of unit root does not divide the group\'s order'
-            raise AlgebraError(e)
+            err = 'Provided order of unit root does not divide the group\'s order'
+            raise AlgebraError(err)
 
         self.__modulus = modulus
         self.__order = order
@@ -233,8 +233,8 @@ class ModPrimeSubgroup(Group):
         try:
             return self.__generator
         except AttributeError:
-            e = 'No generator has been yet specified for this group'
-            raise AlgebraError(e)
+            err = 'No generator has been yet specified for this group'
+            raise AlgebraError(err)
 
     def parameters(self):
         """
@@ -380,8 +380,8 @@ class ModPrimeSubgroup(Group):
 
         integer += 1
         if not 0 < integer < __order:
-            e = 'Provided integer is not in the allowed range'
-            raise AlgebraError(e)
+            err = 'Provided integer is not in the allowed range'
+            raise AlgebraError(err)
 
         value = mpz(integer)
 

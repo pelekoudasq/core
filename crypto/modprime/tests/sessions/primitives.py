@@ -248,7 +248,7 @@ if __name__=='__main__':
     ciphertext_proof = system.set_ciphertext_proof(ciphertext, proof)
 
     # Valid case
-    verified = system._verify_encryption(ciphertext_proof)
+    verified = system.verify_encryption(ciphertext_proof)
     if verified:
         print(' + Valid encryption successfully verified')
     else:
@@ -259,7 +259,7 @@ if __name__=='__main__':
     corrupt_ciphertext = deepcopy(ciphertext)
     corrupt_ciphertext['alpha'].reduce_value()
     corrupt_ciphertext_proof = system.set_ciphertext_proof(corrupt_ciphertext, proof)
-    verified = system._verify_encryption(corrupt_ciphertext_proof)
+    verified = system.verify_encryption(corrupt_ciphertext_proof)
     if not verified:
         print(' + Invalid encryption (tampered decryptor) successfully detected')
     else:
@@ -270,7 +270,7 @@ if __name__=='__main__':
     corrupt_ciphertext = deepcopy(ciphertext)
     corrupt_ciphertext['beta'].reduce_value()
     corrupt_ciphertext_proof = system.set_ciphertext_proof(corrupt_ciphertext, proof)
-    verified = system._verify_encryption(corrupt_ciphertext_proof)
+    verified = system.verify_encryption(corrupt_ciphertext_proof)
     if not verified:
         print(' + Invalid encryption (tampered beta) successfully detected')
     else:
@@ -281,7 +281,7 @@ if __name__=='__main__':
     corrupt_proof = deepcopy(proof)
     corrupt_proof['commitment'].reduce_value()
     corrupt_ciphertext_proof = system.set_ciphertext_proof(ciphertext, corrupt_proof)
-    verified = system._verify_encryption(corrupt_ciphertext_proof)
+    verified = system.verify_encryption(corrupt_ciphertext_proof)
     if not verified:
         print(' + Invalid encryption-proof (tampered commitment) successfully detected')
     else:
@@ -292,7 +292,7 @@ if __name__=='__main__':
     corrupt_proof = deepcopy(proof)
     corrupt_proof['challenge'] += 1
     corrupt_ciphertext_proof = system.set_ciphertext_proof(ciphertext, corrupt_proof)
-    verified = system._verify_encryption(corrupt_ciphertext_proof)
+    verified = system.verify_encryption(corrupt_ciphertext_proof)
     if not verified:
         print(' + Invalid encryption-proof (tampered challenge) successfully detected')
     else:
@@ -303,7 +303,7 @@ if __name__=='__main__':
     corrupt_proof = deepcopy(proof)
     corrupt_proof['response'] += 1
     corrupt_ciphertext_proof = system.set_ciphertext_proof(ciphertext, corrupt_proof)
-    verified = system._verify_encryption(corrupt_ciphertext_proof)
+    verified = system.verify_encryption(corrupt_ciphertext_proof)
     if not verified:
         print(' + Invalid encryption-proof (tampered response) successfully detected')
     else:

@@ -14,9 +14,9 @@ def _raise_RoundNotVerifiedError(round_nr, cipher_nr, bit):
     :type cipher_nr: int
     :type bit: int
     """
-    e = 'MIXING VERIFICATION FAILED AT ROUND %d CIPHER %d bit %d' % (
+    err = 'MIXING VERIFICATION FAILED AT ROUND %d CIPHER %d bit %d' % (
             round_nr, cipher_nr, bit)
-    raise RoundNotVerifiedError(e)
+    raise RoundNotVerifiedError(err)
 
 
 def compute_mix_challenge(cipher_mix):
@@ -113,8 +113,8 @@ def verify_mix_round(round_nr, bit, original_ciphers, mixed_ciphers,
         preimages = ciphers
         images = mixed_ciphers
     else:
-        e = 'This should be impossible. Something is broken'
-        raise AssertionError(e)
+        err = 'This should be impossible. Something is broken'
+        raise AssertionError(err)
 
     count = 0
     for j in range(nr_ciphers):

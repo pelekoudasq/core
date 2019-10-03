@@ -278,7 +278,7 @@ def test_encryption_with_secret_and_proof(system, element, private_key, public_k
     ciphertext, randomness = system._encrypt(element, public_key, get_secret=True)
     proof = system.prove_encryption(ciphertext, randomness)
     ciphertext_proof = system.set_ciphertext_proof(ciphertext, proof)
-    verified = system._verify_encryption(ciphertext_proof)
+    verified = system.verify_encryption(ciphertext_proof)
 
     assert verified
 
@@ -347,8 +347,8 @@ for (system, element, private_key, public_key) in __system__element__private_key
 
 @pytest.mark.parametrize('system, ciphertext_proof, verified',
     __system__ciphertext_proof__verified)
-def test_verify_encryption(system, ciphertext_proof, verified):
-    assert system._verify_encryption(ciphertext_proof) is verified
+def testverify_encryption(system, ciphertext_proof, verified):
+    assert system.verify_encryption(ciphertext_proof) is verified
 
 @pytest.mark.parametrize('system, ciphertext, decryptor, element',
     __system__ciphertext__decryptor__element)
