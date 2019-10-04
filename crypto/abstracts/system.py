@@ -119,14 +119,31 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def textify_params(self, crypto_params):
+    def _parameters(self):
         """
         """
 
     @abstractmethod
-    def verify_textified_params(self, t07, t08, t09):
+    def textify_params(self, crypto_params):
         """
+        For testing voting
         """
+
+    @abstractmethod
+    def check_textified_params(self, t08, t09, t10):
+        """
+        For testing voting
+        """
+
+    @abstractmethod
+    def mk_vote_crypto(self, t08, t09, t10):
+        """
+        Formats appropriately provided texts (tought of as crypto parameters
+        extracted from some vote-text), so that they can be compared to the
+        present cryptosystem's parameters
+        """
+
+
 
     # Encoding
 

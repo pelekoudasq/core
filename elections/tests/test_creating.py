@@ -13,36 +13,30 @@ voters = election.config['voters']
 
 
 # Run election and test current stage
-
 creating = run_until_creating_stage(election)
 def test_current_stage():
     assert election._get_current_stage() is creating
 
 # Run stage and check for updates
-
 def test_stage_finalization():
-    assert all([
-        election.get_zeus_private_key() == None,
-        election.get_zeus_public_key() == None,
-        election.get_trustees() == None,
-        election.get_election_key() == None,
-        election.get_candidates() == None,
-        election.get_voters() == None,
-        election.get_audit_codes() == None,
-    ])
+    assert all([election.get_zeus_private_key() == None,
+                election.get_zeus_public_key() == None,
+                election.get_trustees() == {},
+                election.get_election_key() == None,
+                election.get_candidates() == [],
+                election.get_voters() == {},
+                election.get_audit_codes() == {},])
     creating.run()
-    assert all([
-        election.get_zeus_private_key() != None,
-        election.get_zeus_public_key() != None,
-        election.get_trustees() != None,
-        election.get_election_key() != None,
-        election.get_candidates() != None,
-        election.get_voters() != None,
-        election.get_audit_codes() != None,
-    ])
+    assert all([election.get_zeus_private_key() != None,
+                election.get_zeus_public_key() != None,
+                election.get_trustees() != {},
+                election.get_election_key() != None,
+                election.get_candidates() != [],
+                election.get_voters() != {},
+                election.get_audit_codes() != {},])
 
 
-# Zeus keypair creation
+# Test zeus keypair creation
 
 def test_create_zeus_keypair():
     cryptosys = election.get_cryptosys()
@@ -56,7 +50,7 @@ def test_create_zeus_keypair_Abortion():
         creating.create_zeus_keypair(1)
 
 
-# Trustees validation
+# Test trustees validation
 
 def test_validate_trustees():
     validated_trustees = creating.validate_trustees(trustees)
@@ -69,7 +63,7 @@ def test_validate_trustees_Abortion():
         creating.validate_trustees(corrupt_trustees)
 
 
-# Election key computation
+# Test election key computation
 
 def test_compute_election_key():
     election_key_hex = \
@@ -88,7 +82,7 @@ def test_compute_election_key():
         election_key['proof'] == None
 
 
-# Candidates creation
+# Test candidates creation
 
 def test_create_candidates():
     assert candidates == creating.create_candidates(candidates)
@@ -104,7 +98,7 @@ def test_create_candidates_Abortion(candidates):
         creating.create_candidates(candidates)
 
 
-# Voters and audit codes creation
+# Test voters and audit codes creation
 
 def test_create_voters_and_audit_codes():
     new_voters, audit_codes = creating.create_voters_and_audit_codes(voters)

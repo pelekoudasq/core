@@ -15,26 +15,26 @@ mixnet_config = election.config['mixnet']['config']
 
 
 # Run election and test current stage
-
 uninitialized = run_until_uninitialized_stage(election)
 def test_current_stage():
     assert election._get_current_stage() is uninitialized
 
 # Run stage and check for updates
-
 def test_stage_finalization():
     assert all([
         election.get_cryptosys() == None,
+        election.get_crypto_params() == {},
         election.get_mixnet() == None,
     ])
     uninitialized.run()
     assert all([
         election.get_cryptosys() != None,
+        election.get_crypto_params() == election.get_cryptosys().parameters(),
         election.get_mixnet() != None,
     ])
 
 
-# Cryptosystem initialization
+# Test cryptosystem initialization
 
 def test_init_cryptosys():
     cryptosys = uninitialized.init_cryptosys(crypto_cls, crypto_config)
@@ -50,7 +50,7 @@ def test_init_cryptosys_Abortion(crypto_cls, crypto_config):
         uninitialized.init_cryptosys(crypto_cls, crypto_config)
 
 
-# Mixnet intitialization
+# Test mixnet intitialization
 
 def test_init_mixnet():
     cryptosys = uninitialized.init_cryptosys(crypto_cls, crypto_config)
@@ -63,10 +63,11 @@ def test_init_mixnet():
 
 class PseudoMixnet(object):
     def update(self, *args): pass
+pseudo_config = {}
 
 __abort_cases = [
     (PseudoMixnet, mixnet_config),
-    (mixnet_cls, {})
+    (mixnet_cls, pseudo_config)
 ]
 
 @pytest.mark.parametrize('mixnet_cls, mixnet_config', __abort_cases)

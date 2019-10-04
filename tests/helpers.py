@@ -30,16 +30,16 @@ def mk_random_vote(election, voter_key=None, audit_code=None, selection=None, pu
     voters = election.get_voters()
     if voter_key is None:
         voter_key = rand_choice(list(voters.keys()))
-    voter_codes = election.get_voter_codes(voter_key)
-    if not voter_codes:
+    voter_audit_codes = election.get_voter_audit_codes(voter_key)
+    if not voter_audit_codes:
         err = "Valid audit code requested but voter not found!"
         raise ValueError(err)
     if not audit_code:
-        audit_code = voter_codes[random_integer(0, 3)]
+        audit_code = voter_audit_codes[random_integer(0, 3)]
     valid = True
     if voter_key not in voters:
         valid = False
-    elif audit_code not in voter_codes:
+    elif audit_code not in voter_audit_codes:
         valid = False
 
     nr_candidates = len(election.get_candidates())

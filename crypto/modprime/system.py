@@ -181,18 +181,29 @@ class ModPrimeCrypto(ElGamalCrypto):
         element = self.__group.encode_integer(integer)
         return element
 
-
     def textify_params(self, crypto_params):
-        t07 = V_MODULUS + '%s' % str(crypto_params['modulus'])
-        t08 = V_ORDER + '%s' % str(crypto_params['order'])
-        t09 = V_GENERATOR + '%s' % str(crypto_params['generator'])
-        return t07, t08, t09
+        t08 = V_MODULUS + '%s' % str(crypto_params['modulus'])
+        t09 = V_ORDER + '%s' % str(crypto_params['order'])
+        t10 = V_GENERATOR + '%s' % str(crypto_params['generator'])
+        return t08, t09, t10
 
-    def verify_textified_params(self, t07, t08, t09):
+    def check_textified_params(self, t08, t09, t10):
         """
         """
-        return t07.startswith(V_MODULUS) \
-            and t08.startswith(V_ORDER) and t09.startswith(V_GENERATOR)
+        return t08.startswith(V_MODULUS) \
+            and t09.startswith(V_ORDER) and t10.startswith(V_GENERATOR)
+
+    def mk_vote_crypto(self, t08, t09, t10):
+        """
+        Formats appropriately provided texts (tought of as crypto parameters
+        extracted from some vote-text), so that they can be compared to the
+        present cryptosystem's parameters
+        """
+        modulus = mpz(t08[len(V_MODULUS):])
+        order = mpz(t08[len(V_ORDER):])
+        generator = ModPrimeElement(mpz(generator), self.__modulus)
+
+        return modulus, order, generator
 
     @property
     def group(self):

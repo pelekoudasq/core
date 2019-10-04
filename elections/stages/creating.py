@@ -118,9 +118,9 @@ class Creating(Stage):
                 # ~ Note for dev: this may lead to infinite loop for small
                 # ~ values of VOTER_KEY_CEIL! (not the case in production)
                 voter_key = generate_random(VOTER_KEY_CEIL)
-            voter_codes = list(generate_random(voter_slot_ceil) for _ in range(3))
+            voter_audit_codes = list(generate_random(voter_slot_ceil) for _ in range(3))
             new_voters[voter_key] = (name, weight)
-            audit_codes[voter_key] = voter_codes
+            audit_codes[voter_key] = voter_audit_codes
         audit_code_set = set(tuple(values) for values in audit_codes.values())
         if len(audit_code_set) < 0.5 * len(new_voters):
             err = 'Insufficient slot variation attained'
