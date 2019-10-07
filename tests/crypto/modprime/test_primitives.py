@@ -2,9 +2,9 @@ import pytest
 from copy import deepcopy
 from gmpy2 import mpz, powmod, invert
 
-from crypto.modprime import ModPrimeElement
-from crypto.exceptions import InvalidKeyError
-from utils.random import random_integer
+from zeus_core.crypto.modprime import ModPrimeElement
+from zeus_core.crypto.exceptions import InvalidKeyError
+from zeus_core.utils.random import random_integer
 
 from tests.constants import (MESSAGE,
     RES11_SYSTEM, RES11_KEY, RES11_PUBLIC, RES11_DDH,
@@ -118,7 +118,7 @@ def test_keygen_with_InvalidKeyError():
 @pytest.mark.parametrize('system', [_2048_SYSTEM, _4096_SYSTEM,])
 def test_keygen_with_random_private(system):
     keypair = system.keygen()
-    _, public_key = system._extract_keypair(keypair)
+    _, public_key = system.extract_keypair(keypair)
     public_key, proof = system._extract_public_key(public_key)
 
     assert system._schnorr_verify(proof, public_key)
@@ -132,7 +132,7 @@ __system__secret__public = [
 @pytest.mark.parametrize('system, secret, public', __system__secret__public)
 def test_keygen_with_non_random_private(system, secret, public):
     keypair = system.keygen(secret)
-    _, public_key = system._extract_keypair(keypair)
+    _, public_key = system.extract_keypair(keypair)
     public_key, proof = system._extract_public_key(public_key)
 
     valid = system._schnorr_verify(proof, public_key)
@@ -178,8 +178,8 @@ for (system, private_key) in (
     (_4096_SYSTEM, _4096_SECRET),
 ):
     keypair = system.keygen(mpz(private_key))
-    private_key, public_key = system._extract_keypair(keypair)
-    public_key = system._get_value(public_key)
+    private_key, public_key = system.extract_keypair(keypair)
+    public_key = system.get_value(public_key)
 
     exponent = mpz(exponent)
 
@@ -222,7 +222,7 @@ for (system, private_key) in (
     keypair = system.keygen(mpz(private_key))
 
     # Valid case
-    private_key, public_key = system._extract_keypair(keypair)
+    private_key, public_key = system.extract_keypair(keypair)
     message = MESSAGE
     signed_message = system.sign_text_message(message, private_key)
     __system__signed_message__public_key__verified.append(
@@ -258,8 +258,8 @@ for (system, private_key) in (
 ):
     element = ModPrimeElement(mpz(__element), system.group.modulus)
     keypair = system.keygen(private_key)
-    private_key, public_key = system._extract_keypair(keypair)
-    public_key = system._get_value(public_key)
+    private_key, public_key = system.extract_keypair(keypair)
+    public_key = system.get_key(public_key)
 
     __system__element__private_key__public_key.append(
         (system, element, private_key, public_key))
@@ -276,9 +276,9 @@ def test_encryption(system, element, private_key, public_key):
     __system__element__private_key__public_key)
 def test_encryption_with_secret_and_proof(system, element, private_key, public_key):
     ciphertext, randomness = system._encrypt(element, public_key, get_secret=True)
-    proof = system._prove_encryption(ciphertext, randomness)
-    ciphertext_proof = system._set_ciphertext_proof(ciphertext, proof)
-    verified = system._verify_encryption(ciphertext_proof)
+    proof = system.prove_encryption(ciphertext, randomness)
+    ciphertext_proof = system.set_ciphertext_proof(ciphertext, proof)
+    verified = system.verify_encryption(ciphertext_proof)
 
     assert verified
 
@@ -286,9 +286,11 @@ __system__ciphertext_proof__verified = []
 __system__ciphertext__decryptor__element = []
 
 for (system, element, private_key, public_key) in __system__element__private_key__public_key:
+    print(type(element))
+    print(type(public_key))
     ciphertext, randomness = system._encrypt(element, public_key, get_secret=True)
-    proof = system._prove_encryption(ciphertext, randomness)
-    ciphertext_proof = system._set_ciphertext_proof(ciphertext, proof)
+    proof = system.prove_encryption(ciphertext, randomness)
+    ciphertext_proof = system.set_ciphertext_proof(ciphertext, proof)
 
     # Encryption proof
 
@@ -297,56 +299,56 @@ for (system, element, private_key, public_key) in __system__element__private_key
         (system, ciphertext_proof, True))
 
     # Corrupt ciphertext by tampering devryptor
-    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    ciphertext, proof = system.extract_ciphertext_proof(ciphertext_proof)
     corrupt_ciphertext = deepcopy(ciphertext)
     corrupt_ciphertext['alpha'].reduce_value()
-    corrupt_ciphertext_proof = system._set_ciphertext_proof(corrupt_ciphertext, proof)
+    corrupt_ciphertext_proof = system.set_ciphertext_proof(corrupt_ciphertext, proof)
     __system__ciphertext_proof__verified.append(
         (system, corrupt_ciphertext_proof, False))
 
     # Corrupt ciphertext by tampering beta
-    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    ciphertext, proof = system.extract_ciphertext_proof(ciphertext_proof)
     corrupt_ciphertext = deepcopy(ciphertext)
     corrupt_ciphertext['beta'].reduce_value()
-    corrupt_ciphertext_proof = system._set_ciphertext_proof(corrupt_ciphertext, proof)
+    corrupt_ciphertext_proof = system.set_ciphertext_proof(corrupt_ciphertext, proof)
     __system__ciphertext_proof__verified.append(
         (system, corrupt_ciphertext_proof, False))
 
     # Corrupt proof by tampering commitment
-    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    ciphertext, proof = system.extract_ciphertext_proof(ciphertext_proof)
     corrupt_proof = deepcopy(proof)
     corrupt_proof['commitment'].reduce_value()
-    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    corrupt_ciphertext_proof = system.set_ciphertext_proof(ciphertext, corrupt_proof)
     __system__ciphertext_proof__verified.append(
         (system, corrupt_ciphertext_proof, False))
 
     # Corrupt proof by tampering challenge
-    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    ciphertext, proof = system.extract_ciphertext_proof(ciphertext_proof)
     corrupt_proof = deepcopy(proof)
     corrupt_proof['challenge'] += 1
-    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    corrupt_ciphertext_proof = system.set_ciphertext_proof(ciphertext, corrupt_proof)
     __system__ciphertext_proof__verified.append(
         (system, corrupt_ciphertext_proof, False))
 
     # Corrupt proof by tampering response
-    ciphertext, proof = system._extract_ciphertext_proof(ciphertext_proof)
+    ciphertext, proof = system.extract_ciphertext_proof(ciphertext_proof)
     corrupt_proof = deepcopy(proof)
     corrupt_proof['response'] += 1
-    corrupt_ciphertext_proof = system._set_ciphertext_proof(ciphertext, corrupt_proof)
+    corrupt_ciphertext_proof = system.set_ciphertext_proof(ciphertext, corrupt_proof)
     __system__ciphertext_proof__verified.append(
         (system, corrupt_ciphertext_proof, False))
 
     # Decryption
-    
-    alpha, _ = system._extract_ciphertext(ciphertext)
+
+    alpha, _ = system.extract_ciphertext(ciphertext)
     decryptor = alpha ** private_key
     __system__ciphertext__decryptor__element.append(
         (system, ciphertext, decryptor, element))
 
 @pytest.mark.parametrize('system, ciphertext_proof, verified',
     __system__ciphertext_proof__verified)
-def test_verify_encryption(system, ciphertext_proof, verified):
-    assert system._verify_encryption(ciphertext_proof) is verified
+def testverify_encryption(system, ciphertext_proof, verified):
+    assert system.verify_encryption(ciphertext_proof) is verified
 
 @pytest.mark.parametrize('system, ciphertext, decryptor, element',
     __system__ciphertext__decryptor__element)
@@ -395,7 +397,7 @@ for system in (
     __system__ciphertext__public__secret__decoded)
 def test_decryption_with_randomness(system, ciphertext, public, secret, decoded):
     assert decoded == \
-        system._decrypt_with_randomness(ciphertext, public, secret)
+        system.decrypt_with_randomness(ciphertext, public, secret)
 
 
 # Re-encryption

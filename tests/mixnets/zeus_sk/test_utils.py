@@ -2,11 +2,11 @@ import pytest
 from hashlib import sha256
 from itertools import chain
 
-from crypto.modprime import ModPrimeElement
-from mixnets.zeus_sk.utils import (compute_mix_challenge, shuffle_ciphers,
+from zeus_core.crypto.modprime import ModPrimeElement
+from zeus_core.mixnets.zeus_sk.utils import (compute_mix_challenge, shuffle_ciphers,
     verify_mix_round)
-from mixnets.exceptions import RoundNotVerifiedError
-from utils.random import random_integer, random_permutation
+from zeus_core.mixnets.exceptions import RoundNotVerifiedError
+from zeus_core.utils.random import random_integer, random_permutation
 
 from tests.constants import (RES11_ZEUS_SK, RES11_ELECTION_KEY,
     _2048_ZEUS_SK, _2048_ELECTION_KEY, _4096_ZEUS_SK, _4096_ELECTION_KEY)
@@ -15,8 +15,8 @@ def test_compute_mix_challenge():
     mixnet = RES11_ZEUS_SK
     public = RES11_ELECTION_KEY
 
-    parameters = mixnet.cryptosystem.parameters()
-    group = mixnet.cryptosystem.group
+    parameters = mixnet.cryptosys.parameters()
+    group = mixnet.cryptosys.group
 
     modulus = parameters['modulus']
     order = parameters['order']
@@ -67,7 +67,7 @@ for mixnet, election_key in (
     encrypt_func = mixnet._reencrypt
     public = election_key
 
-    group = mixnet.cryptosystem.group
+    group = mixnet.cryptosys.group
     modulus = group.modulus
     random_exponent = group.random_exponent
     random_element = group.random_element

@@ -1,30 +1,20 @@
-[![Build Status](https://travis-ci.com/FoteinosMerg/core.svg?branch=master)](https://travis-ci.com/FoteinosMerg/core)
-[![codecov](https://codecov.io/gh/FoteinosMerg/core/branch/master/graph/badge.svg)](https://codecov.io/gh/FoteinosMerg/core)
+# zeus core
 
 ## Requirements
 
-You need to have installed `python3`
+You need to have installed `python>=3.5`
 
 ```shell
 pip install -r requirements
 ```
 
+## Demo election
+
+```shell
+python demo.py
+```
+
 ## Tests
 
 ```shell
-pytest tests/
-```
-
-and
-
-```shell
-python tests/sessions/modprime/primitives.py
-python tests/sessions/modprime/voting.py
-python tests/sessions/zeus_sk.py
-```
-
-## Running elections
-
-```shell
-python zeus_elections
-```
+pytest tests

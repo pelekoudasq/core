@@ -5,10 +5,10 @@ import sys
 from time import sleep
 from copy import deepcopy
 
-from mixnets import Zeus_sk
-from mixnets.zeus_sk.mixnet import MixNotVerifiedError
-from utils.binutils import bit_iterator
-from utils.random import random_integer
+from zeus_core.mixnets import Zeus_sk
+from zeus_core.mixnets.zeus_sk.mixnet import MixNotVerifiedError
+from zeus_core.utils.binutils import bit_iterator
+from zeus_core.utils.random import random_integer
 
 from tests.constants import (_2048_SYSTEM, _4096_SYSTEM, RES11_SYSTEM,
     _2048_ELECTION_KEY, _4096_ELECTION_KEY, RES11_ELECTION_KEY)
@@ -18,19 +18,19 @@ def _exit(message, code=1):
     print('\nMixing session incomplete: CHECK FAILED\n')
     sys.exit(code)
 
-def _make_ciphers(cryptosystem, nr_ciphers=40):
-    random_element = cryptosystem.group.random_element
+def _make_ciphers(cryptosys, nr_ciphers=40):
+    random_element = cryptosys.group.random_element
     return [(random_element(), random_element()) for _ in range(nr_ciphers)]
 
-def _make_ciphers_to_mix(cryptosystem, nr_rounds=12):
-    params = cryptosystem.parameters()
+def _make_ciphers_to_mix(cryptosys, nr_rounds=12):
+    params = cryptosys.parameters()
     ciphers_to_mix = {
         'modulus': params['modulus'],
         'order': params['order'],
         'generator': params['generator'],
-        'public': cryptosystem._get_value(cryptosystem._get_public(cryptosystem.keygen())),
+        'public': cryptosys.get_value(cryptosys._get_public(cryptosys.keygen())),
         'original_ciphers': [],
-        'mixed_ciphers': _make_ciphers(cryptosystem),
+        'mixed_ciphers': _make_ciphers(cryptosys),
         'cipher_collections': []
     }
     return ciphers_to_mix
@@ -43,21 +43,21 @@ if __name__=='__main__':
     print('\n----------------- Zeus SK Mixing Test Session -----------------\n')
     sleep(1)
 
-    cryptosystem = RES11_SYSTEM # _2048_SYSTEM # _4096_SYSTEM
+    cryptosys = RES11_SYSTEM # _2048_SYSTEM # _4096_SYSTEM
     election_key = RES11_ELECTION_KEY # _2048_ELECTION_KEY # _4096_ELECTION_KEY
 
     mixnet = Zeus_sk({
-        'cryptosystem': cryptosystem,
+        'cryptosys': cryptosys,
         'nr_rounds': ROUNDS,
         'nr_mixes': MIXES
     }, election_key=election_key)
 
-    ciphers = _make_ciphers(cryptosystem)
+    ciphers = _make_ciphers(cryptosys)
 
     # Synchronous Mixing
     print('Mixing synchronously')
     sleep(1)
-    ciphers_to_mix = _make_ciphers_to_mix(cryptosystem, ROUNDS)
+    ciphers_to_mix = _make_ciphers_to_mix(cryptosys, ROUNDS)
     try:
         cipher_mix = mixnet.mix_ciphers(ciphers_to_mix, nr_parallel=0)
     except:
@@ -142,7 +142,7 @@ if __name__=='__main__':
     # # Asynchronous Mixing
     # print('\nMixing asynchronously\n')
     # sleep(1)
-    # ciphers_to_mix = _make_ciphers_to_mix(cryptosystem)
+    # ciphers_to_mix = _make_ciphers_to_mix(cryptosys)
     # try:
     #     cipher_mix = mixnet.mix_ciphers(ciphers_to_mix, nr_parallel=2)
     # except:
