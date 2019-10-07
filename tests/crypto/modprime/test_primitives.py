@@ -397,7 +397,7 @@ for system in (
     __system__ciphertext__public__secret__decoded)
 def test_decryption_with_randomness(system, ciphertext, public, secret, decoded):
     assert decoded == \
-        system._decrypt_with_randomness(ciphertext, public, secret)
+        system.decrypt_with_randomness(ciphertext, public, secret)
 
 
 # Re-encryption

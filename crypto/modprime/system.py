@@ -845,7 +845,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return encoded
 
-    def _decrypt_with_randomness(self, ciphertext, public, secret):
+    def decrypt_with_randomness(self, ciphertext, public, secret):
         """
         Given the ciphertext `ciphertext`
 
@@ -1171,7 +1171,7 @@ class ModPrimeCrypto(ElGamalCrypto):
                 failed.append(vote)
                 continue
 
-            encoded = self._decrypt_with_randomness(election_key,
+            encoded = self.decrypt_with_randomness(election_key,
                 ciphertext, voter_secret)
 
             if encoded.value > max_encoded.value:

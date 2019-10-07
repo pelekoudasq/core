@@ -339,7 +339,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def _decrypt_with_randomness(self, ciphertext, public, secret):
+    def decrypt_with_randomness(self, ciphertext, public, secret):
         """
         """
 

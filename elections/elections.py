@@ -161,8 +161,7 @@ class VotingAPI(object):
     def store_audit_request(self, fingeprint, voter_key):
         self.audit_requests[fingerprint] = voter_key
 
-    # def do_index_vote(self, fingerprint):
-    def store_vote_as_cast(self, fingerprint):
+    def do_index_vote(self, fingerprint):
         """
         Store a vote's fingeprint in cast vote index
         and return its index

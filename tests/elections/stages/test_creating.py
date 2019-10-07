@@ -3,8 +3,8 @@ from copy import deepcopy
 
 from tests.constants import _2048_SYSTEM, _2048_SECRET
 from .utils import mk_election, run_until_creating_stage
-from ..constants import VOTER_SLOT_CEIL
-from ..exceptions import Abortion
+from elections.constants import VOTER_SLOT_CEIL
+from elections.exceptions import Abortion
 
 election = mk_election()
 trustees = election.config['trustees']

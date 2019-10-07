@@ -2,8 +2,8 @@ import pytest
 from copy import deepcopy
 
 from .utils import mk_election, run_until_voting_stage
-from ..constants import VOTER_SLOT_CEIL
-from ..exceptions import Abortion
+from elections.constants import VOTER_SLOT_CEIL
+from elections.exceptions import Abortion
 
 election = mk_election()
 # trustees = ...

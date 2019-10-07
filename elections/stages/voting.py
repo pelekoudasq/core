@@ -23,6 +23,55 @@ class Voting(Stage):
     def _update_controller(self, *generated):
         pass
 
+    def verify_audit_votes(self, cryptosys, audit_votes=None):
+        """
+        """
+        election = self._get_controller()
+        nr_candidates = len(election.get_candidates())
+
+        missing = []
+        failed = []
+
+
+        if not votes:
+            audit_requests = election.get_audit_requests()
+            get_vote = election.get_vote
+            audit_votes = [get_vote(fingerprint) for fingerprint in audit_requests]
+            add_plaintext = 0
+        else:
+            add_plaintext = 1
+
+        for vote in audit_votes:
+            _, _, _, encrypted_ballot, _, _, voter_secret, _, _, _, _ = \
+                self.extract_vote(vote)
+
+            if not voter_secret:
+                missing.append(vote)
+                continue
+            if not cryptosys.verify_encryption(encrypted_ballot):
+                failed.append(note)
+                continue
+
+            ciphertext, _ = cryptosys.extract_ciphertext_proof(encrypted_ballot)
+            alpha_vote, _ = cryptosys.extract_ciphertext(ciphertext)
+            alpha = cryptosys.group.generate(voter_secret)
+            if alpha_vote != alpha:
+                failed.append(vote)
+                continue
+
+            encoded = cryptosys.decrypt_with_randomness(election_key,
+                ciphertext, voter_secret)
+
+            max_encoded = gamma_encoding_max(nr_candidates)
+            if encoded.value > max_encoded:
+                failed.append(vote)
+                continue
+            if add_plaintext:
+                vote['plaintext'] = encoded.value
+
+        return missing, failed
+
+
     def verify_vote_signature(self, cryptosys, vote_signature):
         """
         Raise InvalidSignatureError in case of:
@@ -32,7 +81,7 @@ class Voting(Stage):
             - invalid vote encryption (failure of voter to prove
                     knowledge of their signing key)
         """
-        # Retrieve vote-text and DSA-signature
+        # Retrieve vote-text and accompanying DSA-signature
         textified_vote, signature = \
             self.extract_vote_signature(cryptosys, vote_signature)
 
@@ -194,3 +243,67 @@ class Voting(Stage):
     def exclude_voter(voter_key, reason=''):
         election = self._get_controller()
         election.store_excluded_voter(voter_key, reason)
+
+    # Vote structure
+
+    def set_vote(self, cryptosys, election_key, voter_key, encrypted_ballot,
+            fingerprint, audit_code=None, publish=None, voter_secret=None,
+            previous=None, index=None, status=None, plaintext=None):
+        """
+        """
+        vote = {}
+
+        vote['crypto'] = cryptosys.parameters()
+        vote['public'] = election_key
+        vote['voter'] = voter_key
+        vote['encrypted_ballot'] = encrypted_ballot
+        vote['fingerprint'] = hash_decode(fingerprint)
+
+        if audit_code:
+            vote['audit_code'] = audit_code
+        if publish:
+            vote['voter_secret'] = voter_secret
+        if previous:
+            vote['index'] = index
+        if status:
+            vote['status'] = status
+        if plaintext:
+            vote['plaintext'] = plaintext
+
+        return vote
+
+    def extract_vote(self, vote, encode_func, to_exponent=int):
+        """
+        """
+        crypto_params = vote['crypto']
+        election_key = vote['public']
+        voter_key = vote['voter']
+        encrypted_ballot = vote['encrypted_ballot']
+        # alpha, beta, commitment, challenge, response = \
+        #     self.extract_encrypted_ballot(vote['encrypted_ballot'])
+        fingerprint = hash_encode(vote['fingerprint'])
+
+        audit_code = vote.get('audit_code')
+        voter_secret = vote.get('voter_secret')
+        previous = vote.get('previous')
+        index = vote.get('index')
+        status = vote.get('status')
+        plaintext = vote.get('plaintext')
+
+        return (crypto_params, election_key, voter_key, encrypted_ballot,
+            fingerprint, audit_code, voter_secret, previous, index, status,
+            plaintext,)
+
+    def retrieve_fingerprint_params(self, cryptosys, encrypted_ballot):
+        """
+        """
+        ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)
+        alpha, beta = cryptosys.extract_ciphertext(ciphertext)
+        commitment, challenge, response = cryptosys.extract_schnorr_proof(proof)
+        return alpha, beta, commitment, challenge, response
+
+    # def extract_encrypted_ballot(self, cryptosys, encrypted_ballot):
+    #     ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)
+    #     alpha, beta = cryptosys.extract_ciphertext(ciphertext)
+    #     commitment, challenge, response = cryptosys.extract_proof(proof)
+    #     return alpha, beta, commitment, challenge, response

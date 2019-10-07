@@ -2,8 +2,8 @@ from crypto import ModPrimeCrypto
 from crypto.constants import _2048_PRIME, _2048_PRIMITIVE, _4096_PRIME, _4096_PRIMITIVE
 from mixnets import Zeus_sk
 
-from ..stages import Uninitialized, Creating, Voting, Mixing, Decrypting, Finalized
-from ..elections import ZeusCoreElection
+from elections.stages import Uninitialized, Creating, Voting, Mixing, Decrypting, Finalized
+from elections.elections import ZeusCoreElection
 
 def run_until_uninitialized_stage(election):
     uninitialized = Uninitialized(election)
