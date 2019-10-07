@@ -5,10 +5,10 @@ import sys
 from time import sleep
 from copy import deepcopy
 
-from mixnets import Zeus_sk
-from mixnets.zeus_sk.mixnet import MixNotVerifiedError
-from utils.binutils import bit_iterator
-from utils.random import random_integer
+from zeus_core.mixnets import Zeus_sk
+from zeus_core.mixnets.zeus_sk.mixnet import MixNotVerifiedError
+from zeus_core.utils.binutils import bit_iterator
+from zeus_core.utils.random import random_integer
 
 from tests.constants import (_2048_SYSTEM, _4096_SYSTEM, RES11_SYSTEM,
     _2048_ELECTION_KEY, _4096_ELECTION_KEY, RES11_ELECTION_KEY)

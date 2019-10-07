@@ -1,8 +1,8 @@
-from elections import ZeusCoreElection
+from zeus_core.elections import ZeusCoreElection
 
-from crypto import ModPrimeCrypto
-from crypto.constants import _2048_PRIME, _2048_PRIMITIVE
-from mixnets import Zeus_sk
+from zeus_core.crypto import ModPrimeCrypto
+from zeus_core.crypto.constants import _2048_PRIME, _2048_PRIMITIVE
+from zeus_core.mixnets import Zeus_sk
 
 if __name__ == '__main__':
     ZeusCoreElection(

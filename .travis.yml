@@ -10,7 +10,7 @@ install:
   - pip install codecov
 
 script:
-  - pytest tests/
+  # - pytest tests/
 
 after_success:
   - codecov

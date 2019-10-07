@@ -1,9 +1,9 @@
-from elections.abstracts import Stage
-from elections.constants import (V_FINGERPRINT, V_INDEX, V_PREVIOUS, V_VOTER,
+from zeus_core.elections.abstracts import Stage
+from zeus_core.elections.constants import (V_FINGERPRINT, V_INDEX, V_PREVIOUS, V_VOTER,
     V_ELECTION, V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR,
     V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE, V_COMMENTS,
     V_SEPARATOR)
-from elections.exceptions import (Abortion, MalformedVoteError,
+from zeus_core.elections.exceptions import (Abortion, MalformedVoteError,
     ElectionMismatchError)
 
 from .mixing import Mixing
@@ -29,10 +29,6 @@ class Voting(Stage):
         election = self._get_controller()
         nr_candidates = len(election.get_candidates())
 
-        missing = []
-        failed = []
-
-
         if not votes:
             audit_requests = election.get_audit_requests()
             get_vote = election.get_vote
@@ -41,6 +37,9 @@ class Voting(Stage):
         else:
             add_plaintext = 1
 
+
+        missing = []
+        failed = []
         for vote in audit_votes:
             _, _, _, encrypted_ballot, _, _, voter_secret, _, _, _, _ = \
                 self.extract_vote(vote)
@@ -100,13 +99,6 @@ class Voting(Stage):
         except ElectionMismatchError as err:
             raise InvalidSignatureError(err)
 
-        # Validate DSA signature (NOTE: uses zeus key as inscribed in vote)
-        signed_message = \
-            cryptosys.set_signed_message(textified_vote, signature)
-        if not cryptosys.verify_text_signature(signed_message, zeus_public_key):
-            err = 'Invalid vote signature'
-            raise InvalidSignatureError(err)
-
         # Verify proof of encryption
         ciphertext = cryptosys.set_ciphertext(alpha, beta)
         proof = cryptosys.set_schnorr_proof(commitment, challenge, response)
@@ -115,6 +107,13 @@ class Voting(Stage):
             'proof': proof
         }):
             err = 'Invalid vote encryption'
+            raise InvalidSignatureError(err)
+
+        # Validate DSA signature (NOTE: uses zeus key as inscribed in vote)
+        signed_message = \
+            cryptosys.set_signed_message(textified_vote, signature)
+        if not cryptosys.verify_text_signature(signed_message, zeus_public_key):
+            err = 'Invalid vote signature'
             raise InvalidSignatureError(err)
 
         return True

@@ -1,5 +1,5 @@
-from elections.abstracts import Stage
-from elections.exceptions import Abortion
+from zeus_core.elections.abstracts import Stage
+from zeus_core.elections.exceptions import Abortion
 from .decrypting import Decrypting
 
 

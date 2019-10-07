@@ -1,11 +1,11 @@
 from gmpy2 import mpz
 
-from crypto.exceptions import InvalidKeyError
-from utils import random_integer
+from zeus_core.crypto.exceptions import InvalidKeyError
+from zeus_core.utils import random_integer
 
-from elections.abstracts import Stage
-from elections.exceptions import Abortion
-from elections.constants import VOTER_KEY_CEIL, VOTER_SLOT_CEIL
+from zeus_core.elections.abstracts import Stage
+from zeus_core.elections.exceptions import Abortion
+from zeus_core.elections.constants import VOTER_KEY_CEIL, VOTER_SLOT_CEIL
 from .voting import Voting
 
 

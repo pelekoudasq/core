@@ -2,9 +2,10 @@ import pytest
 from copy import deepcopy
 
 from tests.constants import _2048_SYSTEM
-from crypto.constants import _2048_PRIME, _2048_ORDER, _2048_GENERATOR
 from .utils import mk_election, run_until_uninitialized_stage
-from elections.exceptions import Abortion
+
+from zeus_core.crypto.constants import _2048_PRIME, _2048_ORDER, _2048_GENERATOR
+from zeus_core.elections.exceptions import Abortion
 
 
 election = mk_election()
@@ -16,7 +17,7 @@ mixnet_config = election.config['mixnet']['config']
 
 # Run election and test current stage
 uninitialized = run_until_uninitialized_stage(election)
-def test_current_stage(): 
+def test_current_stage():
     assert election._get_current_stage() is uninitialized
 
 # Run stage and check for updates

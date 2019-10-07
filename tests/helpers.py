@@ -1,10 +1,10 @@
-from crypto.modprime import ModPrimeElement
-from elections.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION,
+from zeus_core.crypto.modprime import ModPrimeElement
+from zeus_core.elections.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION,
     V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR,
     V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE,
     V_COMMENTS, V_INDEX, V_CAST_VOTE, V_AUDIT_REQUEST, V_PUBLIC_AUDIT,
     V_PUBLIC_AUDIT_FAILED)
-from utils import random_integer
+from zeus_core.utils import random_integer
 
 VOTER_KEY_CEIL = 2 ** 256
 PLAINTEXT_CEIL = 2 ** 512
@@ -16,14 +16,40 @@ def make_corrupted_public_key(system):
     corrupted_keypair = system.keygen()
     return system._get_public(corrupted_keypair)
 
-def make_vote(voter, system, election_key, invalid=False):
-    plaintext = random_integer(2, PLAINTEXT_CEIL)
+def make_vote(voter, system, election_key, plaintext=None, invalid=False):
+    if not plaintext:
+        plaintext = random_integer(2, PLAINTEXT_CEIL)
     vote = system.vote(election_key, voter, plaintext)
     if invalid:
         vote['fingerprint'] = vote['fingerprint'] + '__corrupted_part'
     return vote
 
-from utils import random_selection, random_party_selection, encode_selection
+def vote(self, election_key, voter, plaintext,
+            audit_code=None, publish=None):
+    """
+    Generates and returns an encrypted vote from the encoded plaintext
+
+    :type election_key: dict
+    :type voter:
+    :type plaintext: int
+    :type audit_code:
+    :publish: None
+    :rtype: dict
+    """
+    election_key = self.get_value(election_key)
+    encoded_plaintext = self.encode_integer(plaintext)
+    ciphertext, randomness = self._encrypt(encoded_plaintext, election_key,
+        get_secret=True)
+
+    proof = self.prove_encryption(ciphertext, randomness)
+
+    encrypted = self.set_ciphertext_proof(ciphertext, proof)
+    fingerprint = self.make_fingerprint(encrypted)
+
+    vote = self.set_vote(voter, encrypted, fingerprint, audit_code, publish, randomness)
+    return vote
+
+from zeus_core.utils import random_selection, random_party_selection, encode_selection
 from random import choice as rand_choice
 
 def mk_random_vote(election, voter_key=None, audit_code=None, selection=None, publish=None):

@@ -6,7 +6,8 @@ supported_crypto = (ModPrimeCrypto,)
 
 def make_crypto(cls, config):
     if cls not in supported_crypto:
-        raise WrongCryptoError('Requested crypto is not supported')
+        err = 'Requested crypto is not supported'
+        raise WrongCryptoError(err)
     return cls(*cls._extract_config(config))
 
 def make_2048_SYSTEM():

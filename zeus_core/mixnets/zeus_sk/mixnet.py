@@ -4,8 +4,8 @@
 from Crypto import Random
 from gmpy2 import mpz
 
-from crypto.modprime import ModPrimeCrypto
-from utils import random_permutation, AsyncController, _teller, bit_iterator
+from zeus_core.crypto.modprime import ModPrimeCrypto
+from zeus_core.utils import random_permutation, AsyncController, _teller, bit_iterator
 
 from ..abstracts import Mixnet
 from ..exceptions import MixnetError, MixNotVerifiedError, RoundNotVerifiedError

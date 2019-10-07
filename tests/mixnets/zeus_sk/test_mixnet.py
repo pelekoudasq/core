@@ -1,9 +1,9 @@
 import pytest
 from copy import deepcopy
 
-from mixnets import Zeus_sk
-from mixnets.exceptions import MixnetError, MixNotVerifiedError
-from utils.binutils import bit_iterator
+from zeus_core.mixnets import Zeus_sk
+from zeus_core.mixnets.exceptions import MixnetError, MixNotVerifiedError
+from zeus_core.utils.binutils import bit_iterator
 
 from tests.constants import (RES11_ELECTION_KEY, _2048_ELECTION_KEY,
     _4096_ELECTION_KEY, RES11_ZEUS_SK, _4096_ZEUS_SK, _2048_ZEUS_SK)

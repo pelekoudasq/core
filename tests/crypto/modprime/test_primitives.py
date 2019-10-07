@@ -2,9 +2,9 @@ import pytest
 from copy import deepcopy
 from gmpy2 import mpz, powmod, invert
 
-from crypto.modprime import ModPrimeElement
-from crypto.exceptions import InvalidKeyError
-from utils.random import random_integer
+from zeus_core.crypto.modprime import ModPrimeElement
+from zeus_core.crypto.exceptions import InvalidKeyError
+from zeus_core.utils.random import random_integer
 
 from tests.constants import (MESSAGE,
     RES11_SYSTEM, RES11_KEY, RES11_PUBLIC, RES11_DDH,

@@ -11,7 +11,7 @@ from ..exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
     InvalidKeyError, InvalidVoteError, InvalidSignatureError, InvalidFactorError,
     BallotDecryptionError)
 # from elections.constants import V_MODULUS, V_ORDER, V_GENERATOR
-from utils import hash_texts, hash_encode, hash_decode, extract_value
+from zeus_core.utils import hash_texts, hash_encode, hash_decode, extract_value
 
 V_MODULUS   = 'MODULUS: '
 V_ORDER     = 'ORDER: '

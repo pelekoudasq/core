@@ -3,8 +3,9 @@ from copy import deepcopy
 
 from tests.constants import _2048_SYSTEM, _2048_SECRET
 from .utils import mk_election, run_until_creating_stage
-from elections.constants import VOTER_SLOT_CEIL
-from elections.exceptions import Abortion
+
+from zeus_core.elections.constants import VOTER_SLOT_CEIL
+from zeus_core.elections.exceptions import Abortion
 
 election = mk_election()
 trustees = election.config['trustees']

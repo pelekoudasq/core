@@ -1,10 +1,10 @@
 import pytest
 from gmpy2 import mpz
 
-from crypto.constants import (_2048_PRIME, _2048_ORDER, _2048_GENERATOR, _2048_PRIMITIVE,
+from zeus_core.crypto.constants import (_2048_PRIME, _2048_ORDER, _2048_GENERATOR, _2048_PRIMITIVE,
                               _4096_PRIME, _4096_ORDER, _4096_GENERATOR, _4096_PRIMITIVE)
-from crypto.exceptions import AlgebraError, WrongCryptoError, WeakCryptoError
-from crypto.modprime import ModPrimeSubgroup, ModPrimeElement, ModPrimeCrypto
+from zeus_core.crypto.exceptions import AlgebraError, WrongCryptoError, WeakCryptoError
+from zeus_core.crypto.modprime import ModPrimeSubgroup, ModPrimeElement, ModPrimeCrypto
 
 from tests.constants import (RES11_GROUP,
     _00_, _01_, _02_, _03_, _04_, _05_, _06_, _07_, _08_, _09_, _10_)

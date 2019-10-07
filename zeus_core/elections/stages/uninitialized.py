@@ -1,11 +1,11 @@
-from elections.abstracts import Stage
-from elections.exceptions import Abortion
+from ..abstracts import Stage
+from ..exceptions import Abortion
 from .creating import Creating
 
-from crypto import make_crypto
-from crypto.exceptions import AlgebraError, WrongCryptoError, WeakCryptoError
-from mixnets import make_mixnet
-from mixnets.exceptions import MixnetError
+from zeus_core.crypto import make_crypto
+from zeus_core.crypto.exceptions import AlgebraError, WrongCryptoError, WeakCryptoError
+from zeus_core.mixnets import make_mixnet
+from zeus_core.mixnets.exceptions import MixnetError
 
 
 class Uninitialized(Stage):

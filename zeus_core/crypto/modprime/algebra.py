@@ -1,7 +1,7 @@
 from Crypto.Util.number import isPrime as is_prime
 from gmpy2 import mpz, invert, powmod
 
-from utils import (int_from_bytes, hash_nums, hash_texts, random_integer)
+from zeus_core.utils import (int_from_bytes, hash_nums, hash_texts, random_integer)
 from ..abstracts import Group, GroupElement
 from ..exceptions import AlgebraError
 

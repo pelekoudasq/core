@@ -2,8 +2,8 @@ import pytest
 from copy import deepcopy
 
 from .utils import mk_election, run_until_voting_stage
-from elections.constants import VOTER_SLOT_CEIL
-from elections.exceptions import Abortion
+from zeus_core.elections.constants import VOTER_SLOT_CEIL
+from zeus_core.elections.exceptions import Abortion
 
 election = mk_election()
 # trustees = ...
@@ -276,18 +276,6 @@ def make_encrypted_ballot(self, cryptosys, election_key, ciphertext, proof):
 
 def make_fingerprint(self, cryptosys, ciphertext_proof):
     """
-    Makes fingerprint out of a dictionary of the form
-
-    {
-        'ciphertext': {
-            'alpha': GroupElement,
-            'beta': GroupElement
-        },
-        'proof': dict
-    }
-
-    :type ciphertext_proof: dict
-    :rtype: bytes
     """
     fingerprint_params = self.get_fingerprint_params(cryptosys, ciphertext_proof)
     fingerprint = hash_texts(*[str(_) for _ in fingerprint_params])

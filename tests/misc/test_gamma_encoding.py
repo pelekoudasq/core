@@ -1,6 +1,6 @@
 import pytest
 
-from utils.gamma_encoding import (_get_choice_params, gamma_encode,
+from zeus_core.utils.gamma_encoding import (_get_choice_params, gamma_encode,
     gamma_encoding_max, encode_selection)
 
 
@@ -15,7 +15,8 @@ __nr_choices__nr_candidates__max_choices__result = [
 @pytest.mark.parametrize('nr_choices, nr_candidates, max_choices, result',
     __nr_choices__nr_candidates__max_choices__result)
 def test__get_choice_params(nr_choices, nr_candidates, max_choices, result):
-    nr_candidates, max_choices = _get_choice_params(nr_choices, nr_candidates, max_choices)
+    nr_candidates, max_choices = \
+        _get_choice_params(nr_choices, nr_candidates, max_choices)
     assert result == (nr_candidates, max_choices)
 
 __AssertionError_in__get_choice_params = [
