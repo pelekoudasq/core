@@ -21,7 +21,7 @@ def run_until_voting_stage(election):
     return voting
 
 
-def mk_election(config={
+def create_election(config={
     'crypto': {
         'cls': ModPrimeCrypto,
         'config': {

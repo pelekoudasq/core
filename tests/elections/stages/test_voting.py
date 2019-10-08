@@ -1,11 +1,11 @@
 import pytest
 from copy import deepcopy
 
-from .utils import mk_election, run_until_voting_stage
+from .utils import create_election, run_until_voting_stage
 from zeus_core.elections.constants import VOTER_SLOT_CEIL
 from zeus_core.elections.exceptions import Abortion
 
-election = mk_election()
+election = create_election()
 # trustees = ...
 
 
