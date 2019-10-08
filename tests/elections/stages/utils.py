@@ -69,7 +69,7 @@ def create_election(config={
         'Party-A: Candidate-0000',
         'Party-A: Candidate-0001',
         'Party-A: Candidate-0002',
-        'Party-A: Candidate-0003'
+        'Party-A: Candidate-0003',
         'Party-B: 0-2, 1',
         'Party-B: Candidate-0000',
         'Party-B: Candidate-0001',

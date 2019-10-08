@@ -3,9 +3,10 @@ import pytest
 from copy import deepcopy
 import sys
 
+from tests.elections.stages.abstracts import StageTester
+
 
 from tests.constants import _2048_SYSTEM
-from tests.elections.stages.utils import create_election, run_until_uninitialized_stage
 
 from zeus_core.elections.stages import Uninitialized
 
@@ -17,29 +18,13 @@ import unittest
 def get_cls_name(obj):
     return obj.__class__.__name__
 
-class TestUninitialized(unittest.TestCase):
+class TestUninitialized(StageTester, unittest.TestCase):
 
     # Setup
-
-    def launch_election(self):
-        election = create_election()
-        self.election = election
 
     def run_until_stage(self):
         self.launch_election()
         self.uninitialized = Uninitialized(self.election)
-
-    def setUp(self):
-        self.run_until_stage()
-        self.messages = []
-
-    def tearDown(self):
-        if self.messages:
-            for i, message in enumerate(self.messages):
-                if i == 0:
-                    print('\n' + message)
-                else:
-                    print(message)
 
 
     # Cryptosys initialization
@@ -225,19 +210,6 @@ class TestUninitialized(unittest.TestCase):
             self.messages.append('[-] %s\n' % err)
             raise AssertionError(err)
 
-    def stage_steps(self):
-        for name in self.__dir__():
-            if name.startswith('step_'):
-                yield name, getattr(self, name)
-
-    def test_run(self):
-        print('\n')
-        print('----------------------------- Run stage ------------------------------')
-        for name, step in self.stage_steps():
-            try:
-                step()
-            except AssertionError as err:
-                self.fail("\n\nFAIL: {}: {}".format(name, err))
 
 if __name__ == '__main__':
     print('\n=============== Testing election stage: Uninitialized ================')

@@ -1,6 +1,9 @@
+from abc import ABCMeta, abstractmethod
 import unittest
 
-class TestStage(unittest.TestCase):
+from tests.elections.stages.utils import create_election
+
+class StageTester(metaclass=ABCMeta):
 
     def launch_election(self):
         election = create_election()
@@ -8,6 +11,8 @@ class TestStage(unittest.TestCase):
 
     @abstractmethod
     def run_until_stage(self):
+        """
+        """
         pass
 
     def setUp(self):
