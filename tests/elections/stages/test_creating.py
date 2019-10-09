@@ -312,6 +312,15 @@ class TestCreating(StageTester, unittest.TestCase):
             self.messages.append('[-] %s\n' % err)
             raise AssertionError(err)
 
+        trustee_keys = self.election.get_trustee_keys()
+        try:
+            assert trustee_keys == list('%x' % trustee['value'].value for trustee in trustees)
+            self.messages.append('[+] Keys matched')
+        except AssertionError:
+            err = "Trustee keys mismatch"
+            self.messages.append('[-] %s\n' % err)
+            raise AssertionError(err)
+
         election_key = self.election.get_election_key()
         try:
             assert election_key != None

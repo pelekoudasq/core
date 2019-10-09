@@ -20,21 +20,19 @@ class Voter(Client):
             candidates, voter_key, audit_codes=None):
         """
         """
-        self.zeus_public_key = zeus_public_key
+        self.cryptosys = self.retrieve_cryptosys(crypto)
+        # self.zeus_public_key = zeus_public_key
         self.election_key = election_key
-        self.trustees = trustees
-        self.candidates = candidates
+        # self.trustees = trustees
+        # self.candidates = candidates
         self.voter_key = voter_key
         self.audit_codes = audit_codes
-        self.cryptosys = self.retrieve_cryptosys(crypto)
 
     @classmethod
     def retrieve_cryptosys(cls, crypto):
         """
         """
-        cls = crypto['cls']
-        config = crypto['config']
-        cryptosys = make_crypto(cls, config)
+        cryptosys = make_crypto(crypto['cls'], crypto['config'])
         return cryptosys
 
 
@@ -45,6 +43,12 @@ class Voter(Client):
         """
         encrypted_ballot = self.cryptosys.set_ciphertext_proof(ciphertext, proof)
         return encrypted_ballot
+
+    def serialize_encrypted_ballot(self, encrypted_ballot):
+        """
+        """
+        serialized = self.cryptosys.serialize_ciphertext_proof(encrypted_ballot)
+        return serialized
 
     def get_fingerprint_params(self, encrypted_ballot):
         """
@@ -59,6 +63,7 @@ class Voter(Client):
 
     def mk_fingerprint(self, encrypted_ballot):
         """
+        Returns bytes
         """
         params = self.get_fingerprint_params(encrypted_ballot)
         fingerprint = hash_texts(*[str(_) for _ in params])
@@ -68,13 +73,14 @@ class Voter(Client):
             publish=None, voter_secret=None, previous=None, index=None,
             status=None, plaintext=None):
         """
+        JSON (must serialize everything before setting)
         """
         vote = {}
 
         vote['crypto'] = self.cryptosys.parameters()
-        vote['public'] = self.election_key
+        vote['public'] = self.election_key.to_int()
         vote['voter'] = self.voter_key
-        vote['encrypted_ballot'] = encrypted_ballot
+        vote['encrypted_ballot'] = self.serialize_encrypted_ballot(encrypted_ballot)
         vote['fingerprint'] = hash_decode(fingerprint)
 
         if audit_code:
@@ -96,11 +102,14 @@ class Voter(Client):
         cryptosys = self.cryptosys
         election_key = self.election_key
 
-        ciphertext, randomness = cryptosys._encrypt(group_element,
+        # ~ Ballot encryption (ElGamal) under the election's key,
+        # ~ along with proof of knowledge of the randomness
+        # ~ (voter's secret) used at encryption
+        ciphertext, randomness = cryptosys.encrypt(group_element,
                         election_key, get_secret=True)
         proof = cryptosys.prove_encryption(ciphertext, ranodmness)
-
         encrypted_ballot = self.mk_encrypted_ballot(ciphertext, proof)
+
         fingerprint = self.mk_fingerprint(encrypted_ballot)
         voter_secret = randomness if publish else None
         vote = self.set_vote(encrypted_ballot, fingerprint, audit_code,
@@ -142,72 +151,3 @@ class Voter(Client):
             del vote['voter_secret']
 
         return vote, selection, encoded_selection, voter_secret
-
-
-    # Vote textification: CONTINUE FROM HERE
-
-    def extract_encrypted_ballot(self, encrypted_ballot):
-        """
-        """
-        cryptosys = self.cryptosys
-        ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)
-
-        alpha, beta = cryptosys.extract_ciphertext(ciphertext)
-        commitment, challenge, response = cryptosys.extract_proof(proof)
-
-        return alpha, beta, commitment, challenge, response
-
-    def extract_vote(self, vote, encode_func, to_exponent=int):
-        """
-        """
-        crypto_params = vote['crypto']
-        election_key = vote['public']
-        voter_key = vote['voter']
-        alpha, beta, commitment, challenge, response = \
-            self.extract_encrypted_ballot(vote['encrypted_ballot'])
-        fingerprint = hash_encode(vote['fingerprint'])
-
-        audit_code = extract_value(vote, 'audit_code', int)
-        voter_secret = extract_value(vote, 'voter_secret', to_exponent) # mpz
-        previous = extract_value(vote, 'previous', hash_encode)
-        index = extract_value(vote, 'index', int)
-        status = extract_value(vote, 'status', str)
-        plaintext = extract_value(vote, 'plaintext', encode_func)
-
-        return (crypto_params, election_key, voter_key, alpha, beta, commitment,
-                challenge, response, fingerprint, audit_code, voter_secret,
-                previous, index, status, plaintext,)
-
-    def textify_vote(self, vote, comments):
-        """
-        """
-
-        (crypto_params, election_key, _, alpha, beta, commitment, challenge, response,
-            fingerprint, _, _, previous, index, status, _) = self.extract_vote(vote)
-
-        t00 = status if status is not None else 'NONE'
-        t01 = V_FINGERPRINT + '%s' % fingerprint
-        t02 = V_INDEX + '%d' % (index if index is not None else 'NONE')
-        t03 = V_PREVIOUS + '%s' % (previous,) 	# '%s%s' % (V_PREVIOUS, previous)
-        t04 = V_ELECTION + '%s' % str(election_key)
-        t05 = V_ZEUS_PUBLIC + '%s' % str(zeus_public_key)
-        t06 = V_TRUSTEES + '%s' % ' '.join(str(_) for _ in trustees)
-        t07 = V_CANDIDATES + '%s' % ' % '.join('%s' % _.encode('utf-8') for _ in candidates)
-
-        t08, t09, t10 = cryptosys.textify_params(crypto_params)
-
-        t11 = V_ALPHA + '%s' % str(alpha)
-        t12 = V_BETA + '%s' % str(beta)
-        t13 = V_COMMITMENT + '%s' % str(commitment)
-        t14 = V_CHALLENGE + '%s' % str(challenge)
-        t15 = V_RESPONSE + '%s' % str(response)
-        t16 = V_COMMENTS + '%s' % (comments,)
-
-        textified = '\n'.join((t00, t01, t02, t03, t04, t05, t06, t07, t08,
-            t09, t10, t11, t12, t13, t14, t15, t6))
-        return textified
-
-
-    # Vote signing
-
-    # Vote casting

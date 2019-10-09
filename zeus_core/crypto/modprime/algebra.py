@@ -57,7 +57,7 @@ class ModPrimeElement(GroupElement):
         """
         self.__value = - self.__value % self.__modulus
 
-    def to_integer(self):
+    def to_int(self):
         """
         :rtype: int
         """

@@ -144,19 +144,22 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def parameters(self):
         """
-        Returns the modulus p, order q and fixed generator g of the underlying
-        group as a dictionary with integer values
+        Returns a serialization of the cryptosystem's parameters (a JSON entity
+        with the modulus p, order q and generator g)
 
         :rtype: dict
         """
-        __p, __q, __g = self._parameters()
-
-        return {'modulus': int(__p), 'order': int(__q), 'generator': int(__g)}
+        serialized = {}
+        serialized['modulus'] = int(self.__modulus)
+        serialized['order'] = int(self.__order)
+        serialized['generator'] = int(self.__generator)
+        return serialized
 
     def _parameters(self):
         """
-        Returns the modulus p, order q and fixed generator g of the underlying
-        group as a tuple of the form (mpz, mpz, mpz)
+        Returns a tuple of the form (mpz, mpz, mpz) with the cryptosystem's
+        parameters (modulus p, order q and fixed generator g of the underlying
+        group)
 
         :rtype: tuple
         """
@@ -182,9 +185,13 @@ class ModPrimeCrypto(ElGamalCrypto):
         return element
 
     def textify_params(self, crypto_params):
-        t08 = V_MODULUS + '%s' % str(crypto_params['modulus'])
-        t09 = V_ORDER + '%s' % str(crypto_params['order'])
-        t10 = V_GENERATOR + '%s' % str(crypto_params['generator'])
+        """
+        Admits json with integer values, returns tuple of strings
+        ("{label}: {hexadecimal}")
+        """
+        t08 = V_MODULUS + '%x' % crypto_params['modulus']
+        t09 = V_ORDER + '%x' % crypto_params['order']
+        t10 = V_GENERATOR + '%x' % crypto_params['generator']
         return t08, t09, t10
 
     def check_textified_params(self, t08, t09, t10):
@@ -204,6 +211,16 @@ class ModPrimeCrypto(ElGamalCrypto):
         generator = ModPrimeElement(mpz(generator), self.__modulus)
 
         return modulus, order, generator
+
+    def serialize_ciphertext(self, ciphertext):
+        """
+        """
+        serialized = {}
+        alpha, beta = self.extract_ciphertext(ciphertext)
+        serialized['alpha'] = alpha.to_int()
+        serialized['beta'] = beta.to_int()
+        return serialized
+
 
     @property
     def group(self):
@@ -309,17 +326,16 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return self._schnorr_verify(proof=proof, public=public_key)
 
-    def set_public_key_from_value(self, value, proof=None):
+    def deserialize_public_key(self, value, proof=None):
         """
         :type value: int or mpz
         :type proof: dict
         :rtype: dict
         """
-        public_key = {
-            'value': self.__GroupElement(mpz(value), self.__modulus),
-            'proof': proof
-        }
-        return public_key
+        deserialized = {}
+        deserialized['value'] = self.__GroupElement(value, self.__modulus)
+        deserialized['proof'] = self.deserialize_schnorr_proof(proof)
+        return deserialized
 
 
     # ------------------------------- Primitives -------------------------------
@@ -396,6 +412,29 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # g ^ s modp == (g ^ r) * (y ^ c) modp ?
         return __group.generate(response) == commitment * (public ** challenge)
+
+
+    def serialize_scnorr_proof(self, proof):
+        """
+        """
+        serialized = {}
+        commitment, challenge, response = self.extract_schnorr_proof(proof)
+        serialized['commitment'] = commitment.to_int()
+        serialised['challenge'] = int(challenge)
+        serialised['response'] = int(response)
+        return serialized                           # TODO: Can use set_schnorr_proof
+
+
+    def deserialize_schnorr_proof(self, proof):
+        """
+        """
+        deserialized = {}
+        commitment, challenge, response = self.extract_schnorr_proof(proof)
+        deserialized['commitment'] = self.__GroupElement(commitment, self.__modulus)
+        deserialized['challenge'] = mpz(challenge)
+        deserialized['response'] = mpz(response)
+        return deserialized                         # TODO: Can use set_schnorr_proof
+
 
 
     # Chaum-Pedersen protocol
@@ -592,6 +631,17 @@ class ModPrimeCrypto(ElGamalCrypto):
         return element % __q == c_1
 
 
+    def deserialize_dsa_signature(self, exponent, c1, c2):
+        """
+        From integers to exponents
+        """
+        exponent = mpz(exponent)
+        c1 = mpz(c1)
+        c2 = mpz(c2)
+        signature = self.set_dsa_signature(exponent, c1, c2)
+        return signature
+
+
     # Text-message signatures
 
     #####################################################################
@@ -674,7 +724,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     #                                                       #
     #########################################################
 
-    def _encrypt(self, element, public_key, randomness=None, get_secret=False):
+    def encrypt(self, element, public_key, randomness=None, get_secret=False):
         """
         ElGamal encryption
 
@@ -949,7 +999,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         election_key = self.get_value(election_key)
         encoded_plaintext = self.encode_integer(plaintext)
-        ciphertext, randomness = self._encrypt(encoded_plaintext, election_key,
+        ciphertext, randomness = self.encrypt(encoded_plaintext, election_key,
             get_secret=True)
 
         proof = self.prove_encryption(ciphertext, randomness)
@@ -1094,7 +1144,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         previous = m03[len(V_PREVIOUS):]
 
         zeus_public_key = mpz(m05[len(V_ZEUS_PUBLIC):])
-        zeus_public_key = self.set_public_key_from_value(zeus_public_key)
+        zeus_public_key = self.deserialize_public_key(zeus_public_key)
 
         _m06 = m06[len(V_TRUSTEES):]
         trustess = [int(_) for _ in _m06.split(' ')] if _m06 else []
@@ -1473,7 +1523,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             # ---------|-----------------------------------|---------
             #          |factor_1   |factor_2   |factor_3   |.........
             encoded = self._decrypt_with_decryptor(ballot, factor)
-            append(encoded.to_integer())
+            append(encoded.to_int())
 
         return plaintexts
 

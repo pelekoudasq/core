@@ -66,7 +66,7 @@ class KeyManager(object, metaclass=ABCMeta):
         return public_key
 
     @abstractmethod
-    def set_public_key_from_value(self, value, proof=None):
+    def deserialize_public_key(self, value, proof=None):
         """
         """
 
@@ -90,7 +90,8 @@ class KeyManager(object, metaclass=ABCMeta):
         :rtype: int
         """
         value = public_key['value'] if type(public_key) is dict else public_key
-        return value.to_integer()
+        return value.to_int()
+
 
 class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
     """
@@ -116,6 +117,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
     @abstractmethod
     def parameters(self):
         """
+        JSON
         """
 
     @abstractmethod
@@ -142,8 +144,6 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         extracted from some vote-text), so that they can be compared to the
         present cryptosystem's parameters
         """
-
-
 
     # Encoding
 
@@ -173,12 +173,10 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
     def set_schnorr_proof(self, commitment, challenge, response):
         """
         """
-        proof = {
-            'commitment': commitment,
-            'challenge': challenge,
-            'response': response
-        }
-
+        proof = {}
+        proof['commitment'] = commitment
+        proof['challenge'] = challenge
+        proof['response'] = response
         return proof
 
     def extract_schnorr_proof(self, proof):
@@ -191,6 +189,16 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         response = proof['response']
 
         return commitment, challenge, response
+
+    @abstractmethod
+    def serialize_scnorr_proof(self, proof):
+        """
+        """
+
+    @abstractmethod
+    def deserialize_schnorr_proof(self, proof):
+        """
+        """
 
     # Chaum-Pedersen protocol
 
@@ -208,13 +216,11 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
             challenge, response):
         """
         """
-        proof = {
-            'base_commitment': base_commitment,
-            'message_commitment': message_commitment,
-            'challenge': challenge,
-            'response': response
-        }
-
+        proof = {}
+        proof['base_commitment'] = base_commitment
+        proof['message_commitment'] = message_commitment
+        proof['challenge'] = challenge
+        proof['response'] = response
         return proof
 
     def _extract_chaum_pedersen_proof(self, proof):
@@ -266,6 +272,11 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         c_2 = commitments['c_2']
         return exponent, c_1, c_2
 
+    @abstractmethod
+    def deserialize_dsa_signature(self, signature):
+        """
+        """
+
     # Text-message signatures
 
     @abstractmethod
@@ -309,7 +320,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
     # ElGamal encryption and decryption
 
     @abstractmethod
-    def _encrypt(self, element, public_key, randomness=None, get_secret=False):
+    def encrypt(self, element, public_key, randomness=None, get_secret=False):
         """
         """
 
@@ -360,6 +371,11 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         beta = ciphertext['beta']
         return alpha, beta
 
+    @abstractmethod
+    def serialize_ciphertext(self, ciphertext):
+        """
+        """
+
     def set_ciphertext_proof(self, ciphertext, proof):
         """
         :type ciphertext: dict
@@ -380,3 +396,12 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         ciphertext = ciphertext_proof['ciphertext']
         proof = ciphertext_proof['proof']
         return ciphertext, proof
+
+    def serialize_ciphertext_proof(self, ciphertext_proof):
+        """
+        """
+        serialized = {}
+        ciphertext, proof = self.extract_ciphertext_proof(ciphertext_proof)
+        serialized['ciphertext'] = self.serialize_ciphertext(ciphertext)
+        serialized['proof'] = self.serialize_schnorr_proof(proof)
+        return serialized

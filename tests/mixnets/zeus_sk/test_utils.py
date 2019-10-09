@@ -44,12 +44,12 @@ def test_compute_mix_challenge():
     }
 
     assert compute_mix_challenge(cipher_mix) == \
-        sha256(bytes('%x%x%x%x%s%s%s' % (modulus, order, generator, public.to_integer(),
-                    ''.join('%x%x' % (c[0].to_integer(), c[1].to_integer())
+        sha256(bytes('%x%x%x%x%s%s%s' % (modulus, order, generator, public.to_int(),
+                    ''.join('%x%x' % (c[0].to_int(), c[1].to_int())
                         for c in original_ciphers),
-                    ''.join('%x%x' % (c[0].to_integer(), c[1].to_integer())
+                    ''.join('%x%x' % (c[0].to_int(), c[1].to_int())
                         for c in mixed_ciphers),
-                    ''.join('%x%x' % (c[0].to_integer(), c[1].to_integer())
+                    ''.join('%x%x' % (c[0].to_int(), c[1].to_int())
                         for c in chain(*cipher_collections))),
                 encoding='utf-8')).hexdigest()
 

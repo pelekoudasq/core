@@ -13,7 +13,6 @@ class StageTester(metaclass=ABCMeta):
     def run_until_stage(self):
         """
         """
-        pass
 
     def setUp(self):
         self.run_until_stage()

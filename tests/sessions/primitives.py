@@ -242,7 +242,7 @@ if __name__=='__main__':
 
     element = ModPrimeElement(mpz(__element), system.group.modulus)
 
-    ciphertext, randomness = system._encrypt(element,
+    ciphertext, randomness = system.encrypt(element,
         system.get_value(public_key), get_secret=True)
     proof = system.prove_encryption(ciphertext, randomness)
     ciphertext_proof = system.set_ciphertext_proof(ciphertext, proof)

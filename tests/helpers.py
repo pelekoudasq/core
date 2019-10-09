@@ -38,7 +38,7 @@ def vote(self, election_key, voter, plaintext,
     """
     election_key = self.get_value(election_key)
     encoded_plaintext = self.encode_integer(plaintext)
-    ciphertext, randomness = self._encrypt(encoded_plaintext, election_key,
+    ciphertext, randomness = self.encrypt(encoded_plaintext, election_key,
         get_secret=True)
 
     proof = self.prove_encryption(ciphertext, randomness)
@@ -96,7 +96,7 @@ def vote_from_encoded_selection(voter_key, encoded_selection, election,
 
     encoded_selection = cryptosys.encode_integer(encoded_selection)
     election_key = election.get_election_key()
-    ciphertext, randomness = cryptosys._encrypt(encoded_selection,
+    ciphertext, randomness = cryptosys.encrypt(encoded_selection,
             election_key, get_secret=True)
     alpha, beta = cryptosys.extract_ciphertext(ciphertext)
     proof = cryptosys.prove_encryption(ciphertext, randomness)

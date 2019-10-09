@@ -23,123 +23,93 @@ class Voting(Stage):
     def _update_controller(self, *generated):
         pass
 
-    def verify_audit_votes(self, cryptosys, audit_votes=None):
+    # Vote textification
+
+    def extract_encrypted_ballot(self, encrypted_ballot):
         """
+        Admits JSON and extracts WITHOUT deserializing
         """
-        election = self._get_controller()
-        nr_candidates = len(election.get_candidates())
+        cryptosys = self.cryptosys
+        ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)
 
-        if not votes:
-            audit_requests = election.get_audit_requests()
-            get_vote = election.get_vote
-            audit_votes = [get_vote(fingerprint) for fingerprint in audit_requests]
-            add_plaintext = 0
-        else:
-            add_plaintext = 1
+        alpha, beta = cryptosys.extract_ciphertext(ciphertext)
+        commitment, challenge, response = cryptosys.extract_proof(proof)
 
+        return alpha, beta, commitment, challenge, response
 
-        missing = []
-        failed = []
-        for vote in audit_votes:
-            _, _, _, encrypted_ballot, _, _, voter_secret, _, _, _, _ = \
-                self.extract_vote(vote)
-
-            if not voter_secret:
-                missing.append(vote)
-                continue
-            if not cryptosys.verify_encryption(encrypted_ballot):
-                failed.append(note)
-                continue
-
-            ciphertext, _ = cryptosys.extract_ciphertext_proof(encrypted_ballot)
-            alpha_vote, _ = cryptosys.extract_ciphertext(ciphertext)
-            alpha = cryptosys.group.generate(voter_secret)
-            if alpha_vote != alpha:
-                failed.append(vote)
-                continue
-
-            encoded = cryptosys.decrypt_with_randomness(election_key,
-                ciphertext, voter_secret)
-
-            max_encoded = gamma_encoding_max(nr_candidates)
-            if encoded.value > max_encoded:
-                failed.append(vote)
-                continue
-            if add_plaintext:
-                vote['plaintext'] = encoded.value
-
-        return missing, failed
-
-
-    def verify_vote_signature(self, cryptosys, vote_signature):
+    def extract_vote(self, vote, encode_func, to_exponent=int):
         """
-        Raise InvalidSignatureError in case of:
-            - malformed vote-text
-            - election mismatch
-            - invalid signature (failure of DSA signature validation)
-            - invalid vote encryption (failure of voter to prove
-                    knowledge of their signing key)
+        Admits JSO and extracts WITHOUT deserializing
         """
-        # Retrieve vote-text and accompanying DSA-signature
-        textified_vote, signature = \
-            self.extract_vote_signature(cryptosys, vote_signature)
+        crypto_params = vote['crypto']
+        election_key = vote['public']
+        voter_key = vote['voter']
+        alpha, beta, commitment, challenge, response = \
+            self.extract_encrypted_ballot(vote['encrypted_ballot'])
+        fingerprint = vote['fingerprint'] # hash_encode(vote['fingerprint'])
 
-        # Extract values from vote-text
-        try:
-            vote_values = self.extract_textified_vote(textified_vote)
-        except MalformedVoteError as err:
-            raise InvalidSignatureError(err)
-        (status, fingerprint, index, previous, election_key, zeus_public_key,
-        trustees, candidates, vote_crypto, alpha, beta,
-        commitment, challenge, response, comments,) = vote_values
+        audit_code = vote.get_value('audit_code') # extract_value(vote, 'audit_code', int)
+        voter_secret = vote.get_value('voter_secret') # extract_value(vote, 'voter_secret', to_exponent) # mpz
+        previous = vote.get_value('previous') # extract_value(vote, 'previous', hash_encode)
+        index = vote.get_value('index') # vote['index'] # extract_value(vote, 'index', int)
+        status = status.get_value('status') # vote['status'] # extract_value(vote, 'status', str)
+        plaintext = plaintext.get_value('plaintext') # extract_value(vote, 'plaintext', encode_func)
 
-        # Verify inscribed election info
-        try:
-            self.verify_election(vote_crypto, election_key, trustees, cadidates)
-        except ElectionMismatchError as err:
-            raise InvalidSignatureError(err)
+        return (crypto_params, election_key, voter_key, alpha, beta, commitment,
+                challenge, response, fingerprint, audit_code, voter_secret,
+                previous, index, status, plaintext,)
 
-        # Verify proof of encryption
-        ciphertext = cryptosys.set_ciphertext(alpha, beta)
-        proof = cryptosys.set_schnorr_proof(commitment, challenge, response)
-        if index is not None and not cryptosys.verify_encryption({
-            'ciphertext': ciphertext,
-            'proof': proof
-        }):
-            err = 'Invalid vote encryption'
-            raise InvalidSignatureError(err)
+    def textify_vote(self, vote, comments):
+        """
+        Admits JSON, converts keys and encrypted ballot to hex, and returns text
+        """
+        (crypto_params, election_key, _, alpha, beta, commitment, challenge, response,
+            fingerprint, _, _, previous, index, status, _) = self.extract_vote(vote)
 
-        # Validate DSA signature (NOTE: uses zeus key as inscribed in vote)
-        signed_message = \
-            cryptosys.set_signed_message(textified_vote, signature)
-        if not cryptosys.verify_text_signature(signed_message, zeus_public_key):
-            err = 'Invalid vote signature'
-            raise InvalidSignatureError(err)
+        zeus_public_key = self.election.get_zeus_public_key()
+        trustee_keys = self.election.get_trustee_keys()         # hex strings
+        candidates = self.election.get_candidates()
 
-        return True
+        t00 = status if status is not None else 'NONE'
+        t01 = V_FINGERPRINT + fingerprint                       # already hex
+        t02 = V_INDEX + '%s' % (index if index is not None else 'NONE')
+        t03 = V_PREVIOUS + '%s' % (previous,)
+        t04 = V_ELECTION + '%x' % election_key
+        t05 = V_ZEUS_PUBLIC + '%s' % zeus_public_key.to_hex()
+        t06 = V_TRUSTEES + '%s' % ' '.join(trustee_keys)
+        t07 = V_CANDIDATES + '%s' % ' % '.join(candidates)
+        t08, t09, t10 = cryptosys.textify_params(crypto_params)
+        t11 = V_ALPHA + '%x' % alpha
+        t12 = V_BETA + '%x' % beta
+        t13 = V_COMMITMENT + '%x' % commitment
+        t14 = V_CHALLENGE + '%x' % challenge
+        t15 = V_RESPONSE + '%x' % response
+        t16 = V_COMMENTS + '%s' % (comments,)
 
+        textified = '\n'.join((t00, t01, t02, t03, t04, t05, t06, t07, t08,
+            t09, t10, t11, t12, t13, t14, t15, t6))
+        return textified
+
+
+    # Vote signing
+    # TODO: ...
+
+    # Vote-signature verification
 
     def extract_vote_signature(self, cryptosys, vote_signature):
         """
-        Separates vote-text and retrieves accompanying DSA-signature
+        Separate vote-text from DSA signature and return
         """
-        # Split the provided text
         textified_vote, _, exponent, c_1, c_2, _ = \
-            vote_signature.rsplit('\n', 5)
-
-        # Retrieve DSA signature
-        to_exponent = cryptosys.to_exponent
-        exponent = to_exponent(exponent)
-        c_1 = to_exponent(c_1)
-        c_2 = to_exponent(c_2)
-        signature = cryptosys.set_dsa_signature(exponent, c_1, c_2)
+            vote_signature.rsplit('\n', 5)                          # Split the provided text
+        signature = \
+            cryptosys.deserialize_dsa_signature(exponent, c1, c2)   # Retrieve DSA signature
 
         return textified_vote, signature
 
-
     def split_textified_vote(self, cryptosys, textified_vote):
         """
-        Split vote test to fields.
+        Split vote-text to fields.
         Raise MalformedVoteError in case of malformed labels
         """
         (t00, t01, t02, t03, t04, t05, t06, t07, t08, t09,
@@ -206,8 +176,8 @@ class Voting(Stage):
         comments = t16[len(V_COMMENTS):].split()
 
         # Convert remaining texts to corresponding algebraic objects
-        election_key = cryptosys.set_public_key_from_value(mpz(election_key))
-        zeus_public_key = cryptosys.set_public_key_from_value(mpz(zeus_public_key))
+        election_key = cryptosys.deserialize_public_key(mpz(election_key))
+        zeus_public_key = cryptosys.deserialize_public_key(mpz(zeus_public_key))
         alpha = cryptosys.encode_integer(int(alpha))
         beta = cryptosys.encode_integer(int(beta))
         commitment = cryptosys.to_exponent(commitment)
@@ -217,6 +187,7 @@ class Voting(Stage):
         return (status, fingerprint, index, previous, election_key,
             zeus_public_key, trustees, candidates, vote_crypto,
             alpha, beta, commitment, challenge, response, comments)
+
 
     def verify_election(self, vote_crypto, election_key, trustees, candidates):
         """
@@ -239,70 +210,139 @@ class Voting(Stage):
             raise ElectionMismatchError(err)
         return True
 
+
+    def verify_vote_signature(self, cryptosys, vote_signature):
+        """
+        Raise InvalidSignatureError in case of:
+            - malformed vote-text
+            - election mismatch
+            - invalid signature (failure of DSA signature validation)
+            - invalid vote encryption (failure of voter to prove
+                    knowledge of their signing key)
+        """
+        # Retrieve vote-text and accompanying DSA-signature
+        textified_vote, signature = \
+            self.extract_vote_signature(cryptosys, vote_signature)
+
+        # Extract values from vote-text
+        try:
+            vote_values = self.extract_textified_vote(textified_vote)
+        except MalformedVoteError as err:
+            raise InvalidSignatureError(err)
+        (status, fingerprint, index, previous, election_key, zeus_public_key,
+        trustees, candidates, vote_crypto, alpha, beta,
+        commitment, challenge, response, comments,) = vote_values
+
+        # Verify inscribed election info
+        try:
+            self.verify_election(vote_crypto, election_key, trustees, cadidates)
+        except ElectionMismatchError as err:
+            raise InvalidSignatureError(err)
+
+        # Verify proof of encryption
+        ciphertext = cryptosys.set_ciphertext(alpha, beta)
+        proof = cryptosys.set_schnorr_proof(commitment, challenge, response)
+        if index is not None and not cryptosys.verify_encryption({
+            'ciphertext': ciphertext,
+            'proof': proof
+        }):
+            err = 'Invalid vote encryption'
+            raise InvalidSignatureError(err)
+
+        # Validate DSA signature (NOTE: uses zeus key as inscribed in vote)
+        signed_message = \
+            cryptosys.set_signed_message(textified_vote, signature)
+        if not cryptosys.verify_text_signature(signed_message, zeus_public_key):
+            err = 'Invalid vote signature'
+            raise InvalidSignatureError(err)
+
+        return True
+
     def exclude_voter(voter_key, reason=''):
         election = self._get_controller()
         election.store_excluded_voter(voter_key, reason)
 
-    # Vote structure
+    # Verify and cast vote
 
-    def set_vote(self, cryptosys, election_key, voter_key, encrypted_ballot,
-            fingerprint, audit_code=None, publish=None, voter_secret=None,
-            previous=None, index=None, status=None, plaintext=None):
+    def verify_audit_votes(self, cryptosys, audit_votes=None):
         """
         """
-        vote = {}
+        election = self._get_controller()
+        nr_candidates = len(election.get_candidates())
 
-        vote['crypto'] = cryptosys.parameters()
-        vote['public'] = election_key
-        vote['voter'] = voter_key
-        vote['encrypted_ballot'] = encrypted_ballot
-        vote['fingerprint'] = hash_decode(fingerprint)
+        if not votes:
+            audit_requests = election.get_audit_requests()
+            get_vote = election.get_vote
+            audit_votes = [get_vote(fingerprint) for fingerprint in audit_requests]
+            add_plaintext = 0
+        else:
+            add_plaintext = 1
 
-        if audit_code:
-            vote['audit_code'] = audit_code
-        if publish:
-            vote['voter_secret'] = voter_secret
-        if previous:
-            vote['index'] = index
-        if status:
-            vote['status'] = status
-        if plaintext:
-            vote['plaintext'] = plaintext
 
-        return vote
+        missing = []
+        failed = []
+        for vote in audit_votes:
+            _, _, _, encrypted_ballot, _, _, voter_secret, _, _, _, _ = \
+                self.extract_vote(vote)
 
-    def extract_vote(self, vote, encode_func, to_exponent=int):
-        """
-        """
-        crypto_params = vote['crypto']
-        election_key = vote['public']
-        voter_key = vote['voter']
-        encrypted_ballot = vote['encrypted_ballot']
-        # alpha, beta, commitment, challenge, response = \
-        #     self.extract_encrypted_ballot(vote['encrypted_ballot'])
-        fingerprint = hash_encode(vote['fingerprint'])
+            if not voter_secret:
+                missing.append(vote)
+                continue
+            if not cryptosys.verify_encryption(encrypted_ballot):
+                failed.append(note)
+                continue
 
-        audit_code = vote.get('audit_code')
-        voter_secret = vote.get('voter_secret')
-        previous = vote.get('previous')
-        index = vote.get('index')
-        status = vote.get('status')
-        plaintext = vote.get('plaintext')
+            ciphertext, _ = cryptosys.extract_ciphertext_proof(encrypted_ballot)
+            alpha_vote, _ = cryptosys.extract_ciphertext(ciphertext)
+            alpha = cryptosys.group.generate(voter_secret)
+            if alpha_vote != alpha:
+                failed.append(vote)
+                continue
 
-        return (crypto_params, election_key, voter_key, encrypted_ballot,
-            fingerprint, audit_code, voter_secret, previous, index, status,
-            plaintext,)
+            encoded = cryptosys.decrypt_with_randomness(election_key,
+                ciphertext, voter_secret)
 
-    def retrieve_fingerprint_params(self, cryptosys, encrypted_ballot):
-        """
-        """
-        ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)
-        alpha, beta = cryptosys.extract_ciphertext(ciphertext)
-        commitment, challenge, response = cryptosys.extract_schnorr_proof(proof)
-        return alpha, beta, commitment, challenge, response
+            max_encoded = gamma_encoding_max(nr_candidates)
+            if encoded.value > max_encoded:
+                failed.append(vote)
+                continue
+            if add_plaintext:
+                vote['plaintext'] = encoded.value
 
-    # def extract_encrypted_ballot(self, cryptosys, encrypted_ballot):
+        return missing, failed
+
+    # # Vote structure
+    #
+    # def set_vote(self, cryptosys, election_key, voter_key, encrypted_ballot,
+    #         fingerprint, audit_code=None, publish=None, voter_secret=None,
+    #         previous=None, index=None, status=None, plaintext=None):
+    #     """
+    #     """
+    #     vote = {}
+    #
+    #     vote['crypto'] = cryptosys.parameters()
+    #     vote['public'] = election_key
+    #     vote['voter'] = voter_key
+    #     vote['encrypted_ballot'] = encrypted_ballot
+    #     vote['fingerprint'] = hash_decode(fingerprint)
+    #
+    #     if audit_code:
+    #         vote['audit_code'] = audit_code
+    #     if publish:
+    #         vote['voter_secret'] = voter_secret
+    #     if previous:
+    #         vote['index'] = index
+    #     if status:
+    #         vote['status'] = status
+    #     if plaintext:
+    #         vote['plaintext'] = plaintext
+    #
+    #     return vote
+    #
+    # def retrieve_fingerprint_params(self, cryptosys, encrypted_ballot):
+    #     """
+    #     """
     #     ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)
     #     alpha, beta = cryptosys.extract_ciphertext(ciphertext)
-    #     commitment, challenge, response = cryptosys.extract_proof(proof)
+    #     commitment, challenge, response = cryptosys.extract_schnorr_proof(proof)
     #     return alpha, beta, commitment, challenge, response

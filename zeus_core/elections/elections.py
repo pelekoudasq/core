@@ -32,6 +32,12 @@ class GenericAPI(object):
     def get_trustees(self):
         return self.trustees
 
+    def get_trustee_keys(self):
+        """
+        Returns hex strings
+        """
+        return list(trustee['value'].to_hex() for trustee in self.trustees)
+
     def get_election_key(self):
         return self.election_key
 

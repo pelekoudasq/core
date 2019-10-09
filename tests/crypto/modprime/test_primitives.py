@@ -267,7 +267,7 @@ for (system, private_key) in (
 @pytest.mark.parametrize('system, element, private_key, public_key',
     __system__element__private_key__public_key)
 def test_encryption(system, element, private_key, public_key):
-    ciphertext = system._encrypt(element, public_key)
+    ciphertext = system.encrypt(element, public_key)
     original = system._decrypt(ciphertext, private_key)
 
     assert element == original
@@ -275,7 +275,7 @@ def test_encryption(system, element, private_key, public_key):
 @pytest.mark.parametrize('system, element, private_key, public_key',
     __system__element__private_key__public_key)
 def test_encryption_with_secret_and_proof(system, element, private_key, public_key):
-    ciphertext, randomness = system._encrypt(element, public_key, get_secret=True)
+    ciphertext, randomness = system.encrypt(element, public_key, get_secret=True)
     proof = system.prove_encryption(ciphertext, randomness)
     ciphertext_proof = system.set_ciphertext_proof(ciphertext, proof)
     verified = system.verify_encryption(ciphertext_proof)
@@ -288,7 +288,7 @@ __system__ciphertext__decryptor__element = []
 for (system, element, private_key, public_key) in __system__element__private_key__public_key:
     print(type(element))
     print(type(public_key))
-    ciphertext, randomness = system._encrypt(element, public_key, get_secret=True)
+    ciphertext, randomness = system.encrypt(element, public_key, get_secret=True)
     proof = system.prove_encryption(ciphertext, randomness)
     ciphertext_proof = system.set_ciphertext_proof(ciphertext, proof)
 
@@ -418,9 +418,9 @@ for system in (RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM):
     __system__element__public_key__randoms)
 def test__reencrypt(system, element, public_key, randoms):
 
-    final = system._encrypt(element, public_key, randomness=sum(randoms))
+    final = system.encrypt(element, public_key, randomness=sum(randoms))
 
-    __ciphertext = system._encrypt(element, public_key, randomness=randoms[0])
+    __ciphertext = system.encrypt(element, public_key, randomness=randoms[0])
     for random in randoms[1:]:
         __ciphertext = system._reencrypt(__ciphertext, public_key, randomness=random)
 

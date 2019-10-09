@@ -110,15 +110,15 @@ class Creating(Stage):
             raise Abortion(err)
         new_voters = {}
         audit_codes = {}
-        generate_random = lambda ceil: '%x' % random_integer(2, ceil)
+        random_hex = lambda ceil: '%x' % random_integer(2, ceil)
         for name, weight in voters:
-            voter_key = generate_random(VOTER_KEY_CEIL)
+            voter_key = random_hex(VOTER_KEY_CEIL)
             while voter_key in new_voters:
                 # ~ Avoid duplicate voter keys
                 # ~ Note for dev: this may lead to infinite loop for small
                 # ~ values of VOTER_KEY_CEIL! (not the case in production)
-                voter_key = generate_random(VOTER_KEY_CEIL)
-            voter_audit_codes = list(generate_random(voter_slot_ceil) for _ in range(3))
+                voter_key = random_hex(VOTER_KEY_CEIL)
+            voter_audit_codes = list(random_hex(voter_slot_ceil) for _ in range(3))
             new_voters[voter_key] = (name, weight)
             audit_codes[voter_key] = voter_audit_codes
         audit_code_set = set(tuple(values) for values in audit_codes.values())
@@ -130,23 +130,16 @@ class Creating(Stage):
         return voters, audit_codes
 
     def deserialize_trustees(self, trustees):
-        election = self._get_controller()
-        cryptosys = election.get_cryptosys()
-        modulus = cryptosys.parameters()['modulus']
-        GroupElement = cryptosys.GroupElement
+        """
+        """
+        cryptosys = self._get_controller().get_cryptosys()
+        deserialize_public_key = cryptosys.deserialize_public_key
+        deserialized = []
+        for trustee in trustees:
+            trustee = deserialize_public_key(trustee['value'], trustee['proof'])
+            deserialized.append(trustee)
+        return deserialized
 
-        output = []
-        for _ in trustees:
-            trustee = {}
-            proof = _['proof']
-            trustee['value'] = GroupElement(mpz(_['value']), modulus)
-            trustee['proof'] = {
-                'commitment': GroupElement(mpz(proof['commitment']), modulus),
-                'challenge': mpz(proof['challenge']),
-                'response': mpz(proof['response'])
-            }
-            output.append(trustee)
-        return output
 
     # def validate_election_key(self, election_key, trustees, zeus_keypair):
     #     election = self._get_controller()

@@ -26,6 +26,80 @@ class TestVoting(StageTester, unittest.TestCase):
 
     # Run whole stage and check updates
 
+    def step_0(self):
+        election = self.election
+        try:
+            assert self.election._get_current_stage() is self.voting
+            self.messages.append('[+] Current stage: Voting')
+        except AssertionError:
+            err = "Wrong election stage"
+            self.messages.append('[-] %s\n' % err)
+            raise AssertionError(err)
+
+    def step_1(self):
+        self.messages.append('\nBefore running:\n')
+
+        cast_vote_index = self.election.get_cast_vote_index()
+        awaited = []
+        try:
+            assert cast_vote_index == awaited
+            self.messages.append('[+] cast_vote_index: %s' % cast_vote_index)
+        except AssertionError:
+            err = "Cast vote index was not: %s" % awaited
+            self.messages.append('[-] %s\n' % err)
+            raise AssertionError(err)
+
+        votes = self.election.get_votes()
+        awaited = None
+        try:
+            assert votes == {}
+            self.messages.append('[+] votes: %s' % votes)
+        except AssertionError:
+            err = "Votes were not: %s" % awaited
+            self.messages.append('[-] %s\n' % err)
+            raise AssertionError(err)
+
+        cast_votes = self.election.get_cast_votes()
+        awaited = {}
+        try:
+            assert cast_votes == awaited
+            self.messages.append('[+] cast_votes: %s' % cast_votes)
+        except AssertionError:
+            err = "Cast votes were not: %s" % awaited
+            self.messages.append('[-] %s\n' % err)
+            raise AssertionError(err)
+
+        audit_requests = self.election.get_audit_requests()
+        awaited = {}
+        try:
+            assert audit_requests == awaited
+            self.messages.append('[+] audit_requests: %s' % audit_requests)
+        except AssertionError:
+            err = "Audit requests were not: %s" % awaited
+            self.messages.append('[-] %s\n' % err)
+            raise AssertionError(err)
+
+        audit_publications = self.election.get_audit_publications()
+        awaited = []
+        try:
+            assert audit_publications == awaited
+            self.messages.append('[+] audit_publications: %s' % audit_publications)
+        except AssertionError:
+            err = "Audit publications were not: %s" % awaited
+            self.messages.append('[-] %s\n' % err)
+            raise AssertionError(err)
+
+        excluded_voters = self.election.get_excluded_voters()
+        awaited = {}
+        try:
+            assert excluded_voters == awaited
+            self.messages.append('[+] excluded_voters: %s' % excluded_voters)
+        except AssertionError:
+            err = "Excluded voters were not: %s" % awaited
+            self.messages.append('[-] %s\n' % err)
+            raise AssertionError(err)
+
+
 if __name__ == '__main__':
     print('\n=================== Testing election stage: Voting ===================')
     time.sleep(.6)
@@ -54,8 +128,8 @@ if __name__ == '__main__':
 
 
 
-# # Client voting reference (INCOMPLETE!)
-#
+# Client voting reference (INCOMPLETE!)
+
 # def cast_vote(self, vote):
 #     """
 #     """
@@ -209,7 +283,7 @@ if __name__ == '__main__':
 #     """
 #     """
 #     plaintext = cryptosys.encode_integer(plaintext)
-#     ciphertext, voter_secret = cryptosys._encrypt(encoded_plaintext,
+#     ciphertext, voter_secret = cryptosys.encrypt(encoded_plaintext,
 #                     election_key, get_secret=True)
 #     proof = cryptosys.prove_encryption(ciphertext, randomness)
 #
@@ -226,7 +300,7 @@ if __name__ == '__main__':
 #     """
 #     """
 #     encoded_selection = cryptosys.encode_integer(encoded_selection)
-#     ciphertext, randomness = cryptosys._encrypt(encoded_selection,
+#     ciphertext, randomness = cryptosys.encrypt(encoded_selection,
 #                     election_key, get_secret=True)
 #     proof = cryptosys.prove_encryption(ciphertext, randomness)
 #

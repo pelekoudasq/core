@@ -30,7 +30,7 @@ def compute_mix_challenge(cipher_mix):
     update(('%x' % cipher_mix['modulus']).encode('utf-8'))
     update(('%x' % cipher_mix['order']).encode('utf-8'))
     update(('%x' % cipher_mix['generator']).encode('utf-8'))
-    update(('%x' % cipher_mix['public'].to_integer()).encode('utf-8'))
+    update(('%x' % cipher_mix['public'].to_int()).encode('utf-8'))
 
     original_ciphers = cipher_mix['original_ciphers']
     mixed_ciphers = cipher_mix['mixed_ciphers']
@@ -38,8 +38,8 @@ def compute_mix_challenge(cipher_mix):
 
     ciphers = chain(original_ciphers, mixed_ciphers, *cipher_collections)
     for cipher in ciphers:
-        update(('%x' % cipher[ALPHA].to_integer()).encode('utf-8'))
-        update(('%x' % cipher[BETA].to_integer()).encode('utf-8'))
+        update(('%x' % cipher[ALPHA].to_int()).encode('utf-8'))
+        update(('%x' % cipher[BETA].to_int()).encode('utf-8'))
 
     challenge = hasher.hexdigest()
     return challenge
