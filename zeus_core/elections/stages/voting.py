@@ -92,7 +92,24 @@ class Voting(Stage):
 
 
     # Vote signing
-    # TODO: ...
+
+    def format_vote_signature(self, textified_vote, exponent, c_1, c_2):
+        textified_vote += V_SEPARATOR
+        vote_signature += '%s\n%s\n%s\n' % (str(exponent), str(c_1), str(c_2))
+        return vote_signature
+
+    def sign_vote(self, vote, comments, cryptosys, zeus_private_key,
+            zeus_public_key, trustees, candidates):
+        """
+        """
+        textfied_vote = self.textify_vote(self, vote, comments, cryptosys,
+            zeus_public_key, trustees, candidates)
+        signed_vote = cryptosys.sign_text_message(textified_vote, zeus_private_key)
+        _, exponent, c_1, c_2 = cryptosys.extract_signed_message(signed_vote)
+
+        vote_signature = self.format_vote_signature(textified_vote, exponent, c_1, c_2)
+        return vote_signature
+
 
     # Vote-signature verification
 
@@ -262,7 +279,8 @@ class Voting(Stage):
         election = self._get_controller()
         election.store_excluded_voter(voter_key, reason)
 
-    # Verify and cast vote
+
+    # Verifications and casting
 
     def verify_audit_votes(self, cryptosys, audit_votes=None):
         """
@@ -311,38 +329,127 @@ class Voting(Stage):
 
         return missing, failed
 
-    # # Vote structure
-    #
-    # def set_vote(self, cryptosys, election_key, voter_key, encrypted_ballot,
-    #         fingerprint, audit_code=None, publish=None, voter_secret=None,
-    #         previous=None, index=None, status=None, plaintext=None):
-    #     """
-    #     """
-    #     vote = {}
-    #
-    #     vote['crypto'] = cryptosys.parameters()
-    #     vote['public'] = election_key
-    #     vote['voter'] = voter_key
-    #     vote['encrypted_ballot'] = encrypted_ballot
-    #     vote['fingerprint'] = hash_decode(fingerprint)
-    #
-    #     if audit_code:
-    #         vote['audit_code'] = audit_code
-    #     if publish:
-    #         vote['voter_secret'] = voter_secret
-    #     if previous:
-    #         vote['index'] = index
-    #     if status:
-    #         vote['status'] = status
-    #     if plaintext:
-    #         vote['plaintext'] = plaintext
-    #
-    #     return vote
-    #
-    # def retrieve_fingerprint_params(self, cryptosys, encrypted_ballot):
-    #     """
-    #     """
-    #     ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)
-    #     alpha, beta = cryptosys.extract_ciphertext(ciphertext)
-    #     commitment, challenge, response = cryptosys.extract_schnorr_proof(proof)
-    #     return alpha, beta, commitment, challenge, response
+
+    def cast_vote(self, vote):
+        """
+        """
+        election = self._get_controller()                                       # Setup
+
+        (_, _, voter_key, _, _, _, _, _, fingerprint,
+            voter_audit_code, voter_secret, _, _, _, _,) = self.extract_vote(vote)
+
+        voter = election.get_voter(voter_key)
+        voter_audit_codes = election.get_voter_audit_codes(voter_key)
+        if not voter and not voter_audit_codes:
+            err = 'Invalid voter key'
+            raise Abortion(err)
+        if not voter or not voter_audit_codes:
+            err = 'Voter audit code inconsistency'
+            raise Abortion(err)
+
+        audit_request = election.get_audit_request(fingeprint)
+
+        # # # # # # # # # # # #
+        #
+        # # TODO: replace everything below with a snipset like the following:
+        #
+        # if voter_secret:
+        #     self.submit_audit_publication(...)
+        # else:
+        #     if not voter_audit_code:                                                # ...?
+        #         skip_audit = election.get_option('skip_audit')
+        #         if skip_audit or skip_audit is None:                                # Skip auditing for submission simplicity
+        #             voter_audit_code = voter_audit_codes[0]
+        #         else:
+        #             err = "Invalid vote submission: No `audit_code` provided \
+        #                 while `skip_audit` disabled"
+        #             raise Abortion(err) # -----------------------------------------> change exception
+        #
+        #     if voter_audit_code not in voter_audit_codes:
+        #         self.submit_audit_request(...)
+        #     else:
+        #         self.submit_genuine_vote(...)
+        #
+        # # # # # # # # # # # #
+
+        if voter_secret:                                                        # Audit-publication
+            if not voter_audit_code:
+                err = "Invalid audit vote publication: No audit-code provided"
+                raise Abortion(err) # -----------------------------------------> change exception...
+            if voter_audit_code in audit_codes:
+                err = "Invalid audit vote publication: Invalid audit-code provided"
+                raise Abortion(err) # -----------------------------------------> change exception...
+            if voter_key != audit_request:
+                err = "No prior audit-request found for publish-request"
+                raise Abortion(err) # -----------------------------------------> change exception...
+            vote['previous'] = ''
+            vote['index'] = None
+            vote['status'] = V_PUBLIC_AUDIT
+            comments = self.custom_audit_publication_message(vote)  # ---------> implement....
+            missing, failed = self.verify_audit_votes(votes=[vote,])
+            if missing:
+                err = "Audit-publication failed: Missing voters' secrets"
+                raise Abortion(err) # -----------------------------------------> change exception...
+            if failed:
+                vote['status'] = V_PUBLIC_AUDIT_FAILED
+            comments = self.custom_audit_publication_message(vote)
+            signature = self.sign_vote(vote, comments)
+            vote['signature'] = signature
+            election.store_audit_publication(fingerprint)
+            election.store_votes((vote,))
+
+            return signature
+
+        if not voter_audit_code:                                                # ...?
+            skip_audit = election.get_option('skip_audit')
+            if skip_audit or skip_audit is None:                                # Skip auditing for submission simplicity
+                voter_audit_code = voter_audit_codes[0]
+            else:
+                err = "Invalid vote submission: No `audit_code` provided \
+                    while `skip_audit` disabled"
+                raise Abortion(err) # -----------------------------------------> change exception
+
+
+        if voter_audit_code not in voter_audit_codes:                           # Audit-request submission
+            if audit_request:
+                err = "Audit request for vote [%s] already exists" % (fingeprint,)
+                raise Abortion(err)
+            vote['previous'] = ''
+            vote['index'] = None
+            vote['status'] = V_AUDIT_REQUEST
+            comments = self.custom_audit_request_message(vote)
+            signature = self.sign_vote(vote, comments)
+            vote['signature'] = signature
+            election.store_audit_request(fingerprint, voter_key)
+            election.store_votes((vote,))
+
+            return signature
+
+        if election.get_vote(fingerprint):                                      # Genuine vote submission
+            err = "Vote [%s] already cast" % (fingerprint,)
+            raise Abortion(err)
+        voter_cast_votes = election.get_voter_cast_votes(voter_key)
+        vote_limit = self.get_option('vote_limit')
+        if vote_limit and len(voter_cast_votes) >= vote_limit:
+            err = "Maximum number of votes reached: %s" % vote_limit
+            raise Abortion(err) # ---------------------------------------------> change exception....
+
+        if not cast_votes:
+            previous_fingerprint = ''
+        else:
+            previous_fingerprint = cast_votes[-1]
+
+        vote = self.validate_submitted_vote(vote) # ---------------------------> implement...
+
+        vote['previous'] = previous_fingerprint
+        vote['status'] = V_CAST_VOTE
+        vote['index'] = election.do_index_vote(fingerprint)
+
+        comments = self.custom_cast_vote_message(vote) # ----------------------> implement
+        signature = self.sign_vote(vote, comments)
+        vote['signature'] = signature
+
+        election.append_vote(voter_key, fingerprint)
+        election.store_votes((vote,))
+
+        return signature

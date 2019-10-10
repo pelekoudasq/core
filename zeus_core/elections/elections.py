@@ -8,11 +8,15 @@ class GenericAPI(object):
         self.options.update(kwarg)
 
     def get_option(self, key):
-        try:
-            value = self.options[key]
-        except KeyError:
-            value = None
-        return value
+        """
+        Returns None if the option doesn't exist
+        """
+        # try:
+        #     value = self.options[key]
+        # except KeyError:
+        #     value = None
+        # return value
+        return self.options.get(key)
 
     def get_cryptosys(self):
         return self.cryptosys
