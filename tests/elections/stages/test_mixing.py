@@ -12,7 +12,7 @@ import unittest
 
 class TestMixing(StageTester, unittest.TestCase):
 
-    # Setup
+    # Common context implementation
 
     def run_until_stage(self):
         self.launch_election()
@@ -22,11 +22,12 @@ class TestMixing(StageTester, unittest.TestCase):
         creating.run()
         voting = creating.next()
         voting.run()
-        self.mixing = voting.next()
+        mixing = voting.next()
+        self.stage = mixing
 
-    # ...
+    # ------------------------ Isolated functionalities ------------------------
 
-    # Run whole stage and check updates
+    # ------------------------- Overall stage testing --------------------------
 
 if __name__ == '__main__':
     print('\n=================== Testing election stage: Mixing ===================')

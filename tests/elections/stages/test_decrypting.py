@@ -24,11 +24,12 @@ class TestDecrypting(StageTester, unittest.TestCase):
         voting.run()
         mixing = voting.next()
         mixing.run()
-        self.decrypting = mixing.next()
+        decrypting = mixing.next()
+        self.stage = decrypting
 
-    # ...
+    # ------------------------ Isolated functionalities ------------------------
 
-    # Run whole stage and check updates
+    # ------------------------- Overall stage testing --------------------------
 
 if __name__ == '__main__':
     print('\n================= Testing election stage: Decrypting =================')

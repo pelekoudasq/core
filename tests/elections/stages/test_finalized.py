@@ -26,11 +26,12 @@ class TestFinalized(StageTester, unittest.TestCase):
         mixing.run()
         decrypting = voting.next()
         decrypting.run()
-        self.finalized = decrypting.next()
+        finalized = decrypting.next()
+        self.stage = finalized
 
-    # ...
+    # ------------------------ Isolated functionalities ------------------------
 
-    # Run whole stage and check updates
+    # ------------------------- Overall stage testing --------------------------
 
 if __name__ == '__main__':
     print('\n================= Testing election stage: Finalized ==================')

@@ -3,7 +3,7 @@ import pytest
 from copy import deepcopy
 import json
 
-from tests.elections.stages.abstracts import StageTester
+from tests.elections.stages.abstracts import StageTester, get_cls_name
 
 from tests.constants import _2048_SYSTEM, _2048_SECRET
 from tests.elections.stages.utils import create_election, run_until_creating_stage
@@ -15,25 +15,26 @@ from zeus_core.elections.exceptions import Abortion
 
 import unittest
 
-def get_cls_name(obj):
-    return obj.__class__.__name__
-
 class TestCreating(StageTester, unittest.TestCase):
 
-    # Setup
+    # Common context implementation
 
     def run_until_stage(self):
         self.launch_election()
         uninitialized = Uninitialized(self.election)
         uninitialized.run()
-        self.creating = uninitialized.next()
+        creating = uninitialized.next()
+        self.stage = creating
 
+    # ------------------------- Isolated funtionalities ------------------------
 
     # Zeus keypair creation
 
     def test_create_zeus_keypair(self):
-        cryptosys = self.election.get_cryptosys()
-        zeus_keypair_1 = self.creating.create_zeus_keypair(_2048_SECRET)
+        election, _, creating = self.get_context()
+
+        cryptosys = election.get_cryptosys()
+        zeus_keypair_1 = creating.create_zeus_keypair(_2048_SECRET)
         zeus_keypair_2 = _2048_SYSTEM.keygen(_2048_SECRET)
         assert cryptosys._get_public_value(zeus_keypair_1) == \
             _2048_SYSTEM._get_public_value(zeus_keypair_2)
@@ -51,20 +52,22 @@ class TestCreating(StageTester, unittest.TestCase):
                 }
             }
         }
-        self.messages.append('[+] Successfully created: zeus_keypair: %s'
+        self.append_message('[+] Successfully created: zeus_keypair: %s'
             % json.dumps(serialized, sort_keys=False, indent=4))
 
     def test_create_zeus_keypair_abort_cases(self):
-        with self.assertRaises(Abortion):
-            self.creating.create_zeus_keypair(1)
-        self.messages.append('[+] Successfully aborted: Small private key')
+        _, _, creating = self.get_context()
+
+        with self.assertRaises(Abortion): creating.create_zeus_keypair(1)
+        self.append_message('[+] Successfully aborted: Small private key')
 
 
     # Trustees' validation
 
     def test_validate_trustees(self):
-        creating = self.creating
-        trustees = self.election.config['trustees']
+        _, config, creating = self.get_context()
+
+        trustees = config['trustees']
         validated_trustees = creating.validate_trustees(trustees)
         assert validated_trustees == creating.deserialize_trustees(trustees)
         serialized = [{
@@ -75,12 +78,13 @@ class TestCreating(StageTester, unittest.TestCase):
                 'response': '%s...' % ('%x' % trustee['proof']['response'])[:16],
             }
         } for trustee in validated_trustees]
-        self.messages.append('[+] Successfully created: trustees: %s'
+        self.append_message('[+] Successfully created: trustees: %s'
             % json.dumps(serialized, sort_keys=False, indent=4))
 
     def test_validate_trustees_abort_cases(self):
-        creating = self.creating
-        trustees = self.election.config['trustees']
+        _, config, creating = self.get_context()
+
+        trustees = config['trustees']
         corrupt_trustees = deepcopy(trustees)
         corrupt_trustees[0]['value'] += 1
         with self.assertRaises(Abortion):
@@ -90,9 +94,9 @@ class TestCreating(StageTester, unittest.TestCase):
     # Election key computation
 
     def test_compute_election_key(self):
-        trustees = self.election.config['trustees']
-        creating = self.creating
+        _, config, creating = self.get_context()
 
+        trustees = config['trustees']
         election_key_hex = \
         '75142c805b7ba32068e48293d711e78fdbc8ff3bd6c080337d409554bb50287cb73e6eb' + \
         '56924ea287aa7902ecc3169f275e4ccf8cd9ead105f1c3907e81cdf16f7b6d5ab34afb6' + \
@@ -107,22 +111,23 @@ class TestCreating(StageTester, unittest.TestCase):
         election_key = creating.compute_election_key(validated_trustees, zeus_keypair)
         assert election_key['value'].to_hex() == election_key_hex and \
             election_key['proof'] == None
-        self.messages.append('[+] Successfully computed: election_key: %s...'
+        self.append_message('[+] Successfully computed: election_key: %s...'
             % election_key['value'].to_hex()[:16])
 
 
     # Candidates creation
 
     def test_create_candidates(self):
-        election = self.election
-        creating = self.creating
-        candidates = election.config['candidates']
+        _, config, creating = self.get_context()
+
+        candidates = config['candidates']
         assert candidates == creating.create_candidates(candidates)
-        self.messages.append('[+] Successfully created: candidates: %s'
+        self.append_message('[+] Successfully created: candidates: %s'
             % json.dumps(candidates, sort_keys=False, indent=4))
 
     def mk_create_candidates_abort_cases(self):
-        config = self.election.config
+        _, config, _ = self.get_context()
+
         abort_cases = [{
             'case': deepcopy(config['candidates']),
             'message': None
@@ -140,7 +145,8 @@ class TestCreating(StageTester, unittest.TestCase):
         return abort_cases
 
     def test_create_candidates_abort_cases(self):
-        creating = self.creating
+        _, _, creating = self.get_context()
+
         abort_cases = self.mk_create_candidates_abort_cases()
         for abort_case in abort_cases:
             candidates = abort_case['case']
@@ -148,23 +154,24 @@ class TestCreating(StageTester, unittest.TestCase):
             with self.subTest(message, candidates=candidates):
                 with self.assertRaises(Abortion):
                     creating.create_candidates(candidates)
-                self.messages.append('[+] Successfully aborted: %s' % message)
+                self.append_message('[+] Successfully aborted: %s' % message)
 
     # Voters and audit codes creation
 
     def test_create_voters_and_audit_codes(self):
-        creating = self.creating
-        config = self.election.config
+        _, config, creating = self.get_context()
+
         new_voters, audit_codes = creating.create_voters_and_audit_codes(config['voters'])
         inverse_voters = {voter: voter_key
             for voter_key, voter in new_voters.items()}
         get_audit_codes = lambda voter: audit_codes[inverse_voters[voter]]
         assert all(audit_codes[voter_key] == get_audit_codes(new_voters[voter_key])
             for voter_key in new_voters.keys())
-        self.messages.append('[+] Successfully created: Voters and audit codes')
+        self.append_message('[+] Successfully created: Voters and audit codes')
 
     def mk_create_voters_and_audit_codes_abort_cases(self):
-        config = self.election.config
+        _, config, _ = self.get_context()
+
         abort_cases = [{
             'case': [deepcopy(config['voters']), VOTER_SLOT_CEIL],
             'message': None
@@ -182,7 +189,8 @@ class TestCreating(StageTester, unittest.TestCase):
         return abort_cases
 
     def test_create_voters_and_audit_codes_abort_cases(self):
-        creating = self.creating
+        _, _, creating = self.get_context()
+
         abort_cases = self.mk_create_voters_and_audit_codes_abort_cases()
         for abort_case in abort_cases:
             voters, voter_slot_ceil = abort_case['case']
@@ -190,176 +198,170 @@ class TestCreating(StageTester, unittest.TestCase):
             with self.subTest(message, voters=voters, voter_slot_ceil=voter_slot_ceil):
                 with self.assertRaises(Abortion):
                     creating.create_voters_and_audit_codes(voters, voter_slot_ceil)
-                self.messages.append('[+] Successfully aborted: %s' % message)
+                self.append_message('[+] Successfully aborted: %s' % message)
 
-    # Run whole stage and check updates
 
-    def step_0(self):
-        election = self.election
-        try:
-            assert self.election._get_current_stage() is self.creating
-            self.messages.append('[+] Current stage: Creating')
-        except AssertionError:
-            err = "Wrong election stage"
-            self.messages.append('[-] %s\n' % err)
-            raise AssertionError(err)
+    # ------------------------- Overall stage testing --------------------------
 
     def step_1(self):
-        self.messages.append('\nBefore running:\n')
+        election, _, _ = self.get_context()
+        self.append_message('\nBefore running:\n')
 
-        zeus_private_key = self.election.get_zeus_private_key()
+        zeus_private_key = election.get_zeus_private_key()
         awaited = None
         try:
             assert zeus_private_key == awaited
-            self.messages.append('[+] zeus_private_key: %s' % zeus_private_key)
+            self.append_message('[+] zeus_private_key: %s' % zeus_private_key)
         except AssertionError:
             err = "Zeus private key was not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        zeus_public_key = self.election.get_zeus_public_key()
+        zeus_public_key = election.get_zeus_public_key()
         awaited = None
         try:
             assert zeus_public_key == awaited
-            self.messages.append('[+] zeus_public_key: %s' % zeus_public_key)
+            self.append_message('[+] zeus_public_key: %s' % zeus_public_key)
         except AssertionError:
             err = "Zeus public key was not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        trustees = self.election.get_trustees()
+        trustees = election.get_trustees()
         awaited = {}
         try:
             assert trustees == awaited
-            self.messages.append('[+] trustees: %s' % trustees)
+            self.append_message('[+] trustees: %s' % trustees)
         except AssertionError:
             err = "Trustees were not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        election_key = self.election.get_election_key()
+        election_key = election.get_election_key()
         awaited = None
         try:
             assert election_key == awaited
-            self.messages.append('[+] election_key: %s' % election_key)
+            self.append_message('[+] election_key: %s' % election_key)
         except AssertionError:
             err = "Zeus public key was not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        candidates = self.election.get_candidates()
+        candidates = election.get_candidates()
         awaited = []
         try:
             assert candidates == awaited
-            self.messages.append('[+] candidates: %s' % candidates)
+            self.append_message('[+] candidates: %s' % candidates)
         except AssertionError:
             err = "Candidates were not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        voters = self.election.get_voters()
+        voters = election.get_voters()
         awaited = {}
         try:
             assert voters == awaited
-            self.messages.append('[+] voters: %s' % voters)
+            self.append_message('[+] voters: %s' % voters)
         except AssertionError:
             err = "Voters were not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        audit_codes = self.election.get_audit_codes()
+        audit_codes = election.get_audit_codes()
         awaited = {}
         try:
             assert audit_codes == awaited
-            self.messages.append('[+] audit_codes: %s' % audit_codes)
+            self.append_message('[+] audit_codes: %s' % audit_codes)
         except AssertionError:
             err = "Audit codes were not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
     def step_2(self):
-        self.creating.run()
-        self.messages.append('\nAfter running:\n')
+        election, _, creating = self.get_context()
 
-        zeus_private_key = self.election.get_zeus_private_key()
+        creating.run()
+        self.append_message('\nAfter running:\n')
+
+        zeus_private_key = election.get_zeus_private_key()
         try:
             assert zeus_private_key != None
-            self.messages.append('[+] zeus_private_key: %s...'
+            self.append_message('[+] zeus_private_key: %s...'
                     % ('%x' % zeus_private_key)[:32])
         except AssertionError:
             err = "No zeus private key has been computed"
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        zeus_public_key = self.election.get_zeus_public_key()
+        zeus_public_key = election.get_zeus_public_key()
         try:
             assert zeus_public_key != None
-            self.messages.append('[+] zeus_public_key : %s...'
+            self.append_message('[+] zeus_public_key : %s...'
                     % ('%x' % zeus_public_key['value'].value)[:32])
         except AssertionError:
             err = "No zeus public key has been computed"
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        trustees = self.election.get_trustees()
+        trustees = election.get_trustees()
         try:
             assert trustees != {}
-            self.messages.append('[+] trustees: \n%s\n' % '\n'.join(22 * ' ' +
+            self.append_message('[+] trustees: \n%s\n' % '\n'.join(22 * ' ' +
                 '%s...' % ('%x' % trustee['value'].value)[:32]
                     for trustee in trustees))
         except AssertionError:
             err = "No trustees have been created"
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        trustee_keys = self.election.get_trustee_keys()
+        trustee_keys = election.get_trustee_keys()
         try:
             assert trustee_keys == list('%x' % trustee['value'].value for trustee in trustees)
-            self.messages.append('[+] Keys matched')
+            self.append_message('[+] Keys matched')
         except AssertionError:
             err = "Trustee keys mismatch"
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        election_key = self.election.get_election_key()
+        election_key = election.get_election_key()
         try:
             assert election_key != None
-            self.messages.append('[+] election_key:     %s...'
+            self.append_message('[+] election_key:     %s...'
                     % ('%x' % election_key)[:32])
         except AssertionError:
             err = "No election key has been computed"
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        candidates = self.election.get_candidates()
+        candidates = election.get_candidates()
         try:
             assert candidates != []
-            self.messages.append('[+] candidates: \n%s' % '\n'.join(22 * ' ' +
+            self.append_message('[+] candidates: \n%s' % '\n'.join(22 * ' ' +
                 candidate for candidate in candidates))
         except AssertionError:
             err = "No candidates have been created"
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        voters = self.election.get_voters()
+        voters = election.get_voters()
         try:
             assert voters != {}
-            self.messages.append('[+] voters: \n%s' % '\n'.join(22 * ' ' +
+            self.append_message('[+] voters: \n%s' % '\n'.join(22 * ' ' +
                 '%s...' % voter_key[:32] for voter_key in voters))
         except AssertionError:
             err = "No voters have been created"
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        audit_codes = self.election.get_audit_codes()
+        audit_codes = election.get_audit_codes()
         try:
             assert audit_codes != {}
-            self.messages.append('[+] audit_codes: \n%s' % '\n'.join(22 * ' ' +
+            self.append_message('[+] audit_codes: \n%s' % '\n'.join(22 * ' ' +
             '%s...: %s' % (voter_key[:16], voter_codes)
                     for voter_key, voter_codes in audit_codes.items()))
         except AssertionError:
             err = "No audit_codes have been created"
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
 

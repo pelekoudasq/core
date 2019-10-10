@@ -7,12 +7,11 @@ from tests.elections.stages.abstracts import StageTester
 from zeus_core.elections.exceptions import Abortion
 from zeus_core.elections.stages import Uninitialized
 
-
 import unittest
 
 class TestVoting(StageTester, unittest.TestCase):
 
-    # Setup
+    # Common context implementation
 
     def run_until_stage(self):
         self.launch_election()
@@ -20,83 +19,77 @@ class TestVoting(StageTester, unittest.TestCase):
         uninitialized.run()
         creating = uninitialized.next()
         creating.run()
-        self.voting = creating.next()
+        voting = creating.next()
+        self.stage = voting
 
-    # ...
 
-    # Run whole stage and check updates
+    # ------------------------ Isolated functionalities ------------------------
 
-    def step_0(self):
-        election = self.election
-        try:
-            assert self.election._get_current_stage() is self.voting
-            self.messages.append('[+] Current stage: Voting')
-        except AssertionError:
-            err = "Wrong election stage"
-            self.messages.append('[-] %s\n' % err)
-            raise AssertionError(err)
+    # ------------------------- Overall stage testing --------------------------
+
 
     def step_1(self):
-        self.messages.append('\nBefore running:\n')
+        election, _, _ = self.get_context()
+        self.append_message('\nBefore running:\n')
 
-        cast_vote_index = self.election.get_cast_vote_index()
+        cast_vote_index = election.get_cast_vote_index()
         awaited = []
         try:
             assert cast_vote_index == awaited
-            self.messages.append('[+] cast_vote_index: %s' % cast_vote_index)
+            self.append_message('[+] cast_vote_index: %s' % cast_vote_index)
         except AssertionError:
             err = "Cast vote index was not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        votes = self.election.get_votes()
+        votes = election.get_votes()
         awaited = None
         try:
             assert votes == {}
-            self.messages.append('[+] votes: %s' % votes)
+            self.append_message('[+] votes: %s' % votes)
         except AssertionError:
             err = "Votes were not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        cast_votes = self.election.get_cast_votes()
+        cast_votes = election.get_cast_votes()
         awaited = {}
         try:
             assert cast_votes == awaited
-            self.messages.append('[+] cast_votes: %s' % cast_votes)
+            self.append_message('[+] cast_votes: %s' % cast_votes)
         except AssertionError:
             err = "Cast votes were not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        audit_requests = self.election.get_audit_requests()
+        audit_requests = election.get_audit_requests()
         awaited = {}
         try:
             assert audit_requests == awaited
-            self.messages.append('[+] audit_requests: %s' % audit_requests)
+            self.append_message('[+] audit_requests: %s' % audit_requests)
         except AssertionError:
             err = "Audit requests were not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        audit_publications = self.election.get_audit_publications()
+        audit_publications = election.get_audit_publications()
         awaited = []
         try:
             assert audit_publications == awaited
-            self.messages.append('[+] audit_publications: %s' % audit_publications)
+            self.append_message('[+] audit_publications: %s' % audit_publications)
         except AssertionError:
             err = "Audit publications were not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        excluded_voters = self.election.get_excluded_voters()
+        excluded_voters = election.get_excluded_voters()
         awaited = {}
         try:
             assert excluded_voters == awaited
-            self.messages.append('[+] excluded_voters: %s' % excluded_voters)
+            self.append_message('[+] excluded_voters: %s' % excluded_voters)
         except AssertionError:
             err = "Excluded voters were not: %s" % awaited
-            self.messages.append('[-] %s\n' % err)
+            self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
 
