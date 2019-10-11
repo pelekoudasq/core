@@ -22,3 +22,22 @@ class ElectionMismatchError(BaseException):
     election (will lead to InvalidSignatureError).
     """
     pass
+
+class VoterInconsistency(BaseException):
+    """
+    """
+
+class AuditPublicationError(BaseException):
+    """
+    """
+    pass
+
+class VoteRejectionError(BaseException):
+    """
+    """
+    pass
+
+class InvalidVoteError(BaseException):
+    """
+    """
+    pass

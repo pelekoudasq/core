@@ -24,6 +24,7 @@ class Creating(Stage):
             candidates = config['candidates']
             voters = config['voters']
         except KeyError as err:
+            err = "Incomplete election configuration: Missing " + err
             raise Abortion(err)
 
         return zeus_private_key, trustees, candidates, voters
@@ -148,6 +149,9 @@ class Creating(Stage):
     #     election_key = cryptosys.get_value(election_key)
     #     test_key = cryptosys.compute_election_key(trustees, zeus_keypair)
     #     return election_key == cryptosys.get_value(test_key)
+    #
+    # def reprove_trustee():
+    #     pass
     #
     # def invalidate_election_key():
     #     election = self._get_controller()

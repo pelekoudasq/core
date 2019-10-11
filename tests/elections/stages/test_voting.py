@@ -11,7 +11,7 @@ import unittest
 
 class TestVoting(StageTester, unittest.TestCase):
 
-    # Common context implementation
+    # Context implementation
 
     def run_until_stage(self):
         self.launch_election()
@@ -69,6 +69,16 @@ class TestVoting(StageTester, unittest.TestCase):
             self.append_message('[+] audit_requests: %s' % audit_requests)
         except AssertionError:
             err = "Audit requests were not: %s" % awaited
+            self.append_message('[-] %s\n' % err)
+            raise AssertionError(err)
+
+        audit_votes = election.get_audit_votes()
+        awaited = {}
+        try:
+            assert audit_votes == awaited
+            self.append_message('[+] audit_votes: %s' % audit_requests)
+        except AssertionError:
+            err = "Audit votes were not: %s" % awaited
             self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 

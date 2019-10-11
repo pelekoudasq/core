@@ -985,8 +985,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     # Voting
 
-    def vote(self, election_key, voter, plaintext,
-                audit_code=None, publish=None):
+    def vote(self, election_key, voter, plaintext, audit_code=None, publish=None):
         """
         Generates and returns an encrypted vote from the encoded plaintext
 
@@ -1399,7 +1398,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     ###########################################################
     #                                                         #
-    #   By trustee-factors is meanta dictionary of the form   #
+    #   By trustee-factors is meant a dictionary of the form   #
     #                                                         #
     #   {                                                     #
     #       'public': ModPrimeElement,                        #

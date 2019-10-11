@@ -38,7 +38,7 @@ class GenericAPI(object):
 
     def get_trustee_keys(self):
         """
-        Returns hex strings
+        Returns values of trustee public keys as hex strings
         """
         return list(trustee['value'].to_hex() for trustee in self.trustees)
 
@@ -84,6 +84,9 @@ class GenericAPI(object):
         #     return None
         # return audit_requests[fingerprint]
         return self.audit_requests.get(fingerprint)
+
+    def get_audit_votes(self):
+        return self.audit_votes
 
     def get_votes(self):
         # return dict(self.votes)
@@ -169,6 +172,9 @@ class VotingAPI(object):
         self.audit_publications.append(fingerprint)
 
     def store_audit_request(self, fingeprint, voter_key):
+        """
+        Stores also the corresponding audit-vote!
+        """
         self.audit_requests[fingerprint] = voter_key
 
     def do_index_vote(self, fingerprint):
@@ -191,6 +197,9 @@ class VotingAPI(object):
         if voter_key not in cast_votes:
             cast_votes[voter_key] = []
         cast_votes[voter_key].append(fingerprint)
+
+    def store_audit_vote(self, vote):
+        self.audit_votes['fingerprint'] = vote
 
     def store_excluded_voter(self, voter_key, reason):
         self.excluded_voters[voter_key] = reason
@@ -230,8 +239,9 @@ class ZeusCoreElection(StageController, *backend_apis):
         self.audit_codes = {}
 
         # Exported at stage Voting
-        self.audit_publications = []
         self.audit_requests = {}
+        self.audit_votes = {}
+        self.audit_publications = []
         self.cast_vote_index = []
         self.votes = {}
         self.cast_votes = {}

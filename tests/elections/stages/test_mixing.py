@@ -12,7 +12,7 @@ import unittest
 
 class TestMixing(StageTester, unittest.TestCase):
 
-    # Common context implementation
+    # Context implementation
 
     def run_until_stage(self):
         self.launch_election()
