@@ -172,9 +172,16 @@ class ModPrimeCrypto(ElGamalCrypto):
     def to_exponent(self, integer):
         """
         :type integer: int
-        :rtype: ModPrimeElement
+        :rtype: mpz
         """
         return mpz(integer)
+
+    def to_element(self, integer):
+        """
+        :type integer: int
+        :rtype: ModPrimElement
+        """
+        return self.__GroupElement(integer, self.__modulus)
 
     def encode_integer(self, integer):
         """

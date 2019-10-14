@@ -24,79 +24,207 @@ class Voting(Stage):
         pass
 
 
-    # Submission
+    # General vote handler
 
     def cast_vote(self, vote):
         """
         Handles the submitted vote accordingly (audit-request or audit-vote
         or genuine vote) under account of inscribed parameters
+
+        Rejects in case of:
+
+            (Adapt stage)
+            - wrong or extra fields
+            - missing fields
+            - malformed encrypted ballot
+            - cryptosystem mismatch
+            - election key mismatch
         """
         election = self._get_controller()
 
-        (_, _, voter_key, _, _, _, _, _, fingerprint,
-            voter_audit_code, voter_secret, _, _, _, _,) = self.extract_vote(vote)
+        try:
+            vote = self.adapt_vote(vote)
+        except InvalidVoteError as err:
+            # Wrong or extra or missing fields, or malformed encrypted ballot,
+            # or cryptosystem mismatch, or election key mismatch
+            raise VoteRejectionError(err)
+
+        (_, _, voter_key, _, fingerprint, voter_audit_code, voter_secret, \
+            _, _, _, _) = self.extract_vote(vote)
 
         try:
             voter, voter_audit_codes = self.detect_voter(voter_key)
         except (VoteRejectionError, Abortion,):
-            # ~ Vote rejection: if voter's key could not be detected
-            # ~ Election abortion: if voter's key has been detected
-            # ~ but has not been assigned a set of audit codes
+            # Voter's key could not be detected or voter's key detected
+            # but has not assigned any set of audit-codes
             raise
 
-        if voter_secret:                          # secret published: audit-vote
+        if voter_secret:
             try:
                 signature = self.submit_audit_vote(vote,
                         voter_audit_code, voter_audit_codes)
             except VoteRejectionError:
-                # ~ Vote rejection: (1) No audit code provided, or (2) provided
-                # ~ audit-code was not among the archived ones, or (3) no prior
-                # ~ audit-request found for the provided fingerprint, or (4)
-                # ~ voter's secret (randomness used at ballot encryption) was
-                # ~ not provided within the submitted vote, or (5) vote failed
-                # ~ to be verified as an audit-vote
+                # No audit-code provided, or provided audit-code was not among
+                # the assigned ones, or no prior audit-request found for the
+                # provided fingerprint, or voter's secret was not included, or
+                # vote failed to be verified as audit
                 raise
         else:
-            # ~ Voter does not publish the randomness used at ballot encryption:
-            # ~ case 1: inscribed audit code is not among the archived ones:
-            # ~ their vote is an audit-request
-            # ~ case 2: inscribed audit code is among the inscribed ones or None:
-            # ~ their vote is a genuine vote
-
             try:
-                # ~ Voter audit code will not be None after that: if not coming
-                # ~ with the vote, it will be set to one of the archived ones
+                # If no audit-code provided, choose one of the assigned ones
                 voter_audit_code = self.fix_audit_code(
                         voter_audit_code, voter_audit_codes)
             except VoteRejectionError:
-                # ~ Vote rejection: if no audit code comes with
-                # ~ the vote while skip-audit mode is disabled
+                # No audit-code provided while skip-audit mode disabled
                 raise
 
-            if voter_audit_code not in voter_audit_codes:        # audit-request
+            if voter_audit_code not in voter_audit_codes:
                 try:
-                    # ~ Sign the vote as audit-request and store it along
-                    # ~ with inscribed fingerprint as key of the request
-                    signature = self.submit_audit_request(fingerprint, voter_key, vote)
+                    signature = self.submit_audit_request(
+                        fingerprint, voter_key, vote)
                 except (VoteRejectionError,):
-                    # ~ Request rejected: an audit-request has already been
-                    # ~ submitted for the inscribed fingerprint
+                    # Audit-request already submitted for the provided
+                    # fingerprint
                     raise
-            else:                                                 # genuine vote
+            else:
                 try:
-                    signature = self.submit_genuine_vote(fingerprint, voter_key, vote)
+                    signature = self.submit_genuine_vote(
+                        fingerprint, voter_key, vote)
                 except (VoteRejectionError,):
-                    # CONTINUE FROM HERE
-                    #
+                    # Vote alrady cast, or vote limit reached, or
+                    # vote could not be validated
                     raise
 
         return signature
 
+
+    # Adaptment/Extraction
+
+    def adapt_vote(self, vote):
+        """
+        Accepts JSON, performs deserialization, rearranges keys in accordance
+        with cryptosys and mixnet operational requirements
+
+        Fill with None missing fields: audit_code, voter_key
+
+        Rejects in case of:
+            - wrong or extra fields
+            - missing fields
+            - malformed encrypted ballot
+            - cryptosystem mismatch
+            - election key mismatch
+        """
+        election = self._get_controller()
+        cryptosys = election.get_cryptosys()
+        crypto_params = election.get_cryptoparams()
+        crypto_param_keys = set(cryptoparams.keys())
+
+        # Check that vote does not contain extra or wrong fields
+        if not set(vote.keys()).issubset({'voter', 'encrypted_ballot',
+            'fingerprint', 'audit_code', 'voter_secret'}):
+            err = "Invalid vote content: Wrong or extra content provided"
+            raise InvalidVoteError(err)
+
+        # Check that vote includes the minimum necessary fields
+        for key in ('voter', 'encrypted_ballot', 'fingreprint'):
+            if key not in vote:
+                err = f'Invalid vote content: Field `{key}` missing from vote'
+                raise InvalidVoteError(err)
+
+        # Check if encrypted ballot fields are correct
+        encrypted_ballot = vote['encrypted_ballot']
+        if set(encrypted_ballot.keys()) != crypto_param_keys.union({'public',
+                'alpha', 'beta', 'commitment', 'challenge', 'response'}):
+            err = 'Invalid vote content: Malformed encrypted ballot'
+            raise InvalidVoteError(err)
+
+        # Extract isncribed election key and main body values
+        pop = encrypted_ballot.pop
+        public = pop('public')
+        alpha = pop('alpha')
+        beta = pop('beta')
+        commitment = pop('commitment')
+        challenge = pop('challenge')
+        response = pop('response')
+
+        # Compare remaining content against server crypto;
+        # reject in case of mismatch
+        vote_crypto = encrypted_ballot
+        if vote_crypto != crypto_params:
+            err = 'Invalid vote content: Cryptosystem mismatch'
+            raise InvalidVoteError(err)
+        vote['crypto'] = vote_crypto
+
+        # Check election key and reject in case of mismatch
+        public = cryptosys.to_element(public)
+        if public != election.get_election_key()
+            err = 'Invalid vote content: Election key mismatch'
+            raise InvalidVoteError(err)
+        vote['public'] = public
+
+        # Deserialize encrypted ballot's main body
+        encrypted_ballot = cryptosys.deserialize_encrypted_ballot(
+            alpha, beta, commitment, challenge, response)
+        vote['encrypted_ballot'] = encrypted_ballot
+
+        # Deserialize fingerprint
+        fingerprint = hash_encode(vote['fingerprint'])
+        vote['fingeprint'] = fingerprint
+
+        # Deserialize audit-code
+        if 'audit_code' not in vote:
+            vote['audit_code'] = None   # else it is the provided hexstring
+
+        # Deserialize voter-secret
+        voter_secret = vote.get('voter_secret')
+        vote['voter_secret'] = cryptosys.to_exponent(voter_secret) \
+            if voter_secret else None
+
+        return vote
+
+    def extract_vote(self, vote):
+        """
+        Assumes vote after adaptement
+        (values deserialized, keys rearranged)
+
+        Fills with None missing fields: previous, index, status, plaintext
+        """
+        vote_crypto = vote['crypto']
+        vote_public = vote['public']
+        voter_key = vote['voter']
+        encrypted_ballot = vote['encrypted_ballot']
+        fingerprint = vote['fingerprint']
+        audit_code = vote['audit_code']
+        voter_secret = vote['voter_secret']
+
+        previous = vote.get_value('previous')
+        index = vote.get_value('index')
+        status = status.get_value('status')
+        plaintext = plaintext.get_value('plaintext')
+
+        return (vote_crypto, vote_public, voter_key, encrypted_ballot,
+            fingerprint, audit_code, voter_secret, previous, index,
+            status, plaintext,)
+
+    def extract_encrypted_ballot(self, encrypted_ballot):
+        """
+        Assumes encrypted ballot after vote adaptment
+        (values deserialized, keys rearranged)
+        """
+        cryptosys = self.cryptosys
+        ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)
+        alpha, beta = cryptosys.extract_ciphertext(ciphertext)
+        commitment, challenge, response = cryptosys.extract_proof(proof)
+        return alpha, beta, commitment, challenge, response
+
+
+    # Voter fixation
+
     def detect_voter(self, voter_key):
         """
         Reject vote if the provided key could not be detected
-        Abort election if key was detected but no audit codes correspond to it
-        Return voter and audit codes otherwise
+        Abort election if key was detected but no audit-codes correspond to it
+        Return voter and audit-codes otherwise
         """
         election = self._get_controller()
 
@@ -106,16 +234,16 @@ class Voting(Stage):
             err = 'Invalid voter key'
             raise VoteRejectionError()
         elif not voter_audit_codes:
-            err = 'Voter audit codes inconsistency'
+            err = 'Voter audit-codes inconsistency'
             raise Abortion(err)
 
         return voter, voter_audit_codes
 
     def fix_audit_code(self, voter_audit_code, voter_audit_codes):
         """
-        If provided, returns the voter's audit code
+        If provided, returns the voter's audit-code
         If not provided and skip-audit mode is enabled, returns the first
-        of the provided audit codes
+        of the provided audit-codes
         If not provided and skip-audit mode is disabled, vote is rejected
         (raises exception)
         """
@@ -129,6 +257,14 @@ class Voting(Stage):
                 raise VoteRejectionError(err)
         return voter_audit_code
 
+    def exclude_voter(voter_key, reason=''):
+        """
+        """
+        election = self._get_controller()
+        election.store_excluded_voter(voter_key, reason)
+
+
+    # Submissions
 
     def submit_audit_request(self, fingerprint, voter_key, vote):
         """
@@ -143,17 +279,17 @@ class Voting(Stage):
             err = "Audit-request for vote [%s] already submitted" % (fingeprint,)
             raise VoteRejectionError(err)
 
-        # ~ Modify status
+        # Modify status
+        vote['status'] = V_AUDIT_REQUEST
         vote['previous'] = ''
         vote['index'] = None
-        vote['status'] = V_AUDIT_REQUEST
 
-        # ~ Sign vote and attach signature
+        # Sign vote and attach signature
         comments = self.custom_audit_request_message(vote)
         signature = self.sign_vote(vote, comments)
         vote['signature'] = signature
 
-        # ~ Store vote and audit-request
+        # Store vote along with audit-request
         election.store_audit_request(fingerprint, voter_key)
         election.store_audit_vote(fingerprint, vote)
         election.store_votes((vote,))
@@ -163,6 +299,10 @@ class Voting(Stage):
 
     def submit_audit_vote(self, vote, voter_audit_code, voter_audit_codes):
         """
+        Raises VoteRejectionError if
+            - No audit-code provided
+            - Invalid audit-code provided
+            - No prior audit-request found for publish-request
         """
         # ~ Check audit-publication prerequisites, reject otherwise
         if not voter_audit_code:
@@ -215,7 +355,10 @@ class Voting(Stage):
         else:
             previous_fingerprint = cast_votes[-1]
 
-        vote = self.validate_submitted_vote(vote) # ---------------------------> implement...
+        try:
+            self.validate_submitted_vote(vote)
+        except InvalidVoteError as err:
+            raise VoteRejectionError(err)
 
         vote['previous'] = previous_fingerprint
         vote['status'] = V_CAST_VOTE
@@ -228,59 +371,30 @@ class Voting(Stage):
         election.append_vote(voter_key, fingerprint)
         election.store_votes((vote,))
 
+        ##################################################################
+        # DANGER: commit all data to disk before giving a signature out! #
+        ##################################################################
         return signature
 
 
-    def custom_audit_publication_message(self, vote):
-        """
-        """
-        return ''
+    # Vote signing
 
-    def custom_audit_request_message(self, vote):
+    def format_vote_signature(self, textified_vote, exponent, c_1, c_2):
+        textified_vote += V_SEPARATOR
+        vote_signature += '%s\n%s\n%s\n' % (str(exponent), str(c_1), str(c_2))
+        return vote_signature
+
+    def sign_vote(self, vote, comments, cryptosys, zeus_private_key,
+            zeus_public_key, trustees, candidates):
         """
         """
-        return ''
+        textfied_vote = self.textify_vote(self, vote, comments, cryptosys,
+            zeus_public_key, trustees, candidates)
+        signed_vote = cryptosys.sign_text_message(textified_vote, zeus_private_key)
+        _, exponent, c_1, c_2 = cryptosys.extract_signed_message(signed_vote)
 
-    def custom_cast_vote_message(self, vote):
-        """
-        """
-        return ''
-
-    # Vote textification
-
-    def extract_encrypted_ballot(self, encrypted_ballot):
-        """
-        Admits JSON and extracts WITHOUT deserializing
-        """
-        cryptosys = self.cryptosys
-        ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)
-
-        alpha, beta = cryptosys.extract_ciphertext(ciphertext)
-        commitment, challenge, response = cryptosys.extract_proof(proof)
-
-        return alpha, beta, commitment, challenge, response
-
-    def extract_vote(self, vote, encode_func, to_exponent=int):
-        """
-        Admits JSO and extracts WITHOUT deserializing
-        """
-        crypto_params = vote['crypto']
-        election_key = vote['public']
-        voter_key = vote['voter']
-        alpha, beta, commitment, challenge, response = \
-            self.extract_encrypted_ballot(vote['encrypted_ballot'])
-        fingerprint = vote['fingerprint'] # hash_encode(vote['fingerprint'])
-
-        audit_code = vote.get_value('audit_code') # extract_value(vote, 'audit_code', int)
-        voter_secret = vote.get_value('voter_secret') # extract_value(vote, 'voter_secret', to_exponent) # mpz
-        previous = vote.get_value('previous') # extract_value(vote, 'previous', hash_encode)
-        index = vote.get_value('index') # vote['index'] # extract_value(vote, 'index', int)
-        status = status.get_value('status') # vote['status'] # extract_value(vote, 'status', str)
-        plaintext = plaintext.get_value('plaintext') # extract_value(vote, 'plaintext', encode_func)
-
-        return (crypto_params, election_key, voter_key, alpha, beta, commitment,
-                challenge, response, fingerprint, audit_code, voter_secret,
-                previous, index, status, plaintext,)
+        vote_signature = self.format_vote_signature(textified_vote, exponent, c_1, c_2)
+        return vote_signature
 
     def textify_vote(self, vote, comments):
         """
@@ -312,29 +426,6 @@ class Voting(Stage):
         textified = '\n'.join((t00, t01, t02, t03, t04, t05, t06, t07, t08,
             t09, t10, t11, t12, t13, t14, t15, t6))
         return textified
-
-
-    # Vote signing
-
-    def format_vote_signature(self, textified_vote, exponent, c_1, c_2):
-        textified_vote += V_SEPARATOR
-        vote_signature += '%s\n%s\n%s\n' % (str(exponent), str(c_1), str(c_2))
-        return vote_signature
-
-    def sign_vote(self, vote, comments, cryptosys, zeus_private_key,
-            zeus_public_key, trustees, candidates):
-        """
-        """
-        textfied_vote = self.textify_vote(self, vote, comments, cryptosys,
-            zeus_public_key, trustees, candidates)
-        signed_vote = cryptosys.sign_text_message(textified_vote, zeus_private_key)
-        _, exponent, c_1, c_2 = cryptosys.extract_signed_message(signed_vote)
-
-        vote_signature = self.format_vote_signature(textified_vote, exponent, c_1, c_2)
-        return vote_signature
-
-
-    # Vote-signature verification
 
     def extract_vote_signature(self, cryptosys, vote_signature):
         """
@@ -418,8 +509,8 @@ class Voting(Stage):
         # Convert remaining texts to corresponding algebraic objects
         election_key = cryptosys.deserialize_public_key(mpz(election_key))
         zeus_public_key = cryptosys.deserialize_public_key(mpz(zeus_public_key))
-        alpha = cryptosys.encode_integer(int(alpha))
-        beta = cryptosys.encode_integer(int(beta))
+        alpha = cryptosys.to_element(int(alpha))
+        beta = cryptosys.to_element(int(beta))
         commitment = cryptosys.to_exponent(commitment)
         challenge = cryptosys.to_exponent(challenge)
         response = cryptosys.to_exponent(response)
@@ -429,27 +520,7 @@ class Voting(Stage):
             alpha, beta, commitment, challenge, response, comments)
 
 
-    def verify_election(self, vote_crypto, election_key, trustees, candidates):
-        """
-        Verifies that the election parameters extracted from a submitted
-        vote coincide with those of the current election.
-        Raise ElectionMismatchError otherwise.
-        """
-        election = self._get_controller()
-        if vote_crypto != election.get_crypto_params():
-            err = "Cannot verify vote signature: Cryptosystem mismatch"
-            raise ElectionMismatchError(err)
-        if election_key != election.get_election_key():
-            err = "Cannot verify vote signature: Election key mismatch"
-            raise ElectionMismatchError(err)
-        if set(trustees) != set(election.get_trustees()):
-            err = "Cannot verify vote signature: Trustees mismatch"
-            raise ElectionMismatchError(err)
-        if set(candidates) != set(election.get_candidates()):
-            err = "Cannot verify vote signature: Election key mismatch"
-            raise ElectionMismatchError(err)
-        return True
-
+    # Vote-signature verification
 
     def verify_vote_signature(self, cryptosys, vote_signature):
         """
@@ -497,48 +568,6 @@ class Voting(Stage):
             raise InvalidSignatureError(err)
 
         return True
-
-    def exclude_voter(voter_key, reason=''):
-        election = self._get_controller()
-        election.store_excluded_voter(voter_key, reason)
-
-
-    # Validation
-
-    def validate_submitted_vote(self, vote):
-        """
-        Verfies proof of ballot encryption and checks if the vote's fingerprint
-        is correct, returning the fingerprint in this case, otherwise
-        InvalidVoteError is raised
-        """
-        election = self._get_controller()
-        cryptosys = election.get_cryptosys()
-
-        # FIXME
-        _, encrypted, fingerprint, _, _, _, _, _, _ = self.extract_vote(vote)
-
-        if not cryptosys.verify_encryption(encrypted):
-            err = 'Encryption proof could not be verified'
-            raise InvalidVoteError(err)
-
-        if fingerprint != self.mk_fingerprint(encrypted):
-            err = 'Fingerprint mismatch'
-            raise InvalidVoteError(err)
-
-        #
-        #
-        #
-        #
-
-        return fingerprint
-
-    def mk_fingerprint(self, ciphertext_proof):
-        """
-        :rtype: bytes
-        """
-        fingerprint_params = self.get_fingerprint_params(ciphertext_proof)
-        fingerprint = hash_texts(*[str(param) for param in fingerprint_params])
-        return fingerprint
 
 
     # Audit vote verification
@@ -592,3 +621,55 @@ class Voting(Stage):
             if add_plaintext:
                 vote['plaintext'] = decrypted.value
         return missing, failed
+
+
+    # Genuine vote validation
+
+    def validate_submitted_vote(self, vote):
+        """
+        Assumes vote after adaptment (values deserialized, keys rearranged)
+
+        Raises InvalidVoteError if ballot encryption could not be verified or
+        the provided fingerprint could not be retrieved from encrypted ballot
+        """
+        election = self._get_controller()
+        cryptosys = election.get_cryptosys()
+
+        (_, _, _, encrypted_ballot, fingerprint,
+            _, _, _, _, _, _) = self.extract_vote(vote)
+
+        if not cryptosys.verify_encryption(encrypted_ballot):
+            err = 'Ballot encryption could not be verified'
+            raise InvalidVoteError(err)
+
+        if fingerprint != self.mk_fingerprint(encrypted_ballot):
+            err = 'Fingerprint mismatch'
+            raise InvalidVoteError(err)
+
+        return fingerprint
+
+    def mk_fingerprint(self, ciphertext_proof):
+        """
+        :rtype: bytes
+        """
+        fingerprint_params = self.get_fingerprint_params(ciphertext_proof)
+        fingerprint = hash_texts(*[str(param) for param in fingerprint_params])
+        return fingerprint
+
+
+    # Message customization
+
+    def custom_audit_publication_message(self, vote):
+        """
+        """
+        return ''
+
+    def custom_audit_request_message(self, vote):
+        """
+        """
+        return ''
+
+    def custom_cast_vote_message(self, vote):
+        """
+        """
+        return ''

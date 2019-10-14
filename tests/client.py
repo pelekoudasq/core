@@ -21,79 +21,80 @@ class Voter(Client):
         """
         """
         self.cryptosys = self.retrieve_cryptosys(crypto)
-        # self.zeus_public_key = zeus_public_key
         self.election_key = election_key
-        # self.trustees = trustees
-        # self.candidates = candidates
         self.voter_key = voter_key
         self.audit_codes = audit_codes
 
     @classmethod
     def retrieve_cryptosys(cls, crypto):
-        """
-        """
         cryptosys = make_crypto(crypto['cls'], crypto['config'])
         return cryptosys
-
 
     # Vote making
 
     def mk_encrypted_ballot(self, ciphertext, proof):
         """
-        """
-        encrypted_ballot = self.cryptosys.set_ciphertext_proof(ciphertext, proof)
-        return encrypted_ballot
-
-    def serialize_encrypted_ballot(self, encrypted_ballot):
-        """
-        """
-        serialized = self.cryptosys.serialize_ciphertext_proof(encrypted_ballot)
-        return serialized
-
-    def get_fingerprint_params(self, encrypted_ballot):
-        """
+        Accepts non-serialized, returns serialized
         """
         cryptosys = self.cryptosys
 
-        ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)
+        encrypted_ballot = {}
+        encrypted_ballot.update(cryptosys.parameters())
+        encrypted_ballot.update({'public': self.election_key.to_int()})
+
+        ciphertext = cryptosys.serialize_ciphertext(ciphertexf)
         alpha, beta = cryptosys.extract_ciphertext(ciphertext)
+        encrypted_ballot.update({
+            'alpha': alpha,
+            'beta': beta
+        })
+
+        proof = cryptosys.serialize_scnorr_proof(proof)
         commitment, challenge, response = cryptosys.extract_schnorr_proof(proof)
+        encrypted_ballot.update({
+            'commtiment': commitment,
+            'challenge': challenge,
+            'response': response,
+        })
+
+        return encrypted_ballot
+
+    def get_fingerprint_params(self, encrypted_ballot):
+        """
+        Accepts serialized
+        """
+        cryptosys = self.cryptosys
+
+        alpha = encrypted_ballot['alpha']
+        beta = encrypted_ballot['beta']
+        commitment = encrypted_ballot['commitment']
+        challenge = encrypted_ballot['challenge']
+        rersponse = encrypted_ballot['rersponse']
 
         return alpha, beta, commitment, challenge, response
 
     def mk_fingerprint(self, encrypted_ballot):
         """
-        Returns bytes
+        Returns serialized
         """
         params = self.get_fingerprint_params(encrypted_ballot)
         fingerprint = hash_texts(*[str(_) for _ in params])
-        return fingerprint
+        return hash_decode(fingerprint)
 
     def set_vote(self, encrypted_ballot, fingerprint, audit_code=None,
             publish=None, voter_secret=None, previous=None, index=None,
             status=None, plaintext=None):
         """
-        JSON (must serialize everything before setting)
+        Accepts serialized, returns serialized
         """
         vote = {}
-
-        vote['crypto'] = self.cryptosys.parameters()
-        vote['public'] = self.election_key.to_int()
         vote['voter'] = self.voter_key
-        vote['encrypted_ballot'] = self.serialize_encrypted_ballot(encrypted_ballot)
-        vote['fingerprint'] = hash_decode(fingerprint)
-
+        vote['encrypted_ballot'] = encrypted_ballot
+        vote['fingerprint'] = fingeprint
         if audit_code:
             vote['audit_code'] = audit_code
         if publish:
             vote['voter_secret'] = voter_secret
-        if previous:
-            vote['index'] = index
-        if status:
-            vote['status'] = status
-        if plaintext:
-            vote['plaintext'] = plaintext
-
         return vote
 
     def mk_vote_from_element(self, group_element, audit_code=None, publish=None):
@@ -109,9 +110,8 @@ class Voter(Client):
                         election_key, get_secret=True)
         proof = cryptosys.prove_encryption(ciphertext, ranodmness)
         encrypted_ballot = self.mk_encrypted_ballot(ciphertext, proof)
-
         fingerprint = self.mk_fingerprint(encrypted_ballot)
-        voter_secret = randomness if publish else None
+        voter_secret = int(randomness) if publish else None
         vote = self.set_vote(encrypted_ballot, fingerprint, audit_code,
             publish, voter_secret)
 

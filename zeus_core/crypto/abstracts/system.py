@@ -145,12 +145,34 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         present cryptosystem's parameters
         """
 
-    # Encoding
+    # Deserialization
 
     @abstractmethod
     def to_exponent(self, integer):
         """
         """
+
+    @abstractmethod
+    def to_element(self, element):
+        """
+        """
+
+    @abstractmethod
+    def deserialize_encrypted_ballot(self, alpha, beta,
+            commitment, challenge, response):
+        """
+        """
+        alpha = self.to_element(alpha)
+        beta = self.to_element(beta)
+        commitment = self.to_element(commitment)
+        challenge = self.to_exponent(challenge)
+        response = self.to_exponent(response)
+
+        ciphertext = self.set_ciphertext(alpha, beta)
+        proof = self.set_schnorr_proof(commitment, challenge, response)
+
+        encrypted_ballot = self.set_ciphertext_proof(ciphertext, proof)
+        return encrypted_ballot
 
     @abstractmethod
     def encode_integer(self, integer):
