@@ -3,7 +3,7 @@ from zeus_core.elections.constants import (V_FINGERPRINT, V_PREVIOUS, V_ELECTION
     V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS, V_GENERATOR,
     V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE, V_RESPONSE,
     V_COMMENTS, V_INDEX, V_CAST_VOTE, V_AUDIT_REQUEST, V_PUBLIC_AUDIT,
-    V_PUBLIC_AUDIT_FAILED)
+    V_PUBLIC_AUDIT_FAILED, NONE)
 from zeus_core.utils import random_integer
 
 VOTER_KEY_CEIL = 2 ** 256
@@ -151,9 +151,9 @@ def make_corrupted_signature_vote(system, vote, comments, election_key,
 
     trustees = [system.get_value(trustee) for trustee in trustees]
 
-    m00 = status if status is not None else 'NONE'
+    m00 = status if status is not None else NONE
     m01 = '%s%s' % (V_FINGERPRINT, fingerprint)
-    m02 = '%s%s' % (V_INDEX, ('%d' % index) if index is not None else 'NONE')
+    m02 = '%s%s' % (V_INDEX, ('%d' % index) if index is not None else NONE)
     m03 = '%s%s' % (V_PREVIOUS, (previous,)) 	# '%s%s' % (V_PREVIOUS, previous)
     m04 = '%s%s' % (V_ELECTION, str(election_key))
     m05 = '%s%s' % (V_ZEUS_PUBLIC, str(zeus_public_key))

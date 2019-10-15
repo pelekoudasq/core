@@ -2,7 +2,7 @@ from zeus_core.elections.abstracts import Stage
 from zeus_core.elections.constants import (V_FINGERPRINT, V_INDEX, V_PREVIOUS,
     V_VOTER, V_ELECTION, V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS,
     V_GENERATOR, V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE,
-    V_RESPONSE, V_COMMENTS, V_SEPARATOR)
+    V_RESPONSE, V_COMMENTS, V_SEPARATOR, NONE,)
 from zeus_core.elections.exceptions import (Abortion, MalformedVoteError,
     ElectionMismatchError, VoteRejectionError, InvalidVoteError,)
 
@@ -56,7 +56,7 @@ class Voting(Stage):
             voter, voter_audit_codes = self.detect_voter(voter_key)
         except (VoteRejectionError, Abortion,):
             # Voter's key could not be detected or voter's key detected
-            # but has not assigned any set of audit-codes
+            # but not assigned any set of audit-codes
             raise
 
         if voter_secret:
@@ -67,7 +67,8 @@ class Voting(Stage):
                 # No audit-code provided, or provided audit-code was not among
                 # the assigned ones, or no prior audit-request found for the
                 # provided fingerprint, or voter's secret was not included, or
-                # vote failed to be verified as audit
+                # vote failed to be verified as audit, or produced vote-signature
+                # failed to be verified
                 raise
         else:
             try:
@@ -83,16 +84,16 @@ class Voting(Stage):
                     signature = self.submit_audit_request(
                         fingerprint, voter_key, vote)
                 except (VoteRejectionError,):
-                    # Audit-request already submitted for the provided
-                    # fingerprint
+                    # Audit-request already submitted for the provided fingerpint,
+                    # or produced vote-signature failed to be verified
                     raise
             else:
                 try:
                     signature = self.submit_genuine_vote(
                         fingerprint, voter_key, vote)
                 except (VoteRejectionError,):
-                    # Vote alrady cast, or vote limit reached, or
-                    # vote could not be validated
+                    # Vote already cast, or vote limit reached, or vote failed to
+                    # be validated, or produced vote-signature not verified
                     raise
 
         return signature
@@ -274,7 +275,10 @@ class Voting(Stage):
 
         # Sign vote and attach signature
         comments = self.custom_audit_request_message(vote)
-        signature = self.sign_vote(vote, comments)
+        try:
+            signature = self.sign_vote(vote, comments)
+        except InvalidSignatureError as err:
+            raise VoteRejectionError(err)
         vote['signature'] = signature
 
         # Store vote along with audit-request
@@ -314,9 +318,12 @@ class Voting(Stage):
         if failed:
             vote['status'] = V_PUBLIC_AUDIT_FAILED
 
-        # ~ Sign message and attach signature
+        # Sign vote and attach signature
         comments = self.custom_audit_publication_message(vote)
-        signature = self.sign_vote(vote, comments)
+        try:
+            signature = self.sign_vote(vote, comments)
+        except InvalidSignatureError as err:
+            raise VoteRejectionError(err)
         vote['signature'] = signature
 
         # ~ Append vote and store inscribed fingerprint as audit-publication
@@ -352,8 +359,12 @@ class Voting(Stage):
         vote['status'] = V_CAST_VOTE
         vote['index'] = election.do_index_vote(fingerprint)
 
+        # Sign vote and attach signature
         comments = self.custom_cast_vote_message(vote)
-        signature = self.sign_vote(vote, comments)
+        try:
+            signature = self.sign_vote(vote, comments)
+        except InvalidSignatureError as err:
+            raise VoteRejectionError(err)
         vote['signature'] = signature
 
         election.append_vote(voter_key, fingerprint)
@@ -367,43 +378,50 @@ class Voting(Stage):
 
     # Vote signing
 
-    def format_vote_signature(self, textified_vote, exponent, c_1, c_2):
-        textified_vote += V_SEPARATOR
-        vote_signature += '%s\n%s\n%s\n' % (str(exponent), str(c_1), str(c_2))
-        return vote_signature
+    def sign_vote(self, vote, comments):
+        """
+        Assumes vote after adaptment (values deserialized, keys rearranged)
 
-    def sign_vote(self, vote, comments, cryptosys, zeus_private_key,
-            zeus_public_key, trustees, candidates):
+        Will raise InvalidSignatureError if after signing, if the produced
+        vote is not verified
         """
-        """
-        textfied_vote = self.textify_vote(self, vote, comments, cryptosys,
-            zeus_public_key, trustees, candidates)
+        election = self._get_controller()
+        cryptosys = election.get_cryptosys()
+        zeus_private_key = election.get_zeus_private_key()
+
+        textified_vote = self.textify_vote(self, vote, comments)
         signed_vote = cryptosys.sign_text_message(textified_vote, zeus_private_key)
         _, exponent, c_1, c_2 = cryptosys.extract_signed_message(signed_vote)
-
         vote_signature = self.format_vote_signature(textified_vote, exponent, c_1, c_2)
+
+        self.verify_vote_signature(vote_signature)
         return vote_signature
 
     def textify_vote(self, vote, comments):
         """
-        Admits JSON, converts keys and encrypted ballot to hex, returns text
+        Assumes vote after adaptment (values deserialized, keys rearranged)
         """
+        zeus_public_key = self.election.get_zeus_public_key()
+        trustee_keys = self.election.get_trustee_keys() # hex strings
+        candidates = self.election.get_candidates()
+
+        # vote_crypto, vote_public, voter_key, encrypted_ballot,
+        #     fingerprint, audit_code, voter_secret, previous, index,
+        #     status, plaintext
+
         (crypto_params, election_key, _, alpha, beta, commitment, challenge, response,
             fingerprint, _, _, previous, index, status, _) = self.extract_vote(vote)
 
-        zeus_public_key = self.election.get_zeus_public_key()
-        trustee_keys = self.election.get_trustee_keys()         # hex strings
-        candidates = self.election.get_candidates()
 
-        t00 = status if status is not None else 'NONE'
-        t01 = V_FINGERPRINT + fingerprint                       # already hex
-        t02 = V_INDEX + '%s' % (index if index is not None else 'NONE')
+        t00 = status if status is not None else NONE
+        t01 = V_FINGERPRINT + fingerprint
+        t02 = V_INDEX + '%s' % (index if index is not None else NONE)
         t03 = V_PREVIOUS + '%s' % (previous,)
         t04 = V_ELECTION + '%x' % election_key
         t05 = V_ZEUS_PUBLIC + '%s' % zeus_public_key.to_hex()
         t06 = V_TRUSTEES + '%s' % ' '.join(trustee_keys)
         t07 = V_CANDIDATES + '%s' % ' % '.join(candidates)
-        t08, t09, t10 = cryptosys.textify_params(crypto_params)
+        t08, t09, t10 = cryptosys.textify_params(vote_crypto)
         t11 = V_ALPHA + '%x' % alpha
         t12 = V_BETA + '%x' % beta
         t13 = V_COMMITMENT + '%x' % commitment
@@ -414,6 +432,13 @@ class Voting(Stage):
         textified = '\n'.join((t00, t01, t02, t03, t04, t05, t06, t07, t08,
             t09, t10, t11, t12, t13, t14, t15, t6))
         return textified
+
+    def format_vote_signature(self, textified_vote, exponent, c_1, c_2):
+        """
+        """
+        textified_vote += V_SEPARATOR
+        vote_signature += '%s\n%s\n%s\n' % (str(exponent), str(c_1), str(c_2))
+        return vote_signature
 
     def extract_vote_signature(self, cryptosys, vote_signature):
         """
@@ -439,7 +464,7 @@ class Voting(Stage):
                  t00.startswith(V_AUDIT_REQUEST) or
                  t00.startswith(V_PUBLIC_AUDIT) or
                  t00.startswith(V_PUBLIC_AUDIT_FAILED) or
-                 t00.startswith('NONE')) or
+                 t00.startswith(NONE)) or
             not t01.startswith(V_FINGERPRINT) or
             not t02.startswith(V_INDEX) or
             not t03.startswith(V_PREVIOUS) or
@@ -477,7 +502,7 @@ class Voting(Stage):
         status = t00
         fingerprint = t01[len(V_FINGERPRINT):]
         index = t02[len(V_INDEX):]
-        if index != 'NONE' and not index.isdigit():
+        if index != NONE and not index.isdigit():
             err = f"Invalid vote index: {index}"
             raise MalformedVoteError(err)
         previous = t03[len(V_PREVIOUS):]
