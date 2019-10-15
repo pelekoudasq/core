@@ -151,7 +151,17 @@ class ModPrimeCrypto(ElGamalCrypto):
         serialized['modulus'] = int(self.__modulus)
         serialized['order'] = int(self.__order)
         serialized['generator'] = int(self.__generator)
+
         return serialized
+
+    def hex_parameters(self):
+        """
+        """
+        hex_p = V_MODULUS + '%x' % self.__modulus
+        hex_q = V_ORDER + '%x' % self.__order
+        hex_g = V_GENERATOR + '%x' % self.__generator
+
+        return hex_p, hex_q, hex_g
 
     def _parameters(self):
         """
@@ -189,17 +199,22 @@ class ModPrimeCrypto(ElGamalCrypto):
         element = self.__group.encode_integer(integer)
         return element
 
-    def textify_params(self, crypto_params):
+    def hexify_encrypted_ballot(self, encrypted_ballot):
         """
-        Admits json with integer values, returns tuple of strings
-        ("{label}: {hexadecimal}")
         """
-        t08 = V_MODULUS + '%x' % crypto_params['modulus']
-        t09 = V_ORDER + '%x' % crypto_params['order']
-        t10 = V_GENERATOR + '%x' % crypto_params['generator']
-        return t08, t09, t10
+        ciphertext, proof = self.extract_ciphertext_proof(encrypted_ballot)
+        alpha, beta = self.extract_ciphertext(ciphertext)
+        commitment, challenge, response = self.extract_schnorr_proof(proof)
 
-    def check_textified_params(self, t08, t09, t10):
+        alpha = alpha.to_hex()
+        beta = beta.to_hex()
+        commitment = commitment.to_hex()
+        challenge = '%x' % challenge
+        commitment = '%x' % commitment
+
+        return alpha, beta, commitment, challenge, response
+
+    def check_labels(self, t08, t09, t10):
         """
         """
         return t08.startswith(V_MODULUS) \
@@ -636,15 +651,23 @@ class ModPrimeCrypto(ElGamalCrypto):
         return element % __q == c_1
 
 
-    def deserialize_dsa_signature(self, exponent, c1, c2):
+    def hexify_dsa_signature(self, signature):
         """
-        From integers to exponents
         """
-        exponent = mpz(exponent)
-        c1 = mpz(c1)
-        c2 = mpz(c2)
-        signature = self.set_dsa_signature(exponent, c1, c2)
-        return signature
+        exponent, c_1, c_2 = self._extract_dsa_signature(signature)
+        return '%x\n%x\n%x' % (exponent, c_1, c_1)
+
+
+    def unhexify_dsa_signature(self, hex_signature):
+        """
+        """
+        exponent, c_1, c_2 = hex_signature.split('\n')
+        exponent = mpz(exponent, 16)
+        c_1 = mpz(c_1, 16)
+        c_2 = mpz(c_2, 16)
+
+        unhexified = self.set_dsa_signature(exponent, c_1, c_2)
+        return unhexified
 
 
     # Text-message signatures
@@ -707,7 +730,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         :rtype: bool
         """
         message, signature = self._extract_message_signature(signed_message)
-        public_key = self.get_key(public_key)
+        public_key = self.get_key_value(public_key)
 
         # Verify signature
         hashed_message = self.__group.exponent_from_texts(message)              # H(m)
@@ -999,8 +1022,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type trustees: list[dict]
         :rtype: list[ModPrimeElement]
         """
-        get_key = self.get_key
-        public_shares = [get_key(public_key) for public_key in trustees]
+        get_key_value = self.get_key_value
+        public_shares = [get_key_value(public_key) for public_key in trustees]
         return public_shares
 
     def _combine_public_keys(self, initial, public_keys):

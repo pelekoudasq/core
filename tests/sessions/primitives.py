@@ -172,7 +172,7 @@ if __name__=='__main__':
     # Valid case
     exponent = mpz(exponent)
     signature = system._dsa_signature(exponent, private_key)
-    verified = system._dsa_verify(exponent, signature, system.get_key(public_key))
+    verified = system._dsa_verify(exponent, signature, system.get_key_value(public_key))
     if verified:
         print(' + Valid signature successfully verified')
     else:
@@ -181,7 +181,7 @@ if __name__=='__main__':
     # Invalid identity (Authentication check)
     wrong_secret = private_key + 1
     signature = system._dsa_signature(exponent, wrong_secret)
-    verified = system._dsa_verify(exponent, signature, system.get_key(public_key))
+    verified = system._dsa_verify(exponent, signature, system.get_key_value(public_key))
     if not verified:
         print(' + Unauthorized signer successfully verified')
     else:

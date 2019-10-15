@@ -13,54 +13,37 @@ class KeyManager(object, metaclass=ABCMeta):
 
     def _set_keypair(self, private_key, public_key):
         """
-        :type private_key: mpz
-        :type public_key: dict
-        :rtype: dict
         """
         keypair = {'private': private_key, 'public': public_key}
         return keypair
 
     def extract_keypair(self, keypair):
         """
-        Returns a tuple with the private and public part of the provided key in
-        the form of a numerical value (mpz) and a dict respectively
-
-        :type keypair: dict
-        :rtype: (mpz, dict)
         """
         return keypair['private'], keypair['public']
 
     def _get_private(self, keypair):
         """
-        :type keypair: dict
-        :rtype: mpz
         """
         return keypair['private']
 
     def _get_public(self, keypair):
         """
-        :type keypair:
-        :rtype: dict
         """
         return keypair['public']
+
+    def _get_public_value(self, keypair):
+        """
+        """
+        return keypair['public']['value']
 
     @abstractmethod
     def validate_public_key(self, public_key):
         """
         """
 
-    def _get_public_value(self, keypair):
-        """
-        :type keypair: dict
-        :rtype: ModPrimeElement
-        """
-        return keypair['public']['value']
-
     def _set_public_key(self, element, proof=None):
         """
-        :type element: ModPrimeElement
-        :type proof: dict
-        :rtype: dict
         """
         public_key = {'value': element, 'proof': proof}
         return public_key
@@ -72,25 +55,29 @@ class KeyManager(object, metaclass=ABCMeta):
 
     def _extract_public_key(self, public_key):
         """
-        :type public_key: dict
-        :rtype: (ModPrimeElement, dict)
         """
         return public_key['value'], public_key['proof']
 
-    def get_key(self, public_key):
+    def get_key_value(self, public_key):
         """
-        :type public_key: dict or ModPrimeElement
-        :rtype: ModPrimeElement
         """
-        return public_key['value'] if type(public_key) is dict else public_key
+        return public_key['value'] \
+            if type(public_key) is dict else public_key
 
-    def get_value(self, public_key):
+    def get_hex_value(self, public_key):
         """
-        :type public_key: dict or ModPrimeElement
-        :rtype: int
         """
-        value = public_key['value'] if type(public_key) is dict else public_key
-        return value.to_int()
+        return self.get_key_value(public_key).to_hex()
+
+    def get_int_value(self, public_key):
+        """
+        """
+        return self.get_key_value(public_key).to_int()
+
+    def get_key_proof(self, public_key):
+        """
+        """
+        return public_key['proof']
 
 
 class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
@@ -121,20 +108,19 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
 
     @abstractmethod
+    def hex_parameters(self, crypto_params):
+        """
+        For testing voting
+        """
+
+    @abstractmethod
     def _parameters(self):
         """
         """
 
     @abstractmethod
-    def textify_params(self, crypto_params):
+    def check_labels(self, t08, t09, t10):
         """
-        For testing voting
-        """
-
-    @abstractmethod
-    def check_textified_params(self, t08, t09, t10):
-        """
-        For testing voting
         """
 
     @abstractmethod
@@ -173,21 +159,11 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         encrypted_ballot = self.set_ciphertext_proof(ciphertext, proof)
         return encrypted_ballot
 
-
+    @abstractmethod
     def hexify_encrypted_ballot(self, encrypted_ballot):
         """
+        Assumes encrypted ballot after vote adaptment
         """
-        ciphertext, proof = self.extract_ciphertext_proof(encrypted_ballot)
-        alpha, beta = self.extract_ciphertext(ciphertext)
-        commitment, challenge, response = self.extract_schnorr_proof(proof)
-
-        alpha = alpha.to_hex()
-        beta = beta.to_hex()
-        commitment = commitment.to_hex()
-        challenge = hex(challenge)
-        commitment = hex(commitment)
-
-        return alpha, beta, commitment, challenge, response
 
     @abstractmethod
     def encode_integer(self, integer):
@@ -258,6 +234,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         proof['message_commitment'] = message_commitment
         proof['challenge'] = challenge
         proof['response'] = response
+
         return proof
 
     def _extract_chaum_pedersen_proof(self, proof):
@@ -288,13 +265,9 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
     def set_dsa_signature(self, exponent, c_1, c_2):
         """
         """
-        signature = {
-            'exponent': exponent,
-            'commitments': {
-                'c_1': c_1,
-                'c_2': c_2
-            }
-        }
+        signature = {}
+        signature['exponent'] = exponent
+        signature['commitments'] = {'c_1': c_1, 'c_2': c_2}
 
         return signature
 
@@ -310,7 +283,12 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         return exponent, c_1, c_2
 
     @abstractmethod
-    def deserialize_dsa_signature(self, signature):
+    def hexify_dsa_signature(self, signature):
+        """
+        """
+
+    @abstractmethod
+    def unhexify_dsa_signature(self, signature):
         """
         """
 
@@ -351,8 +329,7 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
         message = signed_message['message']
         signature = signed_message['signature']
-        exponent, c_1, c_2 = self._extract_dsa_signature(signature)
-        return message, exponent, c_1, c_2
+        return message, signature
 
     # ElGamal encryption and decryption
 

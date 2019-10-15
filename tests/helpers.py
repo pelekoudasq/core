@@ -136,10 +136,10 @@ def make_corrupted_signature_vote(system, vote, comments, election_key,
     """
     __p, __q, __g = system._parameters()
 
-    election_key = system.get_key(election_key)
+    election_key = system.get_key_value(election_key)
 
     zeus_private_key, zeus_public_key = system.extract_keypair(zeus_keypair)
-    zeus_public_key = system.get_key(zeus_public_key)
+    zeus_public_key = system.get_key_value(zeus_public_key)
 
     _, encrypted, fingerprint, _, _, previous, index, status, _ = system.extract_vote(vote)
 

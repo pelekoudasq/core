@@ -146,9 +146,9 @@ class Creating(Stage):
     #     election = self._get_controller()
     #     cryptosys = election.get_cryptosys()
     #
-    #     election_key = cryptosys.get_value(election_key)
+    #     election_key = cryptosys.get_key_value(election_key)
     #     test_key = cryptosys.compute_election_key(trustees, zeus_keypair)
-    #     return election_key == cryptosys.get_value(test_key)
+    #     return election_key == cryptosys.get_key_value(test_key)
     #
     # def reprove_trustee():
     #     pass

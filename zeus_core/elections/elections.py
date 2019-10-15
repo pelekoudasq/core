@@ -11,11 +11,6 @@ class GenericAPI(object):
         """
         Returns None if the option doesn't exist
         """
-        # try:
-        #     value = self.options[key]
-        # except KeyError:
-        #     value = None
-        # return value
         return self.options.get(key)
 
     def get_cryptosys(self):
@@ -33,17 +28,23 @@ class GenericAPI(object):
     def get_zeus_public_key(self):
         return self.zeus_public_key
 
+    def get_hex_zeus_public_key(self):
+        return self.hex_zeus_public_key
+
     def get_trustees(self):
         return self.trustees
 
-    def get_trustee_keys(self):
+    def get_hex_trustee_keys(self):
         """
-        Returns values of trustee public keys as hex strings
+        Returns values of trustee public keys as a list of sorted hex strings
         """
-        return list(trustee['value'].to_hex() for trustee in self.trustees)
+        return self.hex_trustee_keys
 
     def get_election_key(self):
         return self.election_key
+
+    def get_hex_election_key(self):
+        return self.hex_election_key
 
     def get_candidates(self):
         return self.candidates
@@ -144,17 +145,21 @@ class CreatingAPI(object):
 
     def set_zeus_keypair(self, zeus_keypair):
         system = self.get_cryptosys()
-        private_key, public_key = system.extract_keypair(zeus_keypair)
-        self.zeus_private_key = private_key
-        self.zeus_public_key = public_key
+        zeus_private_key, zeus_public_key = system.extract_keypair(zeus_keypair)
+        self.zeus_private_key = zeus_private_key
+        self.zeus_public_key = zeus_public_key
         self.zeus_keypair = zeus_keypair
+        self.hex_zeus_public_key = zeus_public_key['value'].to_hex()
 
     def set_trustees(self, trustees):
         self.trustees = trustees
+        self.hex_trustee_keys = list(trustee['value'].to_hex()
+            for trustee in trustees).sort()
 
     def set_election_key(self, election_key):
         cryptosys = self.get_cryptosys()
-        self.election_key = cryptosys.get_value(election_key)
+        self.election_key = cryptosys.get_key_value(election_key)
+        self.hex_election_key = cryptosys.get_hex_value(self.election_key)
 
     def set_candidates(self, candidates):
         self.candidates = candidates
@@ -179,8 +184,7 @@ class VotingAPI(object):
 
     def do_index_vote(self, fingerprint):
         """
-        Store a vote's fingeprint in cast vote index
-        and return its index
+        Store a vote's fingeprint in cast vote index and return its index
         """
         cast_vote_index = self.cast_vote_index
         index = len(cast_vote_index)

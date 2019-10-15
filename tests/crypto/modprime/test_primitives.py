@@ -179,7 +179,7 @@ for (system, private_key) in (
 ):
     keypair = system.keygen(mpz(private_key))
     private_key, public_key = system.extract_keypair(keypair)
-    public_key = system.get_value(public_key)
+    public_key = system.get_key_value(public_key)
 
     exponent = mpz(exponent)
 
@@ -259,7 +259,7 @@ for (system, private_key) in (
     element = ModPrimeElement(mpz(__element), system.group.modulus)
     keypair = system.keygen(private_key)
     private_key, public_key = system.extract_keypair(keypair)
-    public_key = system.get_key(public_key)
+    public_key = system.get_key_value(public_key)
 
     __system__element__private_key__public_key.append(
         (system, element, private_key, public_key))

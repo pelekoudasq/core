@@ -73,10 +73,10 @@ class Zeus_sk(Mixnet):
 
         # Set election key
         if election_key:
-            self.__election_key = self.__cryptosys.get_key(election_key)
+            self.__election_key = self.__cryptosys.get_key_value(election_key)
 
     def set_election_key(election_key):
-        self.__election_key = self.__cryptosys.get_key(election_key)
+        self.__election_key = self.__cryptosys.get_key_value(election_key)
 
 
     @classmethod

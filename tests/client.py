@@ -52,7 +52,7 @@ class Voter(Client):
         proof = cryptosys.serialize_scnorr_proof(proof)
         commitment, challenge, response = cryptosys.extract_schnorr_proof(proof)
         encrypted_ballot.update({
-            'commtiment': commitment,
+            'commitment': commitment,
             'challenge': challenge,
             'response': response,
         })

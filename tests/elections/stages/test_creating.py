@@ -295,9 +295,10 @@ class TestCreating(StageTester, unittest.TestCase):
 
         zeus_public_key = election.get_zeus_public_key()
         try:
-            assert zeus_public_key != None
+            hex_zeus_public_key = election.get_hex_zeus_public_key()
+            assert zeus_public_key['value'].to_hex() == hex_zeus_public_key
             self.append_message('[+] zeus_public_key : %s...'
-                    % ('%x' % zeus_public_key['value'].value)[:32])
+                    % hex_zeus_public_key[:32])
         except AssertionError:
             err = "No zeus public key has been computed"
             self.append_message('[-] %s\n' % err)
@@ -314,10 +315,11 @@ class TestCreating(StageTester, unittest.TestCase):
             self.append_message('[-] %s\n' % err)
             raise AssertionError(err)
 
-        trustee_keys = election.get_trustee_keys()
+        hex_trustee_keys = election.get_hex_trustee_keys()
         try:
-            assert trustee_keys == list('%x' % trustee['value'].value for trustee in trustees)
-            self.append_message('[+] Keys matched')
+            assert hex_trustee_keys == list('%x' \
+                % trustee['value'].value for trustee in trustees).sort()
+            self.append_message('[+] Trustee keys matched')
         except AssertionError:
             err = "Trustee keys mismatch"
             self.append_message('[-] %s\n' % err)
@@ -325,9 +327,10 @@ class TestCreating(StageTester, unittest.TestCase):
 
         election_key = election.get_election_key()
         try:
-            assert election_key != None
+            hex_election_key = election.get_hex_election_key()
+            assert election_key.to_hex() == hex_election_key
             self.append_message('[+] election_key:     %s...'
-                    % ('%x' % election_key)[:32])
+                    % hex_election_key[:32])
         except AssertionError:
             err = "No election key has been computed"
             self.append_message('[-] %s\n' % err)
