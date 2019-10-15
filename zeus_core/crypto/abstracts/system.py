@@ -157,7 +157,6 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
         """
 
-    @abstractmethod
     def deserialize_encrypted_ballot(self, alpha, beta,
             commitment, challenge, response):
         """
@@ -173,6 +172,22 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
 
         encrypted_ballot = self.set_ciphertext_proof(ciphertext, proof)
         return encrypted_ballot
+
+
+    def hexify_encrypted_ballot(self, encrypted_ballot):
+        """
+        """
+        ciphertext, proof = self.extract_ciphertext_proof(encrypted_ballot)
+        alpha, beta = self.extract_ciphertext(ciphertext)
+        commitment, challenge, response = self.extract_schnorr_proof(proof)
+
+        alpha = alpha.to_hex()
+        beta = beta.to_hex()
+        commitment = commitment.to_hex()
+        challenge = hex(challenge)
+        commitment = hex(commitment)
+
+        return alpha, beta, commitment, challenge, response
 
     @abstractmethod
     def encode_integer(self, integer):

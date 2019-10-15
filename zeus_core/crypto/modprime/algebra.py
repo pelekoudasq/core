@@ -307,7 +307,7 @@ class ModPrimeSubgroup(Group):
         hashed_params = hash_nums(__p, __q, __g).hex()
         hashed_texts = hash_texts(hashed_params, *texts)
         exponent = int_from_bytes(hashed_texts)
-        exponent = exponent % __q # f_mod(exponent, __q)
+        exponent = exponent % __q
 
         return exponent
 

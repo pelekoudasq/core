@@ -3,7 +3,7 @@ Client reference
 """
 
 from zeus_core.crypto import make_crypto
-from zeus_core.utils import random_integer, hash_texts, hash_encode
+from zeus_core.utils import random_integer, hash_texts
 
 PLAINTEXT_CEIL = 2 ** 512
 
@@ -75,11 +75,11 @@ class Voter(Client):
 
     def mk_fingerprint(self, encrypted_ballot):
         """
-        Returns serialized
+        Accepts serialized, returns hexdigest
         """
         params = self.get_fingerprint_params(encrypted_ballot)
-        fingerprint = hash_texts(*[str(_) for _ in params])
-        return hash_decode(fingerprint)
+        fingerprint = hash_nums(params).hex()
+        return fingerprint
 
     def set_vote(self, encrypted_ballot, fingerprint, audit_code=None,
             publish=None, voter_secret=None, previous=None, index=None,
@@ -90,7 +90,7 @@ class Voter(Client):
         vote = {}
         vote['voter'] = self.voter_key
         vote['encrypted_ballot'] = encrypted_ballot
-        vote['fingerprint'] = fingeprint
+        vote['fingerprint'] = fingeprint # hexdigest
         if audit_code:
             vote['audit_code'] = audit_code
         if publish:
@@ -110,6 +110,7 @@ class Voter(Client):
                         election_key, get_secret=True)
         proof = cryptosys.prove_encryption(ciphertext, ranodmness)
         encrypted_ballot = self.mk_encrypted_ballot(ciphertext, proof)
+
         fingerprint = self.mk_fingerprint(encrypted_ballot)
         voter_secret = int(randomness) if publish else None
         vote = self.set_vote(encrypted_ballot, fingerprint, audit_code,

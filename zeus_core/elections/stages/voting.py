@@ -157,7 +157,7 @@ class Voting(Stage):
 
         # Check election key and reject in case of mismatch
         public = cryptosys.to_element(public)
-        if public != election.get_election_key()
+        if public != election.get_election_key():
             err = 'Invalid vote content: Election key mismatch'
             raise InvalidVoteError(err)
         vote['public'] = public
@@ -167,13 +167,12 @@ class Voting(Stage):
             alpha, beta, commitment, challenge, response)
         vote['encrypted_ballot'] = encrypted_ballot
 
-        # Deserialize fingerprint
-        fingerprint = hash_encode(vote['fingerprint'])
+        # Leave fingerprint as is (hexstring)
         vote['fingeprint'] = fingerprint
 
-        # Deserialize audit-code
+        # Leave audit-code as is (hexstring), or set to None if not provided
         if 'audit_code' not in vote:
-            vote['audit_code'] = None   # else it is the provided hexstring
+            vote['audit_code'] = None
 
         # Deserialize voter-secret
         voter_secret = vote.get('voter_secret')
@@ -205,17 +204,6 @@ class Voting(Stage):
         return (vote_crypto, vote_public, voter_key, encrypted_ballot,
             fingerprint, audit_code, voter_secret, previous, index,
             status, plaintext,)
-
-    def extract_encrypted_ballot(self, encrypted_ballot):
-        """
-        Assumes encrypted ballot after vote adaptment
-        (values deserialized, keys rearranged)
-        """
-        cryptosys = self.cryptosys
-        ciphertext, proof = cryptosys.extract_ciphertext_proof(encrypted_ballot)
-        alpha, beta = cryptosys.extract_ciphertext(ciphertext)
-        commitment, challenge, response = cryptosys.extract_proof(proof)
-        return alpha, beta, commitment, challenge, response
 
 
     # Voter fixation
@@ -638,24 +626,18 @@ class Voting(Stage):
         (_, _, _, encrypted_ballot, fingerprint,
             _, _, _, _, _, _) = self.extract_vote(vote)
 
+        # Verify ballot-encryption proof
         if not cryptosys.verify_encryption(encrypted_ballot):
             err = 'Ballot encryption could not be verified'
             raise InvalidVoteError(err)
 
-        if fingerprint != self.mk_fingerprint(encrypted_ballot):
+        # Check fingerprint match
+        params = cryptosys.hexify_encrypted_ballot(encrypted_ballot)
+        if fingerprint != hash_nums(params).hex():
             err = 'Fingerprint mismatch'
             raise InvalidVoteError(err)
 
         return fingerprint
-
-    def mk_fingerprint(self, ciphertext_proof):
-        """
-        :rtype: bytes
-        """
-        fingerprint_params = self.get_fingerprint_params(ciphertext_proof)
-        fingerprint = hash_texts(*[str(param) for param in fingerprint_params])
-        return fingerprint
-
 
     # Message customization
 
