@@ -31,7 +31,7 @@ class Uninitialized(Stage):
         return cryptosys, mixnet
 
     def _update_controller(self, cryptosys, mixnet):
-        election = self._get_controller()
+        election = self.get_controller()
         election.set_cryptosys(cryptosys)
         election.set_mixnet(mixnet)
 

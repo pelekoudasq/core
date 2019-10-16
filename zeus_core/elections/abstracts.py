@@ -28,7 +28,7 @@ class Stage(object, metaclass=ABCMeta):
 
         self.next_stage_message = None
 
-    def _get_controller(self):
+    def get_controller(self):
         return self.controller
 
     def _set_next_stage_cls(self, next_stage_cls):
@@ -72,7 +72,7 @@ class Stage(object, metaclass=ABCMeta):
         self._update_controller(*entities)
 
     def next(self):
-        controller = self._get_controller()
+        controller = self.get_controller()
         kwargs = {}
         message = self._get_next_stage_message()
         if message is not None:

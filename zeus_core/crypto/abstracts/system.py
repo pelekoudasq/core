@@ -8,7 +8,6 @@ class KeyManager(object, metaclass=ABCMeta):
     @abstractmethod
     def keygen(self, private_key=None):
         """
-        Generates and returns a keypair
         """
 
     def _set_keypair(self, private_key, public_key):
@@ -104,13 +103,16 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
     @abstractmethod
     def parameters(self):
         """
-        JSON
         """
 
     @abstractmethod
     def hex_parameters(self, crypto_params):
         """
-        For testing voting
+        """
+
+    @abstractmethod
+    def unhexify_crypto(self, t08, t09, t10):
+        """
         """
 
     @abstractmethod
@@ -124,22 +126,27 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def mk_vote_crypto(self, t08, t09, t10):
-        """
-        Formats appropriately provided texts (tought of as crypto parameters
-        extracted from some vote-text), so that they can be compared to the
-        present cryptosystem's parameters
-        """
-
-    # Deserialization
-
-    @abstractmethod
-    def to_exponent(self, integer):
+    def unhexify_crypto(self, t08, t09, t10):
         """
         """
 
     @abstractmethod
-    def to_element(self, element):
+    def int_to_exponent(self, integer):
+        """
+        """
+
+    @abstractmethod
+    def hex_to_exponent(self, hex_string):
+        """
+        """
+
+    @abstractmethod
+    def int_to_element(self, integer):
+        """
+        """
+
+    @abstractmethod
+    def hex_to_element(self, hex_string):
         """
         """
 
@@ -147,11 +154,11 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
             commitment, challenge, response):
         """
         """
-        alpha = self.to_element(alpha)
-        beta = self.to_element(beta)
-        commitment = self.to_element(commitment)
-        challenge = self.to_exponent(challenge)
-        response = self.to_exponent(response)
+        alpha = self.int_to_element(alpha)
+        beta = self.int_to_element(beta)
+        commitment = self.int_to_element(commitment)
+        challenge = self.int_to_exponent(challenge)
+        response = self.int_to_exponent(response)
 
         ciphertext = self.set_ciphertext(alpha, beta)
         proof = self.set_schnorr_proof(commitment, challenge, response)
@@ -159,10 +166,26 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         encrypted_ballot = self.set_ciphertext_proof(ciphertext, proof)
         return encrypted_ballot
 
+    def unhexify_encrypted_ballot(self, alpha, beta,
+            commitment, challenge, response):
+        """
+        """
+        alpha = self.hex_to_element(alpha)
+        beta = self.hex_to_element(beta)
+        commitment = self.hex_to_element(commitment)
+        challenge = self.hex_to_exponent(challenge)
+        response = self.hex_to_exponent(response)
+
+        ciphertext = self.set_ciphertext(alpha, beta)
+        proof = self.set_schnorr_proof(commitment, challenge, response)
+        encrypted_ballot = self.set_ciphertext_proof(ciphertext, proof)
+
+        return encrypted_ballot
+
+
     @abstractmethod
     def hexify_encrypted_ballot(self, encrypted_ballot):
         """
-        Assumes encrypted ballot after vote adaptment
         """
 
     @abstractmethod
@@ -194,8 +217,6 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
 
     def extract_schnorr_proof(self, proof):
         """
-        :type proof: dict
-        :rtype: (ModPrimElement, mpz, mpz)
         """
         commitment = proof['commitment']
         challenge = proof['challenge']
@@ -239,8 +260,6 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
 
     def _extract_chaum_pedersen_proof(self, proof):
         """
-        :type proof: dict
-        :rtype: (ModPrimElement, ModPrimElement, mpz, mpz)
         """
         base_commitment = proof['base_commitment']
         message_commitment = proof['message_commitment']
@@ -273,8 +292,6 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
 
     def _extract_dsa_signature(self, signature):
         """
-        :type signature: dict
-        :rtype: (mpz, mpz, mpz)
         """
         exponent = signature['exponent']
         commitments = signature['commitments']
@@ -306,16 +323,11 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
 
     def set_signed_message(self, message, signature):
         """
-        :type message: str
-        :type signature: dict
-        :rtype: dict
         """
         return {'message': message, 'signature': signature}
 
     def _extract_message_signature(self, signed_message):
         """
-        :type signed_message: dict
-        :rtype: tuple
         """
         message = signed_message['message']
         signature = signed_message['signature']
@@ -324,8 +336,6 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
 
     def extract_signed_message(self, signed_message):
         """
-        :type signed_message: dict
-        :rtype: tuple
         """
         message = signed_message['message']
         signature = signed_message['signature']
@@ -370,16 +380,11 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
 
     def set_ciphertext(self, alpha, beta):
         """
-        :type alpha: ModPrimeElement
-        :type beta: ModPrimeElement
-        :rtype: dict
         """
         return {'alpha': alpha, 'beta': beta}
 
     def extract_ciphertext(self, ciphertext):
         """
-        :type ciphertext: dict
-        :rtype: (ModPrimeElement, ModPrimeElement)
         """
         alpha = ciphertext['alpha']
         beta = ciphertext['beta']
@@ -392,20 +397,11 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
 
     def set_ciphertext_proof(self, ciphertext, proof):
         """
-        :type ciphertext: dict
-        :type proof: dict
-        :rtype: dict
         """
         return {'ciphertext': ciphertext, 'proof': proof}
 
     def extract_ciphertext_proof(self, ciphertext_proof):
         """
-        Extracts values from a dictionary of the form
-
-        {'ciphertext': dict, 'proof': dict}
-
-        :type ciphertext_proof: dict
-        :rtype: (dict, dict)
         """
         ciphertext = ciphertext_proof['ciphertext']
         proof = ciphertext_proof['proof']

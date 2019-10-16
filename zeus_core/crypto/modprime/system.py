@@ -163,13 +163,21 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return hex_p, hex_q, hex_g
 
+    def unhexify_crypto(self, t08, t09, t10):
+        """
+        """
+        hex_p = t08[len(V_MODULUS):]
+        hex_q = t09[len(V_ORDER):]
+        hex_g = t10[len(V_GENERATOR):]
+        
+        p = mpz(hex_p, 16)
+        q = mpz(hex_q, 16)
+        g = mpz(hex_g, 16)
+
+        return {'modulus': p, 'order': q, 'generator': g}
+
     def _parameters(self):
         """
-        Returns a tuple of the form (mpz, mpz, mpz) with the cryptosystem's
-        parameters (modulus p, order q and fixed generator g of the underlying
-        group)
-
-        :rtype: tuple
         """
         __p = self.__modulus
         __q = self.__order
@@ -177,24 +185,28 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return __p, __q, __g
 
-    def to_exponent(self, integer):
+    def int_to_exponent(self, integer):
         """
-        :type integer: int
-        :rtype: mpz
         """
         return mpz(integer)
 
-    def to_element(self, integer):
+    def hex_to_exponent(self, hex_string):
         """
-        :type integer: int
-        :rtype: ModPrimElement
+        """
+        return mpz(hex_string, 16)
+
+    def int_to_element(self, integer):
+        """
         """
         return self.__GroupElement(integer, self.__modulus)
 
+    def hex_to_element(self, hex_string):
+        """
+        """
+        return self.__GroupElement(mpz(hex_string, 16), self.__modulus)
+
     def encode_integer(self, integer):
         """
-        :type integer: int
-        :rtype: ModPrimeElement
         """
         element = self.__group.encode_integer(integer)
         return element
@@ -219,18 +231,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         return t08.startswith(V_MODULUS) \
             and t09.startswith(V_ORDER) and t10.startswith(V_GENERATOR)
-
-    def mk_vote_crypto(self, t08, t09, t10):
-        """
-        Formats appropriately provided texts (tought of as crypto parameters
-        extracted from some vote-text), so that they can be compared to the
-        present cryptosystem's parameters
-        """
-        modulus = mpz(t08[len(V_MODULUS):])
-        order = mpz(t08[len(V_ORDER):])
-        generator = ModPrimeElement(mpz(generator), self.__modulus)
-
-        return modulus, order, generator
 
     def serialize_ciphertext(self, ciphertext):
         """

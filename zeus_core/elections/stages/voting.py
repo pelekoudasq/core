@@ -5,6 +5,7 @@ from zeus_core.elections.constants import (V_FINGERPRINT, V_INDEX, V_PREVIOUS,
     V_RESPONSE, V_COMMENTS, V_SEPARATOR, NONE,)
 from zeus_core.elections.exceptions import (Abortion, MalformedVoteError,
     ElectionMismatchError, VoteRejectionError, InvalidVoteError,)
+from zeus_core.elections.utils import extract_vote
 
 from .mixing import Mixing
 
@@ -24,23 +25,32 @@ class Voting(Stage):
         pass
 
 
-    # General vote handler
-
     def cast_vote(self, vote):
         """
+        General vote handler
+
         Handles the submitted vote accordingly (audit-request or audit-vote
-        or genuine vote) under account of inscribed parameters
+        or genuine vote) under account of inscribed parameters. Stores the
+        submitted vote if all intermediate checks passed
 
-        Rejects in case of:
-
-            (Adapt stage)
+        Rejects vote in case of:
             - wrong or extra fields
             - missing fields
             - malformed encrypted ballot
             - cryptosystem mismatch
             - election key mismatch
+            - non-detected voter key
+            - no audit-code provided while skip-audit mode disabled
+            - (audit-request) audit-request already submitted for the provided fingerprint
+            - (audit-vote) no audit-code provided
+            - (audit-vote) provided audit-code not among the assigned ones
+            - (audit-vote) no audit-request found for the provided fingeprint
+            - (audit-vote) failure of audit-vote verification
+            - (genuine vote) vote already cast
+            - (genuine vote) vote limit reached
+            - (genuine vote) failure of vote validation
         """
-        election = self._get_controller()
+        election = self.get_controller()
 
         try:
             vote = self.adapt_vote(vote)
@@ -50,51 +60,39 @@ class Voting(Stage):
             raise VoteRejectionError(err)
 
         (_, _, voter_key, _, fingerprint, voter_audit_code, voter_secret, \
-            _, _, _, _) = self.extract_vote(vote)
+            _, _, _, _) = extract_vote(vote)
 
         try:
             voter, voter_audit_codes = self.detect_voter(voter_key)
-        except (VoteRejectionError, Abortion,):
-            # Voter's key could not be detected or voter's key detected
-            # but not assigned any set of audit-codes
+        except VoteRejectionError:
+            # Voter's key could not be detected
             raise
-
+        except Abortion:
+            # Voter's key detected but not assigned any audit-codes
+            raise
         if voter_secret:
-            try:
-                signature = self.submit_audit_vote(vote,
-                        voter_audit_code, voter_audit_codes)
-            except VoteRejectionError:
-                # No audit-code provided, or provided audit-code was not among
-                # the assigned ones, or no prior audit-request found for the
-                # provided fingerprint, or voter's secret was not included, or
-                # vote failed to be verified as audit
-                raise
+            # Will reject vote if:
+            # (1) no audit-code has been provided
+            # (2) provided audit-code not among the assigned ones
+            # (3) no audit-request found for the provided fingerprint
+            # (4) vote failed to be verified as audit
+            signature = self.submit_audit_vote(vote, voter_audit_code,
+                voter_audit_codes)
         else:
-            try:
-                # If no audit-code provided, choose one of the assigned ones
-                voter_audit_code = self.fix_audit_code(
-                        voter_audit_code, voter_audit_codes)
-            except VoteRejectionError:
-                # No audit-code provided while skip-audit mode disabled
-                raise
-
+            # If no audit-code provided, choose one of the assigned ones
+            # (Will reject vote if no audit-code has been provided
+            # while skip-audit mode dispabled)
+            voter_audit_code = self.fix_audit_code(voter_audit_code, voter_audit_codes)
             if voter_audit_code not in voter_audit_codes:
-                try:
-                    signature = self.submit_audit_request(
-                        fingerprint, voter_key, vote)
-                except (VoteRejectionError,):
-                    # Audit-request already submitted
-                    # for the provided fingerpint
-                    raise
+                # Will reject vote if audit-request already
+                # submitted for the provided fingeprint
+                signature = self.submit_audit_request(fingerprint, voter_key, vote)
             else:
-                try:
-                    signature = self.submit_genuine_vote(
-                        fingerprint, voter_key, vote)
-                except (VoteRejectionError,):
-                    # Vote already cast, or vote limit reached,
-                    # or vote failed to be validated
-                    raise
-
+                # Will reject vote if
+                # (1) vote already cast
+                # (2) vote limit reached
+                # (3) vote failed to be validated
+                signature = self.submit_genuine_vote(fingerprint, voter_key, vote)
         return signature
 
 
@@ -114,7 +112,7 @@ class Voting(Stage):
             - cryptosystem mismatch
             - election key mismatch
         """
-        election = self._get_controller()
+        election = self.get_controller()
         cryptosys = election.get_cryptosys()
         crypto_params = election.get_cryptoparams()
         crypto_param_keys = set(cryptoparams.keys())
@@ -155,7 +153,7 @@ class Voting(Stage):
         vote['crypto'] = vote_crypto
 
         # Check election key and reject in case of mismatch
-        if cryptosys.to_element(public) != election.get_election_key():
+        if cryptosys.int_to_element(public) != election.get_election_key():
             err = 'Invalid vote content: Election key mismatch'
             raise InvalidVoteError(err)
         vote['public'] = public
@@ -174,34 +172,10 @@ class Voting(Stage):
 
         # Deserialize voter-secret
         voter_secret = vote.get('voter_secret')
-        vote['voter_secret'] = cryptosys.to_exponent(voter_secret) \
+        vote['voter_secret'] = cryptosys.int_to_exponent(voter_secret) \
             if voter_secret else None
 
         return vote
-
-    def extract_vote(self, vote):
-        """
-        Assumes vote after adaptement
-        (values deserialized, keys rearranged)
-
-        Fills with None missing fields: previous, index, status, plaintext
-        """
-        vote_crypto = vote['crypto']
-        vote_public = vote['public']
-        voter_key = vote['voter']
-        encrypted_ballot = vote['encrypted_ballot']
-        fingerprint = vote['fingerprint']
-        audit_code = vote['audit_code']
-        voter_secret = vote['voter_secret']
-
-        previous = vote.get_value('previous')
-        index = vote.get_value('index')
-        status = status.get_value('status')
-        plaintext = plaintext.get_value('plaintext')
-
-        return (vote_crypto, vote_public, voter_key, encrypted_ballot,
-            fingerprint, audit_code, voter_secret, previous, index,
-            status, plaintext,)
 
 
     # Voter fixation
@@ -212,7 +186,7 @@ class Voting(Stage):
         Abort election if key was detected but no audit-codes correspond to it
         Return voter and audit-codes otherwise
         """
-        election = self._get_controller()
+        election = self.get_controller()
 
         voter = election.get_voter(voter_key)
         voter_audit_codes = election.get_voter_audit_codes(voter_key)
@@ -233,6 +207,8 @@ class Voting(Stage):
         If not provided and skip-audit mode is disabled, vote is rejected
         (raises exception)
         """
+        election = self.get_controller()
+
         if not voter_audit_code:
             skip_audit = election.get_option('skip_audit')
             if skip_audit or skip_audit is None:
@@ -246,11 +222,11 @@ class Voting(Stage):
     def exclude_voter(voter_key, reason=''):
         """
         """
-        election = self._get_controller()
+        election = self.get_controller()
         election.store_excluded_voter(voter_key, reason)
 
 
-    # Submissions
+    # Vote submission
 
     def submit_audit_request(self, fingerprint, voter_key, vote):
         """
@@ -260,7 +236,8 @@ class Voting(Stage):
         and attach to it the signature, stores the audit-request, audit-vote
         and vote, and returns the signature
         """
-        election = self._get_controller()
+        election = self.get_controller()
+
         if election.get_audit_request(fingeprint):
             err = "Audit-request for vote [%s] already submitted" % (fingeprint,)
             raise VoteRejectionError(err)
@@ -272,7 +249,7 @@ class Voting(Stage):
 
         # Sign vote and attach signature
         comments = self.custom_audit_request_message(vote)
-        signature = self.sign_vote(vote, comments)
+        signature = election.sign_vote(vote, comments)
         vote['signature'] = signature
 
         # Store vote along with audit-request
@@ -282,7 +259,6 @@ class Voting(Stage):
 
         return signature
 
-
     def submit_audit_vote(self, vote, voter_audit_code, voter_audit_codes):
         """
         Raises VoteRejectionError if
@@ -290,7 +266,9 @@ class Voting(Stage):
             - Invalid audit-code provided
             - No prior audit-request found for publish-request
         """
-        # ~ Check audit-publication prerequisites, reject otherwise
+        election = self.get_controller()
+
+        # Check audit-publication prerequisites, reject otherwise
         if not voter_audit_code:
             err = "Invalid audit vote publication: No audit-code provided"
             raise VoteRejectionError(err)
@@ -301,11 +279,11 @@ class Voting(Stage):
             err = "No prior audit-request found for publish-request"
             raise VoteRejectionError(err)
 
-        # ~ Audit-vote verification
+        # Audit-vote verification
         vote['previous'] = ''
         vote['index'] = None
         vote['status'] = V_PUBLIC_AUDIT
-        missing, failed = self.verify_audit_votes(votes=[vote,])
+        missing, failed = self.validate_audit_votes(votes=[vote,])
         if missing:
             err = "Missing voter's secret: No randomness provided with audit-vote"
             raise VoteRejectionError(err)
@@ -314,19 +292,20 @@ class Voting(Stage):
 
         # Sign vote and attach signature
         comments = self.custom_audit_publication_message(vote)
-        signature = self.sign_vote(vote, comments)
+        signature = election.sign_vote(vote, comments)
         vote['signature'] = signature
 
-        # ~ Append vote and store inscribed fingerprint as audit-publication
+        # Append vote and store inscribed fingerprint as audit-publication
         election.store_audit_publication(fingerprint)
         election.store_votes((vote,))
 
         return signature
 
-
     def submit_genuine_vote(self, fingerprint, voter_key, vote):
         """
         """
+        election = self.get_controller()
+
         if election.get_vote(fingerprint):
             err = "Vote [%s] already cast" % (fingerprint,)
             raise VoteRejectionError(err)
@@ -342,7 +321,7 @@ class Voting(Stage):
             previous_fingerprint = cast_votes[-1]
 
         try:
-            self.validate_submitted_vote(vote)
+            self.validate_genuine_vote(vote)
         except InvalidVoteError as err:
             raise VoteRejectionError(err)
 
@@ -352,7 +331,7 @@ class Voting(Stage):
 
         # Sign vote and attach signature
         comments = self.custom_cast_vote_message(vote)
-        signature = self.sign_vote(vote, comments)
+        signature = election.sign_vote(vote, comments)
         vote['signature'] = signature
 
         election.append_vote(voter_key, fingerprint)
@@ -364,234 +343,14 @@ class Voting(Stage):
         return signature
 
 
-    # Vote signing
+    # Vote validation
 
-    def sign_vote(self, vote, comments):
-        """
-        Assumes vote after adaptment (values deserialized, keys rearranged)
-
-        Will raise InvalidSignatureError if after signing, if the produced
-        vote is not verified
-        """
-        election = self._get_controller()
-        cryptosys = election.get_cryptosys()
-        zeus_private_key = election.get_zeus_private_key()
-
-        textified_vote = self.textify_vote(self, vote, comments)
-        signed_vote = cryptosys.sign_text_message(textified_vote, zeus_private_key)
-        _, signature = cryptosys.extract_signed_message(signed_message)
-        vote_signature = self.format_vote_signature(textified_vote, signature)
-
-        return vote_signature
-
-    def textify_vote(self, vote, comments):
-        """
-        Assumes vote after adaptment (values deserialized, keys rearranged)
-        """
-        election = self._get_controller()
-        cryptosys = election.get_cryptosys()
-        hex_crypto_params = cryptosys.hex_parameters()
-        hex_zeus_public_key = election.get_hex_zeus_public_key()
-        hex_trustee_keys = election.get_hex_trustee_keys()
-        hex_election_key = election.get_hex_election_key()
-        candidates = election.get_candidates()
-
-        (_, _, _, encrypted_ballot, fingerprint, _, _,
-            previous, index, status, _) = self.extract_vote(vote)
-        alpha, beta, commitment, challenge, response = \
-            cryptosys.hexify_encrypted_ballot(encrypted_ballot)
-
-        t00 = status if status is not None else NONE
-        t01 = V_FINGERPRINT + fingerprint
-        t02 = V_INDEX + f'{index if index is not None else NONE}'
-        t03 = V_PREVIOUS + f'{previous if previous is not None else NONE}'
-        t04 = V_ELECTION + hex_election_key
-        t05 = V_ZEUS_PUBLIC + hex_zeus_public_key
-        t06 = V_TRUSTEES + ' '.join(hex_trustee_keys)
-        t07 = V_CANDIDATES + ' % '.join(candidates)
-        t08, t09, t10 = hex_crypto_params
-        t11 = V_ALPHA + alpha
-        t12 = V_BETA + beta
-        t13 = V_COMMITMENT + commitment
-        t14 = V_CHALLENGE + challenge
-        t15 = V_RESPONSE + response
-        t16 = V_COMMENTS + comments
-
-        textified = '\n'.join((t00, t01, t02, t03, t04, t05, t06, t07, t08,
-            t09, t10, t11, t12, t13, t14, t15, t6))
-
-        return textified
-
-    def format_vote_signature(self, textified_vote, signature):
+    def validate_audit_votes(self, audit_votes=None):
         """
         """
-        vote_signature = ''
-        vote_signature += textified_vote
-        vote_signature += V_SEPARATOR
-        vote_signature += cryptosys.hexify_dsa_signature(signature)
-
-        return vote_signature
-
-    # Vote-signature verification
-
-    def verify_vote_signature(self, vote_signature):
-        """
-        Raise InvalidSignatureError in case of:
-            - malformed vote-text
-            - election mismatch
-            - invalid signature (failure of DSA signature validation)
-            - invalid vote encryption (failure of voter to prove
-                    knowledge of their signing key)
-        """
-        election = self._get_controller()
+        election = self.get_controller()
         cryptosys = election.get_cryptosys()
 
-        # Retrieve vote-text and attached DSA-signature
-        textified_vote, signature = self.split_vote_signature(vote_signature)
-
-        # Extract values from vote-text
-        try:
-            # CONTINUE FROM HERE
-            vote_values = self.extract_textified_vote(textified_vote)
-        except MalformedVoteError as err:
-            raise InvalidSignatureError(err)
-        (status, fingerprint, index, previous, election_key, zeus_public_key,
-        trustees, candidates, vote_crypto, alpha, beta,
-        commitment, challenge, response, comments,) = vote_values
-
-        # Verify inscribed election info
-        try:
-            self.verify_election(vote_crypto, election_key, trustees, cadidates)
-        except ElectionMismatchError as err:
-            raise InvalidSignatureError(err)
-
-        # Verify proof of encryption
-        ciphertext = cryptosys.set_ciphertext(alpha, beta)
-        proof = cryptosys.set_schnorr_proof(commitment, challenge, response)
-        if index is not None and not cryptosys.verify_encryption({
-            'ciphertext': ciphertext,
-            'proof': proof
-        }):
-            err = 'Invalid vote encryption'
-            raise InvalidSignatureError(err)
-
-        # Validate DSA signature (NOTE: uses zeus key as inscribed in vote)
-        signed_message = \
-            cryptosys.set_signed_message(textified_vote, signature)
-        if not cryptosys.verify_text_signature(signed_message, zeus_public_key):
-            err = 'Invalid vote signature'
-            raise InvalidSignatureError(err)
-
-        return True
-
-
-    def split_vote_signature(self, vote_signature):
-        """
-        Separate vote-text from DSA signature and return
-        """
-        election = self._get_controller()
-        cryptosys = election.get_cryptosys()
-
-        textified_vote, attached_signature = vote_signature.split(V_SEPARATOR)
-        dsa_signature = cryptosys.unhexify_dsa_signature(attached_signature)
-
-        return textified_vote, dsa_signature
-
-
-    def extract_textified_vote(self, textified_vote):
-        """
-        Extract inscribed values from vote-text
-        Raise MalformedVoteError in case of inappropriate structure
-        """
-        election = self._get_controller()
-        cryptosys = election.get_cryptosys()
-
-        try:
-            vote_fields = self.split_textified_vote(textified_vote)
-        except MalformedVoteError:
-            raise
-
-        (t00, t01, t02, t03, t04, t05, t06, t07, t08, t09,
-            t10, t11, t12, t13, t14, t15, t16) = vote_fields
-
-        # Extract field values
-        status = t00
-        fingerprint = t01[len(V_FINGERPRINT):]
-        index = t02[len(V_INDEX):]
-        if index != NONE and not index.isdigit():
-            err = f"Invalid vote index: {index}"
-            raise MalformedVoteError(err)
-        previous = t03[len(V_PREVIOUS):]
-        election_key = t04[len(V_ELECTION):]
-        zeus_public_key = t05[len(V_ZEUS_PUBLIC):]
-        trustees = t06[len(V_TRUSTEES):].split()
-        candidates_str = t07[len(V_CANDIDATES):]
-        candidates = candidates_str.split(' % ') if candidates_str else []
-        vote_crypto = cryptosys.mk_vote_crypto(t08, t09, t10)
-        alpha = t11[len(V_ALPHA):]
-        beta = t12[len(V_BETA):]
-        commitment = t13[len(V_COMMITMENT):]
-        challenge = t14[len(V_CHALLENGE):]
-        repsonse = t15[len(V_RESPONSE):]
-        comments = t16[len(V_COMMENTS):].split()
-
-        # Convert remaining texts to corresponding algebraic objects
-        election_key = cryptosys.deserialize_public_key(mpz(election_key))
-        zeus_public_key = cryptosys.deserialize_public_key(mpz(zeus_public_key))
-        alpha = cryptosys.to_element(int(alpha))
-        beta = cryptosys.to_element(int(beta))
-        commitment = cryptosys.to_exponent(commitment)
-        challenge = cryptosys.to_exponent(challenge)
-        response = cryptosys.to_exponent(response)
-
-        return (status, fingerprint, index, previous, election_key,
-            zeus_public_key, trustees, candidates, vote_crypto,
-            alpha, beta, commitment, challenge, response, comments)
-
-    def split_textified_vote(self, textified_vote):
-        """
-        Raise MalformedVoteError in case of malformed labels
-        """
-        election = self._get_controller()
-        cryptosys = election.get_cryptosys()
-
-        (t00, t01, t02, t03, t04, t05, t06, t07, t08, t09,
-            t10, t11, t12, t13, t14, t15, t16) = textified_vote.split('\n')
-
-        # Check field labels
-        if not ((t00.startswith(V_CAST_VOTE) or
-                 t00.startswith(V_AUDIT_REQUEST) or
-                 t00.startswith(V_PUBLIC_AUDIT) or
-                 t00.startswith(V_PUBLIC_AUDIT_FAILED) or
-                 t00.startswith(NONE)) or
-                not t01.startswith(V_FINGERPRINT) or
-                not t02.startswith(V_INDEX) or
-                not t03.startswith(V_PREVIOUS) or
-                not t04.startswith(V_ELECTION) or
-                not t05.startswith(V_ZEUS_PUBLIC) or
-                not t06.startswith(V_TRUSTEES) or
-                not t07.startswith(V_CANDIDATES) or
-                not cryptosys.check_labels(t07, t08, t09) or
-                not t11.startswith(V_ALPHA) or
-                not t12.startswith(V_BETA) or
-                not t13.startswith(V_COMMITMENT) or
-                not t14.startswith(V_CHALLENGE) or
-                not t15.startswith(V_RESPONSE) or
-                not t16.startswith(V_COMMENTS)):
-            err = 'Cannot verify vote signature: Malformed labels'
-            raise MalformedVoteError(err)
-
-        return (t00, t01, t02, t03, t04, t05, t06, t07, t08, t09,
-            t10, t11, t12, t13, t14, t15, t16)
-
-
-    # Audit vote verification
-
-    def verify_audit_votes(self, audit_votes=None):
-        """
-        """
-        election = self._get_controller()
-        cryptosys = election.get_cryptosys()
         # ~ If no votes provided, verify all audit-votes from archive
         if audit_votes:
             audit_votes = election.get_audit_votes()
@@ -602,7 +361,7 @@ class Voting(Stage):
         failed = []
         for vote in audit_votes:
             _, _, _, encrypted_ballot, _, _, voter_secret, _, _, _, _ = \
-                self.extract_vote(vote)
+                extract_vote(vote)
             # ~ Check if acclaimed randomness used at ballot encryption comes with
             # ~ the vote; otherwise sort as `missing` and proceed to next vote
             if not voter_secret:
@@ -637,21 +396,18 @@ class Voting(Stage):
                 vote['plaintext'] = decrypted.value
         return missing, failed
 
-
-    # Genuine vote validation
-
-    def validate_submitted_vote(self, vote):
+    def validate_genuine_vote(self, vote):
         """
         Assumes vote after adaptment (values deserialized, keys rearranged)
 
         Raises InvalidVoteError if ballot encryption could not be verified or
         the provided fingerprint could not be retrieved from encrypted ballot
         """
-        election = self._get_controller()
+        election = self.get_controller()
         cryptosys = election.get_cryptosys()
 
-        (_, _, _, encrypted_ballot, fingerprint,
-            _, _, _, _, _, _) = self.extract_vote(vote)
+        (_, _, _, encrypted_ballot, fingerprint, _, _, _, _, _, _) = \
+            extract_vote(vote)
 
         # Verify ballot-encryption proof
         if not cryptosys.verify_encryption(encrypted_ballot):
@@ -665,6 +421,7 @@ class Voting(Stage):
             raise InvalidVoteError(err)
 
         return fingerprint
+
 
     # Message customization
 
