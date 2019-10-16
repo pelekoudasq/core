@@ -1,8 +1,10 @@
 class Abortion(BaseException):
     """
-    Raised when any predictable fatal event happends during the election (e.g.,
-    invalid trustee detection, duplicate voter names etc.), disallowing the
-    election to proceed normally. Controller designed so that raising of this
+    Raised when any predictable fatal event happends during the running election
+    (e.g., invalid trustee detection, duplicate voter names etc.), prohibiting
+    the election's normal process.
+
+    .. note:: Stage controller has been designed so that raising of this
     exception forces the election to terminate gently at stage ``Aborted``.
     """
     pass
@@ -10,24 +12,18 @@ class Abortion(BaseException):
 class MalformedVoteError(BaseException):
     """
     Raised before vote-signature verification, whenever the corresponding
-    vote-text does not have the awaited format (will lead to
-    InvalidSignatureError)
+    vote-text does not have the awaited format.
     """
 
 class ElectionMismatchError(BaseException):
     """
     Raised during vote-signature verification, whenever the inscribed election
-    info (crypto-params, election key, trustees and candidates) extracted from
-    the corresponding vote-text do not coincide with those of the current
-    election (will lead to InvalidSignatureError).
+    info extracted from the corresponding vote-text do not coincide with those
+    of the running election.
     """
     pass
 
-class VoterInconsistency(BaseException):
-    """
-    """
-
-class AuditPublicationError(BaseException):
+class InvalidVoteError(BaseException):
     """
     """
     pass
@@ -37,7 +33,7 @@ class VoteRejectionError(BaseException):
     """
     pass
 
-class InvalidVoteError(BaseException):
+class InvalidVoteSignature(BaseException):
     """
     """
     pass

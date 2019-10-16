@@ -2,7 +2,7 @@ from ..abstracts import Stage
 from ..exceptions import Abortion
 from .creating import Creating
 
-from zeus_core.crypto import make_crypto
+from zeus_core.crypto import mk_cryptosys
 from zeus_core.crypto.exceptions import AlgebraError, WrongCryptoError, WeakCryptoError
 from zeus_core.mixnets import make_mixnet
 from zeus_core.mixnets.exceptions import MixnetError
@@ -39,7 +39,7 @@ class Uninitialized(Stage):
 
     def init_cryptosys(self, crypto_cls, crypto_config):
         try:
-            cryptosys = make_crypto(crypto_cls, crypto_config)
+            cryptosys = mk_cryptosys(crypto_cls, crypto_config)
         except (AlgebraError, WrongCryptoError, WeakCryptoError) as err:
             raise Abortion(err)
         return cryptosys

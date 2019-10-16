@@ -4,7 +4,7 @@ from zeus_core.elections.constants import (V_FINGERPRINT, V_INDEX, V_PREVIOUS,
     V_GENERATOR, V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE,
     V_RESPONSE, V_COMMENTS, V_SEPARATOR, NONE,)
 from zeus_core.elections.exceptions import (Abortion, MalformedVoteError,
-    ElectionMismatchError, VoteRejectionError, InvalidVoteError,)
+    ElectionMismatchError, InvalidVoteError, VoteRejectionError,)
 from zeus_core.elections.utils import extract_vote
 
 from .mixing import Mixing

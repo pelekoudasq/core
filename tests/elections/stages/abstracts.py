@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 import unittest
-from tests.elections.stages.utils import create_election
+from tests.elections.utils import mk_election
 
 def get_cls_name(obj): return obj.__class__.__name__
 
@@ -20,7 +20,7 @@ class StageTester(metaclass=ABCMeta):
         """
         Create and launch the election running in background
         """
-        election = create_election()
+        election = mk_election()
         self.election = election
 
     @abstractmethod

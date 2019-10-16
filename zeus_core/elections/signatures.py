@@ -5,7 +5,7 @@ and vote-signature verification
 
 from zeus_core.elections.utils import extract_vote
 from .exceptions import (MalformedVoteError, ElectionMismatchError,
-        InvalidSignatureError)
+        InvalidVoteSignature)
 
 class Signer(object):
     """
@@ -19,7 +19,7 @@ class Signer(object):
         """
         Assumes vote after adaptment (values deserialized, keys rearranged)
 
-        Will raise InvalidSignatureError if after signing, if the produced
+        Will raise InvalidVoteSignature if after signing, if the produced
         vote is not verified
         """
         election = self.election
@@ -67,7 +67,7 @@ class Signer(object):
         t16 = V_COMMENTS + comments
 
         textified = '\n'.join((t00, t01, t02, t03, t04, t05, t06, t07, t08,
-            t09, t10, t11, t12, t13, t14, t15, t6))
+            t09, t10, t11, t12, t13, t14, t15, t16))
 
         return textified
 
@@ -93,7 +93,7 @@ class Verifier(object):
 
     def verify_vote_signature(self, vote_signature):
         """
-        Raise InvalidSignatureError in case of:
+        Raise InvalidVoteSignature in case of:
             - malformed vote-text
             - election mismatch
             - invalid signature (failure of DSA signature validation)
@@ -108,7 +108,7 @@ class Verifier(object):
         try:
             vote_values = self.extract_textified_vote(textified_vote)
         except MalformedVoteError as err:
-            raise InvalidSignatureError(err)
+            raise InvalidVoteSignature(err)
         (_, _, index, previous, vote_election_key, zeus_public_key,
             vote_trustees, vote_candidates, vote_crypto,
             encrypted_ballot, _,) = vote_values
@@ -117,12 +117,12 @@ class Verifier(object):
             self.verify_election(vote_crypto, vote_election_key,
                 vote_trustees, vote_candidates)
         except ElectionMismatchError as err:
-            raise InvalidSignatureError(err)
+            raise InvalidVoteSignature(err)
 
         if index is not NONE and not cryptosys.verify_encryption(
                 encrypted_ballot):
             err = 'Invalid vote encryption'
-            raise InvalidSignatureError(err)
+            raise InvalidVoteSignature(err)
 
         # Essentual signature validation
         # NOTE: uses zeus public key as inscribed in vots
@@ -130,7 +130,7 @@ class Verifier(object):
             cryptosys.set_signed_message(textified_vote, signature)
         if not cryptosys.verify_text_signature(signed_message, zeus_public_key):
             err = 'Invalid vote signature'
-            raise InvalidSignatureError(err)
+            raise InvalidVoteSignature(err)
 
         return True
 

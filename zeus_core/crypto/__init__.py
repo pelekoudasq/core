@@ -1,4 +1,4 @@
 from .modprime import ModPrimeCrypto
-from .makers import make_crypto
+from .makers import mk_cryptosys
 
-__all__ = ('make_crypto', 'ModPrimeCrypto',)
+__all__ = ('mk_cryptosys', 'ModPrimeCrypto',)

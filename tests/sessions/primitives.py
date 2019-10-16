@@ -8,7 +8,6 @@ from gmpy2 import mpz
 
 from zeus_core.utils import random_integer
 from zeus_core.crypto.modprime import ModPrimeElement
-from zeus_core.crypto.exceptions import (InvalidVoteError, InvalidSignatureError)
 
 from tests.constants import (_2048_SYSTEM, _2048_SECRET, _2048_DDH, _4096_SYSTEM,
     _4096_SECRET, _4096_DDH, MESSAGE)

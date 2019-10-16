@@ -8,8 +8,7 @@ from .algebra import ModPrimeElement, ModPrimeSubgroup
 
 from ..abstracts import ElGamalCrypto
 from ..exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
-    InvalidKeyError, InvalidVoteError, InvalidSignatureError, InvalidFactorError,
-    BallotDecryptionError)
+    InvalidKeyError, InvalidFactorError, BallotDecryptionError)
 
 V_MODULUS   = 'MODULUS: '
 V_ORDER     = 'ORDER: '
@@ -169,7 +168,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         hex_p = t08[len(V_MODULUS):]
         hex_q = t09[len(V_ORDER):]
         hex_g = t10[len(V_GENERATOR):]
-        
+
         p = mpz(hex_p, 16)
         q = mpz(hex_q, 16)
         g = mpz(hex_g, 16)
@@ -440,8 +439,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         serialized = {}
         commitment, challenge, response = self.extract_schnorr_proof(proof)
         serialized['commitment'] = commitment.to_int()
-        serialised['challenge'] = int(challenge)
-        serialised['response'] = int(response)
+        serialized['challenge'] = int(challenge)
+        serialized['response'] = int(response)
         return serialized                           # TODO: Can use set_schnorr_proof
 
 

@@ -23,18 +23,6 @@ class InvalidKeyError(BaseException):
     """
     pass
 
-class InvalidVoteError(BaseException):
-    """
-    Raised when a submitted vote is found to be invalid
-    """
-    pass
-
-class InvalidSignatureError(BaseException):
-    """
-    Raised when a submitted signature could not be verified
-    """
-    pass
-
 class InvalidFactorError(BaseException):
     """
     Raised when a trustee's factors could not be validated
