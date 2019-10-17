@@ -221,7 +221,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         beta = beta.to_hex()
         commitment = commitment.to_hex()
         challenge = '%x' % challenge
-        commitment = '%x' % commitment
+        response = '%x' % response
 
         return alpha, beta, commitment, challenge, response
 
@@ -654,7 +654,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         """
         exponent, c_1, c_2 = self._extract_dsa_signature(signature)
-        return '%x\n%x\n%x' % (exponent, c_1, c_1)
+        return '%x\n%x\n%x' % (exponent, c_1, c_2)
 
 
     def unhexify_dsa_signature(self, hex_signature):

@@ -30,9 +30,10 @@ def mk_voting_setup(config=config_1):
     election_key = election.get_election_key()
     voter_keys = election.get_voters()
     clients = []
+    nr_candidates = len(election.get_candidates())
     for voter_key in voter_keys:
         audit_codes = election.get_voter_audit_codes(voter_key)
-        client = Client(config_crypto, election_key, voter_key, audit_codes)
+        client = Client(config_crypto, election_key, nr_candidates,
+            voter_key, audit_codes)
         clients.append(client)
-    nr_candidates = election.get_candidates().__len__()
-    return election, nr_candidates, clients
+    return election, clients

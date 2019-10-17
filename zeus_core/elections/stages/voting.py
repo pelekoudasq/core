@@ -1,10 +1,6 @@
 from zeus_core.elections.abstracts import Stage
-from zeus_core.elections.constants import (V_FINGERPRINT, V_INDEX, V_PREVIOUS,
-    V_VOTER, V_ELECTION, V_ZEUS_PUBLIC, V_TRUSTEES, V_CANDIDATES, V_MODULUS,
-    V_GENERATOR, V_ORDER, V_ALPHA, V_BETA, V_COMMITMENT, V_CHALLENGE,
-    V_RESPONSE, V_COMMENTS, V_SEPARATOR, NONE,)
-from zeus_core.elections.exceptions import (Abortion, MalformedVoteError,
-    ElectionMismatchError, InvalidVoteError, VoteRejectionError,)
+from zeus_core.elections.exceptions import (Abortion, InvalidVoteError,
+    VoteRejectionError)
 from zeus_core.elections.utils import extract_vote
 
 from .mixing import Mixing
@@ -96,7 +92,7 @@ class Voting(Stage):
         return signature
 
 
-    # Adaptment/Extraction
+    # Vote adaptor
 
     def adapt_vote(self, vote):
         """

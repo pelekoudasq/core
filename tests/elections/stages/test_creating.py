@@ -318,8 +318,10 @@ class TestCreating(StageTester, unittest.TestCase):
 
         hex_trustee_keys = election.get_hex_trustee_keys()
         try:
-            assert hex_trustee_keys == list('%x' \
-                % trustee['value'].value for trustee in trustees).sort()
+            hexified_trustees = list('%x' % trustee['value'].value
+                for trustee in trustees)
+            hexified_trustees.sort()
+            assert hex_trustee_keys == hexified_trustees
             self.append_message('[+] Trustee keys matched')
         except AssertionError:
             err = "Trustee keys mismatch"

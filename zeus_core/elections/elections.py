@@ -50,6 +50,9 @@ class GenericAPI(object):
     def get_candidates(self):
         return self.candidates
 
+    def get_candidates_set(self):
+        return self.candidates_set
+
     def get_voters(self):
         # return dict(self.voters)
         return self.voters
@@ -155,7 +158,8 @@ class CreatingAPI(object):
     def set_trustees(self, trustees):
         self.trustees = trustees
         self.hex_trustee_keys = list(trustee['value'].to_hex()
-            for trustee in trustees).sort()
+            for trustee in trustees)
+        self.hex_trustee_keys.sort()
 
     def set_election_key(self, election_key):
         cryptosys = self.get_cryptosys()
@@ -164,6 +168,7 @@ class CreatingAPI(object):
 
     def set_candidates(self, candidates):
         self.candidates = candidates
+        self.candidates_set = set(self.candidates)
 
     def set_voters(self, voters):
         self.voters = voters

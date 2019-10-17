@@ -1,22 +1,24 @@
 """
 Client reference
 """
+from json import dumps
 
 from zeus_core.crypto import mk_cryptosys
 from zeus_core.utils import (random_integer, random_selection,
     random_party_selection, hash_nums, encode_selection)
-
-PLAINTEXT_CEIL = 2 ** 512
+from zeus_core.elections.constants import VOTER_SLOT_CEIL
 
 class Client(object):
     """
     """
 
-    def __init__(self, config_crypto, election_key, voter_key, audit_codes=None):
+    def __init__(self, config_crypto, election_key, nr_candidates,
+                    voter_key, audit_codes=None):
         """
         """
         self.cryptosys = self.retrieve_cryptosys(config_crypto)
         self.election_key = election_key
+        self.nr_candidates = nr_candidates
         self.voter_key = voter_key
         self.audit_codes = audit_codes
 
@@ -27,10 +29,38 @@ class Client(object):
         cryptosys = mk_cryptosys(cls, config)
         return cryptosys
 
-    def mk_random_vote(self, nr_candidates, selection=None,
-            audit_code=None, publish=None):
+    def mk_genuine_vote(self):
+        """
+        Audit code among the assigned ones. Voter's secret not advertised.
+        """
+        vote = self.mk_random_vote(selection=None,
+            audit_code=None, publish=None)
+        return vote
+
+    def mk_audit_request(self, selection=None):
+        """
+        Audit code not among the assigned ones. Voter's secret not advertised.
+        """
+        random_hex = lambda:'%x' % random_integer(2, VOTER_SLOT_CEIL)
+        audit_code = random_hex()
+        while audit_code in self.audit_codes:
+            audit_code = random_hex()
+        audit_vote = self.mk_random_vote(selection=None,
+            audit_code=audit_code, publish=None)
+        return audit_vote
+
+    def mk_audit_vote(self):
+        """
+        Voter's secret advertised
+        """
+        audit_vote = self.mk_random_vote(selection=None,
+            audit_code=None, publish=True)
+        return audit_vote
+
+    def mk_random_vote(self, selection, audit_code, publish):
         """
         """
+        nr_candidates = self.nr_candidates
         if selection is None:
             if random_integer(0, 4) & 1:
                 selection = random_selection(nr_candidates, full=False)
@@ -42,7 +72,7 @@ class Client(object):
         voter_secret = vote.get('voter_secret')
         if voter_secret and not publish:
             del vote['voter_secret']
-        return vote, selection, encoded_selection, voter_secret
+        return vote
 
     def mk_vote_from_encoded_selection(self, encoded_selection,
             audit_code, publish):
