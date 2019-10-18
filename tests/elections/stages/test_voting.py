@@ -3,6 +3,7 @@ from copy import deepcopy
 import time
 
 from tests.elections.stages.abstracts import StageTester
+from tests.elections.utils import run_until_voting_stage
 
 from zeus_core.elections.exceptions import Abortion
 from zeus_core.elections.stages import Uninitialized
@@ -15,12 +16,8 @@ class TestVoting(StageTester, unittest.TestCase):
 
     def run_until_stage(self):
         self.launch_election()
-        uninitialized = Uninitialized(self.election)
-        uninitialized.run()
-        creating = uninitialized.next()
-        creating.run()
-        voting = creating.next()
-        self.stage = voting
+        run_until_voting_stage(self.election)
+        self.stage = self.election._get_current_stage()
 
 
     # ------------------------ Isolated functionalities ------------------------

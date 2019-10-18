@@ -6,8 +6,7 @@ import json
 from tests.elections.stages.abstracts import StageTester, get_cls_name
 
 from tests.constants import _2048_SYSTEM, _2048_SECRET
-from tests.elections.utils import mk_election
-from tests.elections.stages.utils import run_until_creating_stage
+from tests.elections.utils import run_until_creating_stage
 
 from zeus_core.elections.stages import Uninitialized
 
@@ -22,10 +21,8 @@ class TestCreating(StageTester, unittest.TestCase):
 
     def run_until_stage(self):
         self.launch_election()
-        uninitialized = Uninitialized(self.election)
-        uninitialized.run()
-        creating = uninitialized.next()
-        self.stage = creating
+        run_until_creating_stage(self.election)
+        self.stage = self.election._get_current_stage()
 
     # ------------------------- Isolated funtionalities ------------------------
 

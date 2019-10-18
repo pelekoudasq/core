@@ -1,6 +1,7 @@
 from .abstracts import StageController
-from .signatures import Signer, Verifier
 from .stages import Uninitialized
+from .validations import Validator
+from .signatures import Signer, Verifier
 
 
 class GenericAPI(object):
@@ -221,14 +222,10 @@ class FinalizedAPI(object): pass
 class AbortedAPI(object): pass
 
 
-backend_apis = (GenericAPI, UninitializedAPI,
-                            CreatingAPI,
-                            VotingAPI,
-                            MixingAPI,
-                            DecryptingAPI,
-                            FinalizedAPI, AbortedAPI)
+backend_apis = (GenericAPI, UninitializedAPI, CreatingAPI, VotingAPI,
+    MixingAPI, DecryptingAPI, FinalizedAPI, AbortedAPI,)
 
-class ZeusCoreElection(StageController, Signer, Verifier, *backend_apis):
+class ZeusCoreElection(StageController, Validator, Signer, Verifier, *backend_apis):
 
     def __init__(self, config, **kwargs):
         self.options = kwargs

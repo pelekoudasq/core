@@ -5,6 +5,7 @@ import sys
 
 from tests.elections.stages.abstracts import StageTester
 from tests.constants import _2048_SYSTEM
+from tests.elections.utils import run_until_uninitialized_stage
 
 from zeus_core.elections.stages import Uninitialized
 from zeus_core.crypto.constants import _2048_PRIME, _2048_ORDER, _2048_GENERATOR
@@ -21,7 +22,8 @@ class TestUninitialized(StageTester, unittest.TestCase):
 
     def run_until_stage(self):
         self.launch_election()
-        self.stage = Uninitialized(self.election)
+        run_until_uninitialized_stage(self.election)
+        self.stage = self.election._get_current_stage()
 
 
     # ------------------------ Isolated functionalities ------------------------

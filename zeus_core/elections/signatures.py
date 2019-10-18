@@ -1,7 +1,7 @@
 """
-Contains standalone implementations of vote signing
-and vote-signature verification
+Contains standalone interfaces for vote signing and vote-signature verification
 """
+
 from zeus_core.elections.utils import extract_vote
 from zeus_core.elections.constants import (V_CAST_VOTE, V_PUBLIC_AUDIT,
     V_PUBLIC_AUDIT_FAILED, V_AUDIT_REQUEST, V_FINGERPRINT, V_INDEX, V_PREVIOUS,

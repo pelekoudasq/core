@@ -160,8 +160,6 @@ class Client(object):
         """
         Accepts serialized
         """
-        cryptosys = self.cryptosys
-
         alpha = encrypted_ballot['alpha']
         beta = encrypted_ballot['beta']
         commitment = encrypted_ballot['commitment']
@@ -169,13 +167,3 @@ class Client(object):
         response = encrypted_ballot['response']
 
         return alpha, beta, commitment, challenge, response
-
-
-    # def mk_vote_from_plaintext(self, plaintext, audit_code, publish):
-    #     """
-    #     """
-    #     if not plaintext:
-    #         plaintext = random_integer(2, PLAINTEXT_CEIL)
-    #     encoded_plaintext = self.cryptosys.encode_integer(plaintext)
-    #     vote = self.mk_vote_from_element(encoded_plaintext, audit_code, publish)
-    #     return vote
