@@ -29,12 +29,19 @@ class Client(object):
         cryptosys = mk_cryptosys(cls, config)
         return cryptosys
 
-    def mk_genuine_vote(self):
+    def mk_genuine_vote(self, corrupt_proof=False, corrupt_fingerprint=False):
         """
         Audit code among the assigned ones. Voter's secret not advertised.
         """
         vote = self.mk_random_vote(selection=None,
             audit_code=None, publish=None)
+        if corrupt_proof:
+            challenge = vote['encrypted_ballot']['challenge']
+            response = vote['encrypted_ballot']['response']
+            vote['encrypted_ballot']['challenge'] = response
+            vote['encrypted_ballot']['response'] = challenge
+        if corrupt_fingerprint:
+            vote['fingerprint'] += '__corupt_part'
         return vote
 
     def mk_audit_request(self, selection=None):
@@ -49,18 +56,33 @@ class Client(object):
             audit_code=audit_code, publish=None)
         return audit_vote
 
-    def mk_audit_vote(self):
+    def mk_audit_vote(self, missing=False, corrupt_proof=False,
+            corrupt_alpha=False, corrupt_encoding=False):
         """
         Voter's secret advertised
         """
-        audit_vote = self.mk_random_vote(selection=None,
-            audit_code=None, publish=True)
+        nr_candidates = 1 if corrupt_encoding else None
+        audit_code = self.audit_codes[0]
+        audit_vote = self.mk_random_vote(selection=None, audit_code=None,
+            publish=True, nr_candidates=nr_candidates)
+        if missing:
+            del audit_vote['voter_secret']
+        if corrupt_proof:
+            challenge = audit_vote['encrypted_ballot']['challenge']
+            response = audit_vote['encrypted_ballot']['response']
+            audit_vote['encrypted_ballot']['challenge'] = response
+            audit_vote['encrypted_ballot']['response'] = challenge
+        if corrupt_alpha:
+            beta = audit_vote['encrypted_ballot']['beta']
+            audit_vote['encrypted_ballot']['alpha'] = beta
         return audit_vote
 
-    def mk_random_vote(self, selection, audit_code, publish):
+    def mk_random_vote(self, selection, audit_code, publish,
+            nr_candidates=None):
         """
         """
-        nr_candidates = self.nr_candidates
+        if nr_candidates is None:
+            nr_candidates = self.nr_candidates
         if selection is None:
             if random_integer(0, 4) & 1:
                 selection = random_selection(nr_candidates, full=False)

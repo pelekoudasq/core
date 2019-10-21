@@ -397,8 +397,8 @@ class ModPrimeSubgroup(Group):
 
         z - 1 (mod p)
 
-        if z happens to be contained in the present subgroup;
-        otherwise the element
+        if z's numerical value happens to be smaller than the order
+        of the present subgroup; otherwise the element
 
         (-z (mod p)) - 1 (mod p)
 
@@ -409,7 +409,8 @@ class ModPrimeSubgroup(Group):
         """
         decoded = encoded.clone()
 
-        if not decoded.contained_in(self):
+        # if not decoded.contained_in(self):
+        if decoded.value >= self.__order:
             decoded.mirror_value()
         decoded.reduce_value()
 

@@ -157,7 +157,7 @@ def gamma_encode(choices, nr_candidates=None, max_choices=None):
     return sumus
 
 
-def gamma_encoding_max(nr_candidates, max_choices):
+def gamma_encoding_max(nr_candidates, max_choices=None):
     """
     :type nr_candidates: int
     :type max_choices: int

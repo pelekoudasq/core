@@ -1,7 +1,7 @@
 """
 Contains standalone interface for vote-validation
 """
-from zeus_core.utils import hash_nums
+from zeus_core.utils import hash_nums, gamma_encoding_max
 from zeus_core.elections.utils import extract_vote
 from zeus_core.elections.exceptions import InvalidVoteError
 
@@ -45,7 +45,7 @@ class Validator(object):
         cryptosys = self.cryptosys
 
         # ~ If no votes provided, verify all audit-votes from archive
-        if audit_votes:
+        if not audit_votes:
             audit_votes = election.get_audit_votes()
             add_plaintext = 0
         else:
@@ -64,7 +64,7 @@ class Validator(object):
             # ~ Check if voter has knowledge of the randomness used at ballot
             # ~ encryption; otherwise sort as `failed` and proceed to next vote
             if not cryptosys.verify_encryption(encrypted_ballot):
-                failed.append(note)
+                failed.append(vote)
                 continue
             # ~ Check if acclaimed randomness has indeed been used at ballot
             # ~ encryption; otherwise sort as `failed` and proceed to next vote
@@ -76,6 +76,7 @@ class Validator(object):
             # ~ Check if max-gamma-encoding of candidates' number remains smaller
             # ~ than decrypting the encrypted ballot with the acclaimed
             # ~ randomness; otherwise sort as failed and proceed to next vote
+            election_key = election.get_election_key()
             decrypted = cryptosys.decrypt_with_randomness(ciphertext,
                 election_key, voter_secret)
             nr_candidates = len(election.get_candidates())

@@ -380,7 +380,8 @@ for system in (
         y = public.value
         x = secret
 
-        if group.contains(encoded):
+        # if group.contains(encoded):
+        if group.order > encoded.value:
             # (y ^ x) ^ -1 * b - 1 (mod p)
             decoded = ((invert(powmod(y, x, modulus), modulus) * b) % modulus - 1) % modulus
         else:

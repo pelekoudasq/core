@@ -947,7 +947,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         _, beta = self.extract_ciphertext(ciphertext)
         encoded = (public ** secret).inverse * beta             # (y ^ x) ^ -1 * beta (modp)
-        decoded = self.group.decode_with_randomness(encoded)
+        decoded = self.__group.decode_with_randomness(encoded)
 
         return decoded
 

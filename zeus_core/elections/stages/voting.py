@@ -124,7 +124,7 @@ class Voting(Stage):
             raise InvalidVoteError(err)
 
         # Check that vote includes the minimum necessary fields
-        for key in ('voter', 'encrypted_ballot', 'fingreprint'):
+        for key in ('voter', 'encrypted_ballot', 'fingerprint'):
             if key not in vote:
                 err = f'Invalid vote content: Field `{key}` missing from vote'
                 raise InvalidVoteError(err)
@@ -280,9 +280,9 @@ class Voting(Stage):
             raise VoteRejectionError(err)
 
         # Audit-vote verification
+        vote['status'] = V_PUBLIC_AUDIT
         vote['previous'] = ''
         vote['index'] = None
-        vote['status'] = V_PUBLIC_AUDIT
         missing, failed = self.validate_audit_votes(votes=[vote,])
         if missing:
             err = "Missing voter's secret: No randomness provided with audit-vote"
@@ -325,8 +325,8 @@ class Voting(Stage):
         except InvalidVoteError as err:
             raise VoteRejectionError(err)
 
-        vote['previous'] = previous_fingerprint
         vote['status'] = V_CAST_VOTE
+        vote['previous'] = previous_fingerprint
         vote['index'] = election.do_index_vote(fingerprint)
 
         # Sign vote and attach signature
