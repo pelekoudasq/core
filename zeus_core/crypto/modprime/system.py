@@ -162,6 +162,15 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return hex_p, hex_q, hex_g
 
+    def hexify_crypto(self, crypto):
+        """
+        """
+        hex_p = V_MODULUS + '%x' % crypto['modulus']
+        hex_q = V_ORDER + '%x' % crypto['order']
+        hex_g = V_GENERATOR + '%x' % crypto['generator']
+
+        return hex_p, hex_q, hex_g
+
     def unhexify_crypto(self, t08, t09, t10):
         """
         """

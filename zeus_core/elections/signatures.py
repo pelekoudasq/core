@@ -177,7 +177,7 @@ class Verifier(object):
                 not t05.startswith(V_ZEUS_PUBLIC) or
                 not t06.startswith(V_TRUSTEES) or
                 not t07.startswith(V_CANDIDATES) or
-                not cryptosys.check_labels(t07, t08, t09) or
+                not cryptosys.check_labels(t08, t09, t10) or
                 not t11.startswith(V_ALPHA) or
                 not t12.startswith(V_BETA) or
                 not t13.startswith(V_COMMITMENT) or

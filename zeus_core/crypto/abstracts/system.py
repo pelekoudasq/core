@@ -111,17 +111,17 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def unhexify_crypto(self, t08, t09, t10):
-        """
-        """
-
-    @abstractmethod
     def _parameters(self):
         """
         """
 
     @abstractmethod
     def check_labels(self, t08, t09, t10):
+        """
+        """
+
+    @abstractmethod
+    def hexify_crypto(self, crypto):
         """
         """
 

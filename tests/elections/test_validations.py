@@ -15,9 +15,9 @@ if __name__ == '__main__':
 
     client = clients[0]
 
-    # Test genuine vote validation
+    # Genuine vote validation
 
-    # Valid vote
+    # Valid case
     vote = client.mk_genuine_vote()
     vote = adapt_vote(cryptosys, vote)
     try:
@@ -60,24 +60,53 @@ if __name__ == '__main__':
     else:
         print('[+] Audit-vote successfully validated')
 
+    # Delete voter's secret so that it be classified as missing
     audit_vote_1 = clients[1].mk_audit_vote(missing=True)
     audit_vote_1 = adapt_vote(cryptosys, audit_vote_1)
-    # display_json(audit_vote_1)
 
+    # Corrupt proof so that encryption verification fails
     audit_vote_2 = clients[2].mk_audit_vote(corrupt_proof=True)
     audit_vote_2 = adapt_vote(cryptosys, audit_vote_2)
-    # display_json(audit_vote_2)
 
+    # Corrupt alpha so that voter's secret verification fails
     audit_vote_3 = clients[3].mk_audit_vote(corrupt_alpha=True)
     audit_vote_3 = adapt_vote(cryptosys, audit_vote_3)
-    # display_json(audit_vote_3)
 
-    audit_vote_4 = clients[4].mk_audit_vote(corrupt_encoding=True)
+    # Dramatically reduce number of candidates so that decrypting the ballot
+    # with the voter's secret exceeds max-gamma encoding of their number
+    election.candidates = election.get_candidates()[:1]
+    fake_nr_candidates = len(election.candidates)
+    audit_vote_4 = clients[4].mk_audit_vote(corrupt_encoding=True,
+        fake_nr_candidates=fake_nr_candidates)
     audit_vote_4 = adapt_vote(cryptosys, audit_vote_4)
-    # display_json(audit_vote_4)
 
     missing, failed = validator.validate_audit_votes(audit_votes=[
         audit_vote_1, audit_vote_2, audit_vote_3, audit_vote_4,])
 
-    assert missing == [audit_vote_1,]
-    assert failed == [audit_vote_2, audit_vote_3,]
+    try:
+        assert audit_vote_1 == missing.pop(0)
+    except AssertionError:
+        print('[-] Audit-vote with missing secret failed to be detected')
+    else:
+        print('[+] Audit-vote with missing secret successfully detected')
+    try:
+        assert audit_vote_2 == failed.pop(0)
+    except AssertionError:
+        print('[-] Audit-proof with invalid encryption failed to be detected')
+    else:
+        print('[+] Audit-proof with invalid encryption successfully detected')
+    try:
+        assert audit_vote_3 == failed.pop(0)
+    except AssertionError:
+        print('[-] Audit-proof with invalid secret failed to be detected')
+    else:
+        print('[+] Audit-proof with invalid secret successfully detected')
+    try:
+        assert audit_vote_4 == failed.pop(0)
+    except AssertionError:
+        print('[-] Audit-proof exceeding max-gamma encoding failed to be detected')
+    else:
+        print('[+] Audit-proof exceeding max-gamma encoding successfully detected')
+
+    assert missing == []
+    assert failed == []

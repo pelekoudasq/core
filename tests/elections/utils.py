@@ -1,8 +1,37 @@
 import json
 from zeus_core.elections.elections import ZeusCoreElection
 from zeus_core.elections.stages import Uninitialized
-from tests.elections.client import Client
 from tests.elections.sample_configs import *
+
+def adapt_vote(cryptosys, vote, serialize=True):
+    """
+    Simulates vote adaptment from the server's side (no checks,
+    only key rearrangement and values deserialization)
+    """
+    cast_element = cryptosys.int_to_element if serialize else lambda x: x
+    cast_exponent = cryptosys.int_to_exponent if serialize else lambda x: x
+
+    encrypted_ballot = vote['encrypted_ballot']
+    public = encrypted_ballot.pop('public')
+    alpha = encrypted_ballot.pop('alpha')
+    beta = encrypted_ballot.pop('beta')
+    commitment = encrypted_ballot.pop('commitment')
+    challenge = encrypted_ballot.pop('challenge')
+    response = encrypted_ballot.pop('response')
+    vote['crypto'] = encrypted_ballot
+    vote['public'] = public
+    vote['encrypted_ballot'] = {
+        'ciphertext': {
+            'alpha': cast_element(alpha),
+            'beta': cast_element(beta)
+        },
+        'proof': {
+            'commitment': cast_element(commitment),
+            'challenge': cast_exponent(challenge),
+            'response': cast_exponent(response),
+        }
+    }
+    return vote
 
 def trim_json(dictionary, length=16):
     """
@@ -83,6 +112,8 @@ def mk_election(config=config_1):
     election = ZeusCoreElection(config=config)
     return election
 
+from tests.elections.client import Client
+
 def mk_voting_setup(config=config_1):
     """
     Setup for voting stage (run election until voting stage
@@ -101,33 +132,3 @@ def mk_voting_setup(config=config_1):
             voter_key, audit_codes)
         clients.append(client)
     return election, clients
-
-def adapt_vote(cryptosys, vote, serialize=True):
-    """
-    Simulates vote adaptment from the server's side (no checks,
-    only key rearrangement and values deserialization)
-    """
-    cast_element = cryptosys.int_to_element if serialize else lambda x: x
-    cast_exponent = cryptosys.int_to_exponent if serialize else lambda x: x
-
-    encrypted_ballot = vote['encrypted_ballot']
-    public = encrypted_ballot.pop('public')
-    alpha = encrypted_ballot.pop('alpha')
-    beta = encrypted_ballot.pop('beta')
-    commitment = encrypted_ballot.pop('commitment')
-    challenge = encrypted_ballot.pop('challenge')
-    response = encrypted_ballot.pop('response')
-    vote['crypto'] = encrypted_ballot
-    vote['public'] = public
-    vote['encrypted_ballot'] = {
-        'ciphertext': {
-            'alpha': cast_element(alpha),
-            'beta': cast_element(beta)
-        },
-        'proof': {
-            'commitment': cast_element(commitment),
-            'challenge': cast_exponent(challenge),
-            'response': cast_exponent(response),
-        }
-    }
-    return vote

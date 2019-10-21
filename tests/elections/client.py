@@ -2,10 +2,13 @@
 Client reference
 """
 from json import dumps
+from copy import deepcopy
 
+from tests.elections.utils import adapt_vote
+from zeus_core.elections.utils import extract_vote
 from zeus_core.crypto import mk_cryptosys
 from zeus_core.utils import (random_integer, random_selection,
-    random_party_selection, hash_nums, encode_selection)
+    gamma_encoding_max, random_party_selection, hash_nums, encode_selection)
 from zeus_core.elections.constants import VOTER_SLOT_CEIL
 
 class Client(object):
@@ -29,7 +32,8 @@ class Client(object):
         cryptosys = mk_cryptosys(cls, config)
         return cryptosys
 
-    def mk_genuine_vote(self, corrupt_proof=False, corrupt_fingerprint=False):
+    def mk_genuine_vote(self, corrupt_proof=False, corrupt_fingerprint=False,
+            election_mismatch=False):
         """
         Audit code among the assigned ones. Voter's secret not advertised.
         """
@@ -42,9 +46,11 @@ class Client(object):
             vote['encrypted_ballot']['response'] = challenge
         if corrupt_fingerprint:
             vote['fingerprint'] += '__corupt_part'
+        if election_mismatch:
+            vote['encrypted_ballot']['public'] += 1 # Corrupt inscribed election key
         return vote
 
-    def mk_audit_request(self, selection=None):
+    def mk_audit_request(self, selection=None, election_mismatch=False):
         """
         Audit code not among the assigned ones. Voter's secret not advertised.
         """
@@ -54,28 +60,57 @@ class Client(object):
             audit_code = random_hex()
         audit_vote = self.mk_random_vote(selection=None,
             audit_code=audit_code, publish=None)
+        if election_mismatch:
+            vote['encrypted_ballot']['public'] += 1 # Corrupt inscribed election key
         return audit_vote
 
     def mk_audit_vote(self, missing=False, corrupt_proof=False,
-            corrupt_alpha=False, corrupt_encoding=False):
+            corrupt_alpha=False, election_mismatch=False,
+            corrupt_encoding=False, fake_nr_candidates=None):
         """
         Voter's secret advertised
         """
-        nr_candidates = 1 if corrupt_encoding else None
-        audit_code = self.audit_codes[0]
-        audit_vote = self.mk_random_vote(selection=None, audit_code=None,
-            publish=True, nr_candidates=nr_candidates)
-        if missing:
-            del audit_vote['voter_secret']
-        if corrupt_proof:
-            challenge = audit_vote['encrypted_ballot']['challenge']
-            response = audit_vote['encrypted_ballot']['response']
-            audit_vote['encrypted_ballot']['challenge'] = response
-            audit_vote['encrypted_ballot']['response'] = challenge
-        if corrupt_alpha:
-            beta = audit_vote['encrypted_ballot']['beta']
-            audit_vote['encrypted_ballot']['alpha'] = beta
+        if corrupt_encoding:
+            audit_vote = self.mk_corrupt_encoding(fake_nr_candidates)
+        else:
+            audit_vote = self.mk_random_vote(selection=None, audit_code=None,
+                publish=True)
+            if missing:
+                del audit_vote['voter_secret']
+            if corrupt_proof:
+                challenge = audit_vote['encrypted_ballot']['challenge']
+                response = audit_vote['encrypted_ballot']['response']
+                audit_vote['encrypted_ballot']['challenge'] = response
+                audit_vote['encrypted_ballot']['response'] = challenge
+            if corrupt_alpha:
+                beta = audit_vote['encrypted_ballot']['beta']
+                audit_vote['encrypted_ballot']['alpha'] = beta
+            if election_mismatch:
+                vote['encrypted_ballot']['public'] += 1 # Corrupt inscribed election key
         return audit_vote
+
+    def mk_corrupt_encoding(self, fake_nr_candidates):
+        """
+        """
+        cryptosys = self.cryptosys
+        def get_decrypted_value(adapted_vote):
+            _, _, _, encrypted_ballot, _, _, voter_secret, _, _, _, _ = \
+                extract_vote(adapted_vote)
+            ciphertext, _ = cryptosys.extract_ciphertext_proof(encrypted_ballot)
+            decrypted = cryptosys.decrypt_with_randomness(ciphertext,
+                self.election_key, voter_secret)
+            return decrypted.value
+        audit_vote = self.mk_random_vote(selection=None, audit_code=None,
+            publish=True)
+        copy = deepcopy(audit_vote)
+        adapted_vote = adapt_vote(cryptosys, copy)
+        while get_decrypted_value(adapted_vote) <= gamma_encoding_max(fake_nr_candidates):
+            audit_vote = self.mk_random_vote(selection=None, audit_code=None,
+                publish=True)
+            copy = deepcopy(audit_vote)
+            adapted_vote = adapt_vote(cryptosys, copy)
+        return audit_vote
+
 
     def mk_random_vote(self, selection, audit_code, publish,
             nr_candidates=None):
