@@ -33,24 +33,32 @@ def adapt_vote(cryptosys, vote, serialize=True):
     }
     return vote
 
-def trim_json(dictionary, length=16):
+def trim_json(entity, length=16):
     """
     Returns a "copy" of the provided JSON with trimmed values for nice display
     """
     trim_value = lambda value: int(f'{value}'[:length]) \
         if type(value) is not str else f'{value}'[:length]
-    trimmed = {}
-    for key, value in dictionary.items():
-        trimmed[key] = trim_value(value) if type(value) is not dict \
-            else trim_json(value, length=length)
+    if type(entity) is list:
+        trimmed = []
+        for elem in entity:
+            if type(elem) in (list, dict):
+                trimmed.append(trim_json(elem))
+            else:
+                trimmed.append(trim_value(elem))
+    elif type(entity) is dict:
+        trimmed = {}
+        for key, value in entity.items():
+            trimmed[key] = trim_value(value) if type(value) is not dict \
+                else trim_json(value, length=length)
     return trimmed
 
-def display_json(dictionary, length=16, trimmed=True):
+def display_json(entity, length=16, trimmed=True):
     """
     Displays JSON object (trims long values by default)
     """
-    to_display = trim_json(dictionary, length=length) \
-        if trimmed else dictionary
+    to_display = trim_json(entity, length=length) \
+        if trimmed else entity
     print(json.dumps(to_display, sort_keys=False, indent=4))
 
 def run_until_uninitialized_stage(election):

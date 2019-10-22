@@ -2,8 +2,6 @@
 """
 
 from abc import ABCMeta, abstractmethod
-import unittest
-from tests.elections.utils import mk_election
 
 def get_cls_name(obj): return obj.__class__.__name__
 
@@ -13,90 +11,91 @@ class StageTester(metaclass=ABCMeta):
     Abstract testing frame for isolated election stages. By "current stage"
     is meant the stage under testing
 
-        - Implement functions starting with test_* in order to test isolated
-          functionalities of the current stage
+        - Implement functions starting with test_* for the purpose of testing
+          isolated funcitonalities of the current stage
         - Implement functions starting with step_* in alphabetical order
           for the purposes of overall stage testing
     """
 
-    def launch_election(self):
-        """
-        Create and launch the election running in background
-        """
-        election = mk_election()
-        self.election = election
+    @classmethod
+    def setUpClass(cls):
+        cls.run_until_stage()
+        cls.messages = []
 
+    @classmethod
     @abstractmethod
-    def run_until_stage(self):
+    def run_until_stage(cls):
         """
-        Manually run in correct order all stages previous to the current one.
-        After that, set the attribute .stage equal to the current one
+        Create and load an election object as class attribute, then run it
+        until the stage under testing and load the latter as class attribute
         """
+        #
+        # # Uncomment the following lines to implement a concrete subclass
+        #
+        # election = mk_election()
+        # cls.election = election
+        # # Run here `election` until the stage to be tested
+        # cls.stage = election._get_current_stage()
+        #
 
-    def get_context(self):
-        """
-        Returns the context of all tests: running election, election config and
-        current stage
-        """
-        election = self.election
-        config = self.election.config
-        stage = self.stage
-
-        return election, config, stage
-
-    def setUp(self):
-        """
-        Executed before every test execution
-        """
-        self.run_until_stage()
-        self.messages = []
-
-    def append_message(self, message):
-        """
-        Stores messages to be printed after every single test execution
-        """
-        self.messages.append(message)
-
-    def tearDown(self):
-        """
-        Executed after every test execution
-        """
-        messages = self.messages
+    @classmethod
+    def tearDownClass(cls):
+        messages = cls.messages
         for i, message in enumerate(messages):
             if i == 0:
                 print('\n' + message)
             else:
                 print(message)
 
+
+    def get_context(self):
+        """
+        Returns the common context of all tests as a tuple:
+        running election, election config and current stage
+        """
+        cls = self.__class__
+        election = cls.election
+        config = cls.election.config
+        stage = cls.stage
+        messages = cls.messages
+
+        return election, config, stage, messages
+
+
+    def __fail(self, err):
+        self.__class__.messages.append(f'[-] {err}')
+        self.fail(err)
+
+
     def stage_steps(self):
         """
         Iterates alphabetically over attributes starting with step_*. These
-        functions are meant to be the steps in respective order during
-        overall stage testing (see the .test_run() function below)
+        functions are meant to be the steps performed successively during
+        overall stage testing (see the .test_run() method below)
         """
         for name in self.__dir__():
             if name.startswith('step_'):
                 yield name, getattr(self, name)
 
+
     def step_0(self):
-        election, _, stage = self.get_context()
+        election, _, stage, messages = self.get_context()
         try:
             assert election._get_current_stage() is stage
-            self.append_message('[+] Current stage: %s' % get_cls_name(stage))
+            messages.append(f'[+] current stage: {get_cls_name(stage)}')
         except AssertionError:
             err = "Wrong election stage"
             raise AssertionError(err)
+
 
     def test_run(self):
         """
         Overall stage testing
 
-        Contrary to other functions starting with test_*, this one does not
-        focus on specific functionalitites, running the stage from its
-        beginning to the end.
+        Run stage from its beginning to the end.
 
         Implement functions starting with step_* in appropriate alphabetical
-        order for the purposes of this test
+        order to be ran successively during this test.
         """
         print('\n')
         print('----------------------- Overall Stage Testing ------------------------')

@@ -3,6 +3,8 @@ Communicates with the Validator and Signer interface of the running election
 """
 
 from zeus_core.elections.abstracts import Stage
+from zeus_core.elections.constants import (MAX_VOTE_JSON_KEYS,
+    MIN_VOTE_JSON_KEYS, ENC_BALLOT_JSON_KEYS)
 from zeus_core.elections.exceptions import (Abortion, InvalidVoteError,
     VoteRejectionError)
 from zeus_core.elections.utils import extract_vote
@@ -118,21 +120,19 @@ class Voting(Stage):
         crypto_param_keys = set(cryptoparams.keys())
 
         # Check that vote does not contain extra or wrong fields
-        if not set(vote.keys()).issubset({'voter', 'encrypted_ballot',
-            'fingerprint', 'audit_code', 'voter_secret'}):
+        if not set(vote.keys()).issubset(MAX_VOTE_JSON_KEYS):
             err = "Invalid vote content: Wrong or extra content provided"
             raise InvalidVoteError(err)
 
         # Check that vote includes the minimum necessary fields
-        for key in ('voter', 'encrypted_ballot', 'fingerprint'):
+        for key in MIN_VOTE_JSON_KEYS:
             if key not in vote:
                 err = f'Invalid vote content: Field `{key}` missing from vote'
                 raise InvalidVoteError(err)
 
         # Check if encrypted ballot fields are correct
         encrypted_ballot = vote['encrypted_ballot']
-        if set(encrypted_ballot.keys()) != crypto_param_keys.union({'public',
-                'alpha', 'beta', 'commitment', 'challenge', 'response'}):
+        if set(encrypted_ballot.keys()) != crypto_param_keys.union(ENC_BALLOT_JSON_KEYS):
             err = 'Invalid vote content: Malformed encrypted ballot'
             raise InvalidVoteError(err)
 
