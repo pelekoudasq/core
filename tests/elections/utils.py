@@ -5,7 +5,7 @@ from tests.elections.sample_configs import *
 
 def adapt_vote(cryptosys, vote, serialize=True):
     """
-    Simulates vote adaptment from the server's side (no checks,
+    Emulates vote adaptment from the server's side (no checks,
     only key rearrangement and values deserialization)
     """
     cast_element = cryptosys.int_to_element if serialize else lambda x: x

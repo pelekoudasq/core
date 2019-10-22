@@ -225,7 +225,7 @@ class AbortedAPI(object): pass
 backend_apis = (GenericAPI, UninitializedAPI, CreatingAPI, VotingAPI,
     MixingAPI, DecryptingAPI, FinalizedAPI, AbortedAPI,)
 
-class ZeusCoreElection(StageController, Validator, Signer, Verifier, *backend_apis):
+class ZeusCoreElection(StageController, Validator, Signer, *backend_apis):
 
     def __init__(self, config, **kwargs):
         self.options = kwargs

@@ -33,7 +33,6 @@ class TestValidations(unittest.TestCase):
 
     def get_context(self):
         cls = self.__class__
-
         election = cls.election
         cryptosys = cls.cryptosys
         validator = cls.validator

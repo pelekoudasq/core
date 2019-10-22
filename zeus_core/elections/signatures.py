@@ -130,8 +130,8 @@ class Verifier(object):
             err = 'Invalid vote encryption'
             raise InvalidVoteSignature(err)
 
-        # Essentual signature validation
-        # NOTE: uses zeus public key as inscribed in vote
+        # Essential signature validation
+        # NOTE: uses zeus public key as extracted from vote
         signed_message = \
             cryptosys.set_signed_message(textified_vote, signature)
         if not cryptosys.verify_text_signature(signed_message, zeus_public_key):

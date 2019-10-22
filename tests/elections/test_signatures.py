@@ -3,7 +3,9 @@ Tests the interfaces for vote signing and vote-signature verification
 """
 
 import pytest
+import unittest
 import json
+from copy import deepcopy
 from zeus_core.elections.exceptions import InvalidVoteSignature
 from zeus_core.elections.signatures import Signer, Verifier
 from zeus_core.elections.constants import (V_CAST_VOTE, V_PUBLIC_AUDIT,
@@ -18,7 +20,7 @@ from tests.elections.utils import (display_json, mk_voting_setup, adapt_vote)
 def textify_vote(signer, vote, comments, corrupt_trustees=False,
         corrupt_candidates=False, malformed=False):
     """
-    Simulates the Signer.textify_vote() with failure options for testing
+    Emulates the Signer.textify_vote() method with failure options for testing
     """
     election = signer.election
     cryptosys = signer.cryptosys
@@ -66,28 +68,29 @@ def textify_vote(signer, vote, comments, corrupt_trustees=False,
     return textified
 
 
-def mk_vote_signature(signer, vote, comments=None, corrupt_crypto=False,
-        corrupt_public=False, corrupt_trustees=False,
-        corrupt_candidates=False, malformed=False,
-        corrupt_proof=False):
+def mk_vote_signature(cryptosys, signer, vote, comments=None,
+        corrupt_crypto=False, corrupt_public=False,
+        corrupt_trustees=False, corrupt_candidates=False,
+        malformed=False, corrupt_proof=False):
     """
-    Simulates the Signer.sign() method with failure options for testing
+    Emulates the Signer.sign() method with failure options for testing
     """
+    __vote = deepcopy(vote)
     if corrupt_crypto:
-        keys = iter(vote['crypto'])
+        keys = iter(__vote['crypto'])
         key_1, key_2 = next(keys), next(keys)
-        value_2 = vote['crypto'][key_2]
-        vote['crypto'][key_2] = vote['crypto'][key_1]
-        vote['crypto'][key_1] = value_2
+        value_2 = __vote['crypto'][key_2]
+        __vote['crypto'][key_2] = __vote['crypto'][key_1]
+        __vote['crypto'][key_1] = value_2
     if corrupt_public:
-        vote['public'] += 1
+        __vote['public'] += 1
     if corrupt_proof:
-        proof = vote['encrypted_ballot']['proof']
+        proof = __vote['encrypted_ballot']['proof']
         challenge = proof['challenge']
         response = proof['response']
         proof['challenge'] = response
         proof['response'] = challenge
-    textified_vote = textify_vote(signer, vote, comments,
+    textified_vote = textify_vote(signer, __vote, comments,
         corrupt_trustees=corrupt_trustees,
         corrupt_candidates=corrupt_candidates,
         malformed=malformed)
@@ -100,88 +103,126 @@ def mk_vote_signature(signer, vote, comments=None, corrupt_crypto=False,
     return vote_signature
 
 
+class TestSignatures(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        election, clients = mk_voting_setup()
+
+        cls.election = election
+        cls.cryptosys = election.get_cryptosys()
+        cls.signer = Signer(election)
+        cls.verifier = Verifier(election)
+        cls.client = clients[0]
+        cls.messages = []
+
+    @classmethod
+    def tearDownClass(cls):
+        messages = cls.messages
+        for i, message in enumerate(messages):
+            if i == 0:
+                print('\n' + message)
+            else:
+                print(message)
+
+    def get_context(self):
+        cls = self.__class__
+        election = cls.election
+        cryptosys = cls.cryptosys
+        signer = cls.signer
+        verifier = cls.verifier
+        client = cls.client
+        messages = cls.messages
+
+        return election, cryptosys, signer, verifier, client, messages
+
+    def __fail(self, err):
+        self.__class__.messages.append(f'[-] {err}')
+        self.fail(err)
+
+    def get_vote_makings(self):
+        _, _, _, _, client, _ = self.get_context()
+
+        mk_genuine_vote = client.mk_genuine_vote
+        mk_audit_request = client.mk_audit_request
+        mk_audit_vote = client.mk_audit_vote
+
+        vote_makings = (
+            ('Vote:', mk_genuine_vote),
+            ('Audit-request:', mk_audit_request),
+            ('Audit-vote:', mk_audit_vote),
+        )
+        return vote_makings
+
+    def test_signature_verification_success(self):
+        _, cryptosys, signer, verifier, _, messages = self.get_context()
+        for label, mk_vote in self.get_vote_makings():
+            vote = mk_vote()
+            vote = adapt_vote(cryptosys, vote)
+            with self.subTest(vote=vote):
+                vote_signature = signer.sign_vote(vote, ['comment 1', 'comment 2,'])
+                try:
+                    verifier.verify_vote_signature(vote_signature)
+                    messages.append(f'[+] {label} Siganture successfully verified')
+                except InvalidVoteSignature:
+                    err = f'{label} valid signature erroneously not verified'
+                    self.__fail(err)
+
+    def test_signature_verification_failure_upon_malformed_vote(self):
+        _, cryptosys, signer, verifier, _, messages = self.get_context()
+        for label, mk_vote in self.get_vote_makings():
+            vote = mk_vote()
+            vote = adapt_vote(cryptosys, vote)
+            with self.subTest(vote=vote):
+                vote_signature = mk_vote_signature(cryptosys, signer, vote, malformed=True)
+                try:
+                    verifier.verify_vote_signature(vote_signature)
+                except InvalidVoteSignature:
+                    messages.append(f'[+] {label} Malformed signature successfully detected')
+                else:
+                    err = f'{label} Malformed signature failed to be detected'
+                    self.__fail(err)
+
+    def test_signature_verification_failure_upon_invalid_encryption(self):
+        _, cryptosys, signer, verifier, _, messages = self.get_context()
+        for label, mk_vote in self.get_vote_makings():
+            vote = mk_vote()
+            vote = adapt_vote(cryptosys, vote)
+            with self.subTest(vote=vote):
+                vote_signature = mk_vote_signature(cryptosys, signer, vote, corrupt_proof=True)
+                try:
+                    verifier.verify_vote_signature(vote_signature)
+                except InvalidVoteSignature:
+                    messages.append(f'[+] {label} Invalid encryption successfully detected')
+                else:
+                    err = f'{label} Invalid encryption failed to be detected'
+                    self.__fail(err)
+
+    def test_signature_verification_failures_upon_election_mismatch(self):
+        _, cryptosys, signer, verifier, _, messages = self.get_context()
+        for label, mk_vote in self.get_vote_makings():
+            vote = mk_vote()
+            vote = adapt_vote(cryptosys, vote)
+            err = 'Election mismatch failed to be detected'
+            for kwargs, msg in (
+                ({'corrupt_crypto': True}, 'crypto discord'),
+                ({'corrupt_public': True}, 'key discord'),
+                ({'corrupt_trustees': True}, 'trustees discord'),
+                ({'corrupt_candidates': True}, 'candidates discord'),
+            ):
+                vote_signature = mk_vote_signature(cryptosys, signer, vote, **kwargs)
+                with self.subTest(vote_signature=vote_signature):
+                    try:
+                        verifier.verify_vote_signature(vote_signature)
+                    except InvalidVoteSignature:
+                        messages.append(f'[+] {label} Election mismatch successfully detected')
+                    else:
+                        self.__fail(f'{label} {err} {msg}')
+
+    def test_essential_signature_verification_failure(self):
+        _, cryptosys, signer, verifier, _, messages = self.get_context()
+
+
 if __name__ == '__main__':
-    election, clients = mk_voting_setup()
-    cryptosys = election.get_cryptosys()
-    signer = Signer(election)
-    verifier = Verifier(election)
-
-    client = clients[0]
-
-    mk_genuine_vote = client.mk_genuine_vote
-    mk_audit_request = client.mk_audit_request
-    mk_audit_vote = client.mk_audit_vote
-    for label, mk_vote in (
-        ('Vote:', mk_genuine_vote),
-        ('Audit-request:', mk_audit_request),
-        ('Audit-vote:', mk_audit_vote),
-    ):
-        vote = mk_vote()
-        vote = adapt_vote(cryptosys, vote)
-        vote_signature = signer.sign_vote(vote, ['some comment...,'])
-        try:
-            verifier.verify_vote_signature(vote_signature)
-        except InvalidVoteSignature:
-            print(f'[-] {label} Valid signature erroneously not verified')
-        else:
-            print(f'[+] {label} Signature successfully verified')
-
-        vote = mk_vote()
-        adapt_vote(cryptosys, vote)
-        vote_signature = mk_vote_signature(signer, vote, malformed=True)
-        try:
-            verifier.verify_vote_signature(vote_signature)
-        except InvalidVoteSignature:
-            print(f'[+] {label} Malformed vote signature successfully detected')
-        else:
-            print(f'[-] {label} Malformed vote signature failed to be detected')
-
-        vote = mk_vote()
-        vote = adapt_vote(cryptosys, vote)
-        vote_signature = mk_vote_signature(signer, vote, corrupt_crypto=True)
-        try:
-            verifier.verify_vote_signature(vote_signature)
-        except InvalidVoteSignature:
-            print(f'[+] {label} Election mismatch (crypto discord) successfully detected')
-        else:
-            print(f'[-] {label} Election mismatch (crypto discord) failed to be detected')
-
-        vote = mk_vote()
-        vote = adapt_vote(cryptosys, vote)
-        vote_signature = mk_vote_signature(signer, vote, corrupt_public=True)
-        try:
-            verifier.verify_vote_signature(vote_signature)
-        except InvalidVoteSignature:
-            print(f'[+] {label} Election mismatch (key discord) successfully detected')
-        else:
-            print(f'[-] {label} Election mismatch (key discord) failed to be detected')
-
-        vote = mk_vote()
-        vote = adapt_vote(cryptosys, vote)
-        vote_signature = mk_vote_signature(signer, vote, corrupt_trustees=True)
-        try:
-            verifier.verify_vote_signature(vote_signature)
-        except InvalidVoteSignature:
-            print(f'[+] {label} Election mismatch (trustees discord) successfully detected')
-        else:
-            print(f'[-] {label} Election mismatch (trustees discord) failed to be detected')
-
-        vote = mk_vote()
-        vote = adapt_vote(cryptosys, vote)
-        vote_signature = mk_vote_signature(signer, vote, corrupt_candidates=True)
-        try:
-            verifier.verify_vote_signature(vote_signature)
-        except InvalidVoteSignature:
-            print(f'[+] {label} Election mismatch (candidates discord) successfully detected')
-        else:
-            print(f'[-] {label} Election mismatch (candidates discord) failed to be detected')
-
-        vote = mk_vote()
-        vote = adapt_vote(cryptosys, vote)
-        vote_signature = mk_vote_signature(signer, vote, corrupt_proof=True)
-        try:
-            verifier.verify_vote_signature(vote_signature)
-        except InvalidVoteSignature:
-            print(f'[+] {label} Invalid encryption successfully detected')
-        else:
-            print(f'[-] {label} Invalid encryption failed to be detected')
+    print('\n====================== Testing vote signatures =======================')
+    unittest.main()
