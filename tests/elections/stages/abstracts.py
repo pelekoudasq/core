@@ -1,3 +1,6 @@
+"""
+"""
+
 from abc import ABCMeta, abstractmethod
 import unittest
 from tests.elections.utils import mk_election
@@ -58,12 +61,12 @@ class StageTester(metaclass=ABCMeta):
         """
         Executed after every test execution
         """
-        if self.messages:
-            for i, message in enumerate(self.messages):
-                if i == 0:
-                    print('\n' + message)
-                else:
-                    print(message)
+        messages = self.messages
+        for i, message in enumerate(messages):
+            if i == 0:
+                print('\n' + message)
+            else:
+                print(message)
 
     def stage_steps(self):
         """
