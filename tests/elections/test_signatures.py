@@ -71,7 +71,8 @@ def textify_vote(signer, vote, comments, corrupt_trustees=False,
 def mk_vote_signature(cryptosys, signer, vote, comments=None,
         corrupt_crypto=False, corrupt_public=False,
         corrupt_trustees=False, corrupt_candidates=False,
-        malformed=False, corrupt_proof=False):
+        malformed=False, corrupt_proof=False,
+        destroy_integrity=False):
     """
     Emulates the Signer.sign() method with failure options for testing
     """
@@ -99,6 +100,8 @@ def mk_vote_signature(cryptosys, signer, vote, comments=None,
     zeus_private_key = election.get_zeus_private_key()
     signed_vote = cryptosys.sign_text_message(textified_vote, zeus_private_key)
     _, signature = cryptosys.extract_signed_message(signed_vote)
+    if destroy_integrity:
+        textified_vote += '0'   # message tamperment
     vote_signature = signer.format_vote_signature(textified_vote, signature)
     return vote_signature
 
@@ -221,6 +224,18 @@ class TestSignatures(unittest.TestCase):
 
     def test_essential_signature_verification_failure(self):
         _, cryptosys, signer, verifier, _, messages = self.get_context()
+        for label, mk_vote in self.get_vote_makings():
+            vote = mk_vote()
+            vote = adapt_vote(cryptosys, vote)
+            err = 'Tampered message failed to be detected'
+            vote_signature = mk_vote_signature(cryptosys, signer, vote, destroy_integrity=True)
+            with self.subTest(vote_signature=vote_signature):
+                try:
+                    verifier.verify_vote_signature(vote_signature)
+                except InvalidVoteSignature:
+                    messages.append(f'[+] {label} Tampered message succesfully detected')
+                else:
+                    self.__fail(f'{label} {err}')
 
 
 if __name__ == '__main__':
