@@ -2,6 +2,8 @@
 Contains standalone interfaces for vote signing and vote-signature verification
 """
 
+from abc import ABCMeta, abstractmethod
+
 from zeus_core.elections.utils import extract_vote
 from zeus_core.elections.constants import (V_CAST_VOTE, V_PUBLIC_AUDIT,
     V_PUBLIC_AUDIT_FAILED, V_AUDIT_REQUEST, V_FINGERPRINT, V_INDEX, V_PREVIOUS,
@@ -11,13 +13,40 @@ from zeus_core.elections.constants import (V_CAST_VOTE, V_PUBLIC_AUDIT,
 from zeus_core.elections.exceptions import (MalformedVoteError,
     ElectionMismatchError, InvalidVoteSignature)
 
-class Signer(object):
+class Signer(object, metaclass=ABCMeta):
     """
     Vote signing interface to election server
     """
-    def __init__(self, election):
-        self.election = election
-        self.cryptosys = election.get_cryptosys()
+
+    @abstractmethod
+    def get_cryptosys(self):
+        """
+        """
+
+    @abstractmethod
+    def get_zeus_private_key(self):
+        """
+        """
+
+    @abstractmethod
+    def get_hex_zeus_public_key(self):
+        """
+        """
+
+    @abstractmethod
+    def get_hex_trustee_keys(self):
+        """
+        """
+
+    @abstractmethod
+    def get_hex_election_key(self):
+        """
+        """
+
+    @abstractmethod
+    def get_candidates(self):
+        """
+        """
 
     def sign_vote(self, vote, comments=[]):
         """
@@ -26,9 +55,8 @@ class Signer(object):
         Will raise InvalidVoteSignature if after signing, if the produced
         vote is not verified
         """
-        election = self.election
-        cryptosys = self.cryptosys
-        zeus_private_key = election.get_zeus_private_key()
+        cryptosys = self.get_cryptosys()
+        zeus_private_key = self.get_zeus_private_key()
 
         textified_vote = self.textify_vote(vote, comments)
         signed_vote = cryptosys.sign_text_message(textified_vote, zeus_private_key)
@@ -41,14 +69,13 @@ class Signer(object):
         """
         Assumes vote after adaptment (values deserialized, keys rearranged)
         """
-        election = self.election
-        cryptosys = self.cryptosys
+        cryptosys = self.get_cryptosys()
 
         hex_crypto_params = cryptosys.hex_parameters()
-        hex_zeus_public_key = election.get_hex_zeus_public_key()
-        hex_trustee_keys = election.get_hex_trustee_keys()
-        hex_election_key = election.get_hex_election_key()
-        candidates = election.get_candidates()
+        hex_zeus_public_key = self.get_hex_zeus_public_key()
+        hex_trustee_keys = self.get_hex_trustee_keys()
+        hex_election_key = self.get_hex_election_key()
+        candidates = self.get_candidates()
 
         (_, _, _, encrypted_ballot, fingerprint, _, _,
             previous, index, status, _) = extract_vote(vote)
@@ -79,7 +106,7 @@ class Signer(object):
     def format_vote_signature(self, textified_vote, signature):
         """
         """
-        cryptosys = self.cryptosys
+        cryptosys = self.get_cryptosys()
 
         vote_signature = ''
         vote_signature += textified_vote
@@ -91,11 +118,33 @@ class Signer(object):
 
 class Verifier(object):
     """
-    Vote-signature verification interface to election server
+    Vote-signature verification interface to client
     """
-    def __init__(self, election):
-        self.election = election
-        self.cryptosys = election.get_cryptosys()
+
+    @abstractmethod
+    def get_cryptosys(self):
+        """
+        """
+
+    @abstractmethod
+    def get_crypto_params(self):
+        """
+        """
+
+    @abstractmethod
+    def get_hex_election_key(self):
+        """
+        """
+
+    @abstractmethod
+    def get_hex_trustee_keys(self):
+        """
+        """
+
+    @abstractmethod
+    def get_candidates_set(self):
+        """
+        """
 
 
     def verify_vote_signature(self, vote_signature):
@@ -107,8 +156,7 @@ class Verifier(object):
             - invalid vote encryption (failure of voter to prove
                     knowledge of their signing key)
         """
-        election = self.election
-        cryptosys = self.cryptosys
+        cryptosys = self.get_cryptosys()
 
         textified_vote, signature = self.split_vote_signature(vote_signature)
         try:
@@ -145,8 +193,7 @@ class Verifier(object):
         """
         Separate vote-text from DSA signature and return
         """
-        election = self.election
-        cryptosys = self.cryptosys
+        cryptosys = self.get_cryptosys()
 
         textified_vote, attached_signature = vote_signature.split(V_SEPARATOR)
         dsa_signature = cryptosys.unhexify_dsa_signature(attached_signature)
@@ -158,8 +205,7 @@ class Verifier(object):
         """
         Raise MalformedVoteError in case of malformed labels
         """
-        election = self.election
-        cryptosys = self.cryptosys
+        cryptosys = self.get_cryptosys()
 
         (t00, t01, t02, t03, t04, t05, t06, t07, t08, t09,
             t10, t11, t12, t13, t14, t15, t16) = textified_vote.split('\n')
@@ -196,8 +242,7 @@ class Verifier(object):
         Extract and unhexifies (when needed) inscribed values from vote-text
         fields. Raise MalformedVoteError in case of inappropriate structure
         """
-        election = self.election
-        cryptosys = self.cryptosys
+        cryptosys = self.get_cryptosys()
 
         try:
             vote_fields = self.split_textified_vote(textified_vote)
@@ -243,17 +288,16 @@ class Verifier(object):
         Raise ElectionMismatchError if the extracted election parameters
         do not coincide with the current election
         """
-        election = self.election
-        if vote_crypto != election.get_crypto_params():
+        if vote_crypto != self.get_crypto_params():
             err = "Cannot verify vote signature: Cryptosystem mismatch"
             raise ElectionMismatchError(err)
-        if vote_election_key != election.get_hex_election_key():
+        if vote_election_key != self.get_hex_election_key():
             err = "Cannot verify vote signature: Election key mismatch"
             raise ElectionMismatchError(err)
-        if vote_trustees != election.get_hex_trustee_keys():
+        if vote_trustees != self.get_hex_trustee_keys():
             err = "Cannot verify vote signature: Trustees mismatch"
             raise ElectionMismatchError(err)
-        if set(vote_candidates) != election.get_candidates_set():
+        if set(vote_candidates) != self.get_candidates_set():
             err = "Cannot verify vote signature: Candidates mismatch"
             raise ElectionMismatchError(err)
         return True

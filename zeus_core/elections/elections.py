@@ -99,7 +99,7 @@ class GenericAPI(object):
         return self.votes
 
     def get_vote(self, fingerprint):
-        return self.votes.get(fingeprint)
+        return self.votes.get(fingerprint)
 
     # def get_vote_index(self):
     def get_cast_vote_index(self):
@@ -225,7 +225,7 @@ class AbortedAPI(object): pass
 backend_apis = (GenericAPI, UninitializedAPI, CreatingAPI, VotingAPI,
     MixingAPI, DecryptingAPI, FinalizedAPI, AbortedAPI,)
 
-class ZeusCoreElection(StageController, Validator, Signer, *backend_apis):
+class ZeusCoreElection(StageController, *backend_apis, Validator, Signer,):
 
     def __init__(self, config, **kwargs):
         self.options = kwargs

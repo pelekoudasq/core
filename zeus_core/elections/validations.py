@@ -1,25 +1,38 @@
 """
 Contains standalone interface for vote-validation
 """
+
+from abc import ABCMeta, abstractmethod
+
 from zeus_core.utils import hash_nums, gamma_encoding_max
 from zeus_core.elections.utils import extract_vote
 from zeus_core.elections.exceptions import InvalidVoteError
 
-class Validator(object):
+class Validator(object, metaclass=ABCMeta):
     """
     """
-    def __init__(self, election):
-        self.election = election
-        self.cryptosys = election.get_cryptosys()
+    
+    @abstractmethod
+    def get_cryptosys(self):
+        """
+        """
 
+    @abstractmethod
+    def get_election_key(self):
+        """
+        """
+
+    @abstractmethod
+    def get_candidates(self):
+        """
+        """
 
     def validate_genuine_vote(self, vote):
         """
         Raises InvalidVoteError if ballot encryption could not be verified or
         the provided fingerprint could not be retrieved from encrypted ballot
         """
-        election = self.election
-        cryptosys = self.cryptosys
+        cryptosys = self.get_cryptosys()
 
         (_, _, _, encrypted_ballot, fingerprint, _, _, _, _, _, _) = \
             extract_vote(vote)
@@ -41,8 +54,7 @@ class Validator(object):
     def validate_audit_votes(self, audit_votes=None):
         """
         """
-        election = self.election
-        cryptosys = self.cryptosys
+        cryptosys = self.get_cryptosys()
 
         # ~ If no votes provided, verify all audit-votes from archive
         if not audit_votes:
@@ -76,10 +88,10 @@ class Validator(object):
             # ~ Check if max-gamma-encoding of candidates' number remains smaller
             # ~ than decrypting the encrypted ballot with the acclaimed
             # ~ randomness; otherwise sort as failed and proceed to next vote
-            election_key = election.get_election_key()
+            election_key = self.get_election_key()
             decrypted = cryptosys.decrypt_with_randomness(ciphertext,
                 election_key, voter_secret)
-            nr_candidates = len(election.get_candidates())
+            nr_candidates = len(self.get_candidates())
             max_encoded = gamma_encoding_max(nr_candidates)
             if decrypted.value > max_encoded:
                 failed.append(vote)

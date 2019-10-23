@@ -7,8 +7,10 @@ VOTER_SLOT_CEIL = 2 ** 48
 MIN_MIX_ROUNDS  = 3
 
 MIN_VOTE_JSON_KEYS = {'voter', 'encrypted_ballot', 'fingerprint'}
-MAX_VOTE_JSON_KEYS = {'voter', 'encrypted_ballot', 'fingerprint', 'audit_code', 'voter_secret'}
-ENC_BALLOT_JSON_KEYS = {'public', 'alpha', 'beta', 'commitment', 'challenge', 'response'}
+MAX_VOTE_JSON_KEYS = {'voter', 'encrypted_ballot', 'fingerprint',
+    'audit_code', 'voter_secret'}
+ENC_BALLOT_JSON_KEYS = {'public', 'alpha', 'beta',
+    'commitment', 'challenge', 'response'}
 
 NONE = 'NONE'
 

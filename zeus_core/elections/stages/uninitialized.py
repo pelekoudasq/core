@@ -19,7 +19,8 @@ class Uninitialized(Stage):
             crypto_config = config['crypto']['config']
             mixnet_cls = config['mixnet']['cls']
             mixnet_config = config['mixnet']['config']
-        except KeyError as err:
+        except KeyError as e:
+            err = f'Incomplete election config: missing {e}'
             raise Abortion(err)
 
         return crypto_cls, crypto_config, mixnet_cls, mixnet_config

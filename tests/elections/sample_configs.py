@@ -49,29 +49,4 @@ config_1 = \
             }
         }
     ],
-    'candidates': [
-        'Party-A: 0-2, 0',
-        'Party-A: Candidate-0000',
-        'Party-A: Candidate-0001',
-        'Party-A: Candidate-0002',
-        'Party-A: Candidate-0003',
-        'Party-B: 0-2, 1',
-        'Party-B: Candidate-0000',
-        'Party-B: Candidate-0001',
-        'Party-B: Candidate-0002',
-    ],
-    'voters': [
-        ('Voter-00000000', 1),
-        ('Voter-00000001', 1),
-        ('Voter-00000002', 1),
-        ('Voter-00000003', 1),
-        ('Voter-00000004', 1),
-        ('Voter-00000005', 1),
-        ('Voter-00000006', 1),
-        ('Voter-00000007', 1),
-        ('Voter-00000008', 1),
-        ('Voter-00000009', 1),
-        ('Voter-00000010', 1),
-        ('Voter-00000011', 1)
-    ]
 }

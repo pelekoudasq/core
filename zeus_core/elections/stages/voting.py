@@ -4,7 +4,8 @@ Communicates with the Validator and Signer interface of the running election
 
 from zeus_core.elections.abstracts import Stage
 from zeus_core.elections.constants import (MAX_VOTE_JSON_KEYS,
-    MIN_VOTE_JSON_KEYS, ENC_BALLOT_JSON_KEYS)
+    MIN_VOTE_JSON_KEYS, ENC_BALLOT_JSON_KEYS, V_CAST_VOTE,
+    V_AUDIT_REQUEST, V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED,)
 from zeus_core.elections.exceptions import (Abortion, InvalidVoteError,
     VoteRejectionError)
 from zeus_core.elections.utils import extract_vote
@@ -18,6 +19,10 @@ class Voting(Stage):
         super().__init__(controller, next_stage_cls=Mixing)
 
     def _extract_data(self, config):
+        try:
+            pass
+        except KeyError as e:
+            err = f'Incomplete election config: missing {e}'
         return ()
 
     def _generate(self, *data):
@@ -116,8 +121,8 @@ class Voting(Stage):
         """
         election = self.get_controller()
         cryptosys = election.get_cryptosys()
-        crypto_params = election.get_cryptoparams()
-        crypto_param_keys = set(cryptoparams.keys())
+        crypto_params = election.get_crypto_params()
+        crypto_param_keys = set(crypto_params.keys())
 
         # Check that vote does not contain extra or wrong fields
         if not set(vote.keys()).issubset(MAX_VOTE_JSON_KEYS):
@@ -163,9 +168,6 @@ class Voting(Stage):
             alpha, beta, commitment, challenge, response)
         vote['encrypted_ballot'] = encrypted_ballot
 
-        # Leave fingerprint as is (hexstring)
-        vote['fingeprint'] = fingerprint
-
         # Leave audit-code as is (hexstring), or set to None if not provided
         if 'audit_code' not in vote:
             vote['audit_code'] = None
@@ -175,6 +177,7 @@ class Voting(Stage):
         vote['voter_secret'] = cryptosys.int_to_exponent(voter_secret) \
             if voter_secret else None
 
+        # NOTE: fingerprint as left as is (string)
         return vote
 
 
@@ -310,18 +313,18 @@ class Voting(Stage):
             err = "Vote [%s] already cast" % (fingerprint,)
             raise VoteRejectionError(err)
         voter_cast_votes = election.get_voter_cast_votes(voter_key)
-        vote_limit = self.get_option('vote_limit')
+        vote_limit = election.get_option('vote_limit')
         if vote_limit and len(voter_cast_votes) >= vote_limit:
             err = "Maximum number of votes reached: %s" % vote_limit
             raise VoteRejectionError(err)
 
-        if not cast_votes:
+        if not voter_cast_votes:
             previous_fingerprint = ''
         else:
             previous_fingerprint = cast_votes[-1]
 
         try:
-            self.validate_genuine_vote(vote)
+            election.validate_genuine_vote(vote)
         except InvalidVoteError as err:
             raise VoteRejectionError(err)
 

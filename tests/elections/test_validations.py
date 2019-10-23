@@ -1,5 +1,5 @@
 """
-Tests the interface for vote validation
+Tests in standalone fashion the vote-validation interface
 """
 
 import pytest
@@ -10,15 +10,33 @@ from zeus_core.elections.exceptions import InvalidVoteError
 from tests.elections.utils import display_json, mk_voting_setup, adapt_vote
 
 
+class DummyValidator(Validator):
+    """
+    Minimal implementation of validations interface for testing purposes
+    """
+    def __init__(self, election):
+        self.election = election
+        self.cryptosys = election.get_cryptosys()
+
+    def get_cryptosys(self):
+        return self.cryptosys
+
+    def get_election_key(self):
+        return self.election.get_election_key()
+
+    def get_candidates(self):
+        return self.election.get_candidates()
+
+
 class TestValidations(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        election, clients = mk_voting_setup()
+        election, clients, _ = mk_voting_setup()
 
         cls.election = election
         cls.cryptosys = election.get_cryptosys()
-        cls.validator = Validator(election)
+        cls.validator = DummyValidator(election)
         cls.client = clients[0]
         cls.messages = []
 

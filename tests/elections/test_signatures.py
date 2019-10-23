@@ -1,5 +1,6 @@
 """
-Tests the interfaces for vote signing and vote-signature verification
+Tests in standalone fashio the vote-signing and
+vote-signature-verification interface
 """
 
 import pytest
@@ -20,7 +21,9 @@ from tests.elections.utils import (display_json, mk_voting_setup, adapt_vote)
 def textify_vote(signer, vote, comments, corrupt_trustees=False,
         corrupt_candidates=False, malformed=False):
     """
-    Emulates the Signer.textify_vote() method with failure options for testing
+    Emulates the Signer.textify_vote() method with failure options
+    for testing purposes. The provided signer should be an
+    instance of the present module's DummySigner class
     """
     election = signer.election
     cryptosys = signer.cryptosys
@@ -74,7 +77,9 @@ def mk_vote_signature(cryptosys, signer, vote, comments=None,
         malformed=False, corrupt_proof=False,
         destroy_integrity=False):
     """
-    Emulates the Signer.sign() method with failure options for testing
+    Emulates the Signer.sign() method with failure options
+    for testing purposes. The provided signer should be an
+    instance of the present module's DummySigner class.
     """
     __vote = deepcopy(vote)
     if corrupt_crypto:
@@ -106,16 +111,68 @@ def mk_vote_signature(cryptosys, signer, vote, comments=None,
     return vote_signature
 
 
+class DummySigner(Signer):
+    """
+    Minimal implementation of signing interface for testing purposes
+    """
+
+    def __init__(self, election):
+        self.election = election
+        self.cryptosys = election.get_cryptosys()
+
+    def get_cryptosys(self):
+        return self.election.get_cryptosys()
+
+    def get_zeus_private_key(self):
+        return self.election.get_zeus_private_key()
+
+    def get_hex_zeus_public_key(self):
+        return self.election.get_hex_zeus_public_key()
+
+    def get_hex_trustee_keys(self):
+        return self.election.get_hex_trustee_keys()
+
+    def get_hex_election_key(self):
+        return self.election.get_hex_election_key()
+
+    def get_candidates(self):
+        return self.election.get_candidates()
+
+class DummyVerifier(Verifier):
+    """
+    Minimal implementation of verification interface for testing purposes
+    """
+
+    def __init__(self, election):
+        self.election = election
+        self.cryptosys = election.get_cryptosys()
+
+    def get_cryptosys(self):
+        return self.election.get_cryptosys()
+
+    def get_crypto_params(self):
+        return self.election.get_crypto_params()
+
+    def get_hex_election_key(self):
+        return self.election.get_hex_election_key()
+
+    def get_hex_trustee_keys(self):
+        return self.election.get_hex_trustee_keys()
+
+    def get_candidates_set(self):
+        return self.election.get_candidates_set()
+
+
 class TestSignatures(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        election, clients = mk_voting_setup()
+        election, clients, _ = mk_voting_setup()
 
         cls.election = election
         cls.cryptosys = election.get_cryptosys()
-        cls.signer = Signer(election)
-        cls.verifier = Verifier(election)
+        cls.signer = DummySigner(election)
+        cls.verifier = DummyVerifier(election)
         cls.client = clients[0]
         cls.messages = []
 

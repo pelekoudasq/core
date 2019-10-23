@@ -23,8 +23,8 @@ class Creating(Stage):
             trustees = config['trustees']
             candidates = config['candidates']
             voters = config['voters']
-        except KeyError as err:
-            err = "Incomplete election configuration: Missing " + err
+        except KeyError as e:
+            err = f'Incomplete election config: missing {e}'
             raise Abortion(err)
 
         return zeus_private_key, trustees, candidates, voters

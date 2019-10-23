@@ -4,9 +4,11 @@ from copy import deepcopy
 import time
 
 from zeus_core.elections.stages import Uninitialized
+from zeus_core.elections.utils import extract_vote
 from zeus_core.elections.exceptions import Abortion
+
 from tests.elections.stages.abstracts import StageTester
-from tests.elections.utils import run_until_voting_stage, mk_election
+from tests.elections.utils import mk_voting_setup, display_json
 
 
 class TestVoting(StageTester, unittest.TestCase):
@@ -14,10 +16,19 @@ class TestVoting(StageTester, unittest.TestCase):
     # Context implementation
     @classmethod
     def run_until_stage(cls):
-        election = mk_election()
+        election, _, votes = mk_voting_setup()
         cls.election = election
-        run_until_voting_stage(election)
         cls.stage = election._get_current_stage()
+        cls.votes = votes
+
+    def get_voting_context(self):
+        """
+        Enhance context of voting stage with votes
+        """
+        election, config, stage, messages = self.get_context()
+        votes = self.votes
+        return election, config, stage, votes, messages
+
 
 
     # ------------------------ Isolated functionalities ------------------------
@@ -50,7 +61,11 @@ class TestVoting(StageTester, unittest.TestCase):
         pass
 
     def test_submit_genuine_vote_success(self):
-        pass
+        _, _, voting, votes, _ = self.get_voting_context()
+        for vote in votes:
+            vote = voting.adapt_vote(deepcopy(vote))
+            (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = extract_vote(vote)
+            voting.submit_genuine_vote(fingerprint, voter_key, vote)
 
     def test_submit_genuine_vote_rejection(self):
         pass
