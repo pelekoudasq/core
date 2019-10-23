@@ -51,7 +51,7 @@ class Voting(Stage):
             - (audit-request) audit-request already submitted for the provided fingerprint
             - (audit-vote) no audit-code provided
             - (audit-vote) provided audit-code not among the assigned ones
-            - (audit-vote) no audit-request found for the provided fingeprint
+            - (audit-vote) no audit-request found for the provided fingerprint
             - (audit-vote) failure of audit-vote verification
             - (genuine vote) vote already cast
             - (genuine vote) vote limit reached
@@ -83,7 +83,7 @@ class Voting(Stage):
             # (2) provided audit-code not among the assigned ones
             # (3) no audit-request found for the provided fingerprint
             # (4) vote failed to be verified as audit
-            signature = self.submit_audit_vote(vote, voter_audit_code,
+            signature = self.submit_audit_vote(vote, voter_key, voter_audit_code,
                 voter_audit_codes)
         else:
             # If no audit-code provided, choose one of the assigned ones
@@ -92,7 +92,7 @@ class Voting(Stage):
             voter_audit_code = self.fix_audit_code(voter_audit_code, voter_audit_codes)
             if voter_audit_code not in voter_audit_codes:
                 # Will reject vote if audit-request already
-                # submitted for the provided fingeprint
+                # submitted for the provided fingerprint
                 signature = self.submit_audit_request(fingerprint, voter_key, vote)
             else:
                 # Will reject vote if
@@ -241,8 +241,8 @@ class Voting(Stage):
         """
         election = self.get_controller()
 
-        if election.get_audit_request(fingeprint):
-            err = "Audit-request for vote [%s] already submitted" % (fingeprint,)
+        if election.get_audit_request(fingerprint):
+            err = "Audit-request for vote [%s] already submitted" % (fingerprint,)
             raise VoteRejectionError(err)
 
         # Modify status
@@ -257,12 +257,11 @@ class Voting(Stage):
 
         # Store vote along with audit-request
         election.store_audit_request(fingerprint, voter_key)
-        election.store_audit_vote(fingerprint, vote)
         election.store_votes((vote,))
 
         return signature
 
-    def submit_audit_vote(self, vote, voter_audit_code, voter_audit_codes):
+    def submit_audit_vote(self, vote, voter_key, voter_audit_code, voter_audit_codes):
         """
         Raises VoteRejectionError if
             - No audit-code provided
@@ -275,7 +274,7 @@ class Voting(Stage):
         if not voter_audit_code:
             err = "Invalid audit vote publication: No audit-code provided"
             raise VoteRejectionError(err)
-        if voter_audit_code in audit_codes:
+        if voter_audit_code in voter_audit_codes:
             err = "Invalid audit vote publication: Invalid audit-code provided"
             raise VoteRejectionError(err)
         if voter_key != audit_request:

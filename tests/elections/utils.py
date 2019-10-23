@@ -1,4 +1,5 @@
 import json
+from math import ceil
 from zeus_core.elections.elections import ZeusCoreElection
 from zeus_core.elections.stages import Uninitialized
 from tests.elections.sample_configs import config_1
@@ -145,12 +146,12 @@ def mk_election(config=config_1, candidates=None, dupl_candidates=False,
 from tests.elections.client import Client
 
 def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,
-        nr_voters=19, dupl_voters=False):
+        nr_voters=19, dupl_voters=False, with_votes=False):
     """
     Mocks voting stage setup: runs election over the provided configs until
-    voting stage; returns the election along with voters (clients) and votes.
-    The first half of votes will be genuine votes, the third and last
-    quarters will be audit-requests and audit-votes respectively
+    voting stage; returns the election along with voters (clients) and
+    votes, if with_votes=True. In the latter case, the first half of
+    votes will be genuine votes and the rest will be audit-requests
     """
     election = mk_election(config, candidates, dupl_candidates, nr_voters, dupl_voters)
     run_until_voting_stage(election)
@@ -158,13 +159,20 @@ def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,
     election_key = election.get_election_key()
     voter_keys = election.get_voters()
     clients = []
-    votes = []
+    if with_votes:
+        votes = []
+        audit_requests = []
     nr_candidates = len(election.get_candidates())
     for count, voter_key in enumerate(voter_keys):
         audit_codes = election.get_voter_audit_codes(voter_key)
         client = Client(config_crypto, election_key, nr_candidates,
             voter_key, audit_codes)
-        vote = client.mk_genuine_vote()
         clients.append(client)
-        votes.append(vote)
-    return election, clients, votes
+        if with_votes:
+            if count < ceil(nr_voters / 2):
+                votes.append(client.mk_genuine_vote())
+            else:
+                audit_requests.append(client.mk_audit_request())
+    if with_votes:
+        return election, clients, votes, audit_requests
+    return election, clients

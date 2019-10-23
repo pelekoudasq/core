@@ -183,7 +183,7 @@ class VotingAPI(object):
     def store_audit_publication(self, fingerprint):
         self.audit_publications.append(fingerprint)
 
-    def store_audit_request(self, fingeprint, voter_key):
+    def store_audit_request(self, fingerprint, voter_key):
         """
         Stores also the corresponding audit-vote!
         """
@@ -191,7 +191,7 @@ class VotingAPI(object):
 
     def do_index_vote(self, fingerprint):
         """
-        Store a vote's fingeprint in cast vote index and return its index
+        Store a vote's fingerprint in cast vote index and return its index
         """
         cast_vote_index = self.cast_vote_index
         index = len(cast_vote_index)
@@ -201,7 +201,7 @@ class VotingAPI(object):
     def store_votes(self, votes):
         for vote in votes:
             fingerprint = vote['fingerprint']
-            self.votes['fingerprint'] = vote
+            self.votes[fingerprint] = vote
 
     def append_vote(self, voter_key, fingerprint):
         cast_votes = self.cast_votes

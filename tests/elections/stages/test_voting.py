@@ -16,19 +16,27 @@ class TestVoting(StageTester, unittest.TestCase):
     # Context implementation
     @classmethod
     def run_until_stage(cls):
-        election, _, votes = mk_voting_setup()
+        election, _, votes, audit_requests = \
+            mk_voting_setup(with_votes=True)
         cls.election = election
         cls.stage = election._get_current_stage()
         cls.votes = votes
+        cls.audit_requests = audit_requests
 
     def get_voting_context(self):
         """
-        Enhance context of voting stage with votes
+        Extends voting stage context with votes and audit-requests
         """
         election, config, stage, messages = self.get_context()
-        votes = self.votes
-        return election, config, stage, votes, messages
+        votes = list(map(deepcopy, self.votes))
+        audit_requests = list(map(deepcopy, self.audit_requests))
+        return (election, config, stage, votes, audit_requests, messages,)
 
+    # def setUp(self):
+    #     cls = self.__class__
+    #
+    #     cls.election.votes = {}
+    #     cls.election.cast_votes = {}
 
 
     # ------------------------ Isolated functionalities ------------------------
@@ -49,7 +57,22 @@ class TestVoting(StageTester, unittest.TestCase):
         pass
 
     def test_submit_audit_request_success(self):
-        pass
+        election, _, voting, _, audit_requests, messages = \
+            self.get_voting_context()
+        messages.append('\nTesting audit-request submission\n')
+        submit_audit_request = voting.submit_audit_request
+        get_audit_request = election.get_audit_request
+        get_vote = election.get_vote
+        for vote in audit_requests:
+            with self.subTest(vote=vote):
+                vote = voting.adapt_vote(vote)
+                (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
+                    extract_vote(vote)
+                submit_audit_request(fingerprint, voter_key, vote)
+                assert (get_audit_request(fingerprint) is voter_key and \
+                    get_vote(fingerprint) is vote)
+                messages.append('[+] Audit-request successfully submitted')
+
 
     def test_submit_audit_request_rejection(self):
         pass
@@ -61,11 +84,21 @@ class TestVoting(StageTester, unittest.TestCase):
         pass
 
     def test_submit_genuine_vote_success(self):
-        _, _, voting, votes, _ = self.get_voting_context()
+        election, _, voting, votes, _, messages = \
+            self.get_voting_context()
+        messages.append('\nTesting genuine vote submission\n')
+        submit_genuine_vote = voting.submit_genuine_vote
+        get_voter_cast_votes = election.get_voter_cast_votes
+        get_vote = election.get_vote
         for vote in votes:
-            vote = voting.adapt_vote(deepcopy(vote))
-            (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = extract_vote(vote)
-            voting.submit_genuine_vote(fingerprint, voter_key, vote)
+            with self.subTest(vote=vote):
+                vote = voting.adapt_vote(vote)
+                (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
+                    extract_vote(vote)
+                submit_genuine_vote(fingerprint, voter_key, vote)
+                assert (fingerprint in get_voter_cast_votes(voter_key) and \
+                    get_vote(fingerprint) is vote)
+                messages.append('[+] Vote successfully submitted')
 
     def test_submit_genuine_vote_rejection(self):
         pass

@@ -32,7 +32,7 @@ class TestValidations(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        election, clients, _ = mk_voting_setup()
+        election, clients = mk_voting_setup()
 
         cls.election = election
         cls.cryptosys = election.get_cryptosys()
