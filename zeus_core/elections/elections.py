@@ -218,12 +218,12 @@ class VotingAPI(object):
 
 class MixingAPI(object): pass
 class DecryptingAPI(object): pass
-class FinalizedAPI(object): pass
+class FinishedAPI(object): pass
 class AbortedAPI(object): pass
 
 
 backend_apis = (GenericAPI, UninitializedAPI, CreatingAPI, VotingAPI,
-    MixingAPI, DecryptingAPI, FinalizedAPI, AbortedAPI,)
+    MixingAPI, DecryptingAPI, FinishedAPI, AbortedAPI,)
 
 class ZeusCoreElection(StageController, *backend_apis, Validator, Signer,):
 

@@ -106,14 +106,14 @@ def run_until_decrypting_stage(election):
     decrypting = mixing.next()
     return decrypting
 
-def run_until_finalized_stage(election):
+def run_until_finished_stage(election):
     """
-    Runs the provided election until stage finalized
+    Runs the provided election until stage finished
     """
     decrypting = run_until_decrypting_stage(election)
     decrypting.run()
-    finalized = decrypting.next()
-    return finalized
+    finished = decrypting.next()
+    return finished
 
 def mk_election(config=config_1, candidates=None, dupl_candidates=False,
         nr_voters=19, dupl_voters=False):
