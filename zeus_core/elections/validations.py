@@ -5,6 +5,8 @@ Contains standalone interface for vote-validation
 from abc import ABCMeta, abstractmethod
 
 from zeus_core.utils import hash_nums, gamma_encoding_max
+from zeus_core.elections.constants import (MAX_VOTE_JSON_KEYS, 
+        MIN_VOTE_JSON_KEYS, ENC_BALLOT_JSON_KEYS)
 from zeus_core.elections.utils import extract_vote
 from zeus_core.elections.exceptions import InvalidVoteError
 
@@ -18,6 +20,11 @@ class Validator(object, metaclass=ABCMeta):
         """
 
     @abstractmethod
+    def get_crypto_params(self):
+        """
+        """
+
+    @abstractmethod
     def get_election_key(self):
         """
         """
@@ -26,6 +33,86 @@ class Validator(object, metaclass=ABCMeta):
     def get_candidates(self):
         """
         """
+
+    @abstractmethod
+    def get_audit_votes(self):
+        """
+        """
+
+    def adapt_vote(self, vote):
+        """
+        Accepts JSON, performs deserialization, rearranges keys in accordance
+        with cryptosys and mixnet operational requirements
+
+        Fill with None missing fields: audit_code, voter_key
+
+        Rejects in case of:
+            - wrong or extra fields
+            - missing fields
+            - malformed encrypted ballot
+            - cryptosystem mismatch
+            - election key mismatch
+        """
+        cryptosys = self.get_cryptosys()
+        crypto_params = self.get_crypto_params()
+        crypto_param_keys = set(crypto_params.keys())
+
+        # Check that vote does not contain extra or wrong fields
+        if not set(vote.keys()).issubset(MAX_VOTE_JSON_KEYS):
+            err = "Invalid vote content: Wrong or extra content provided"
+            raise InvalidVoteError(err)
+
+        # Check that vote includes the minimum necessary fields
+        for key in MIN_VOTE_JSON_KEYS:
+            if key not in vote:
+                err = f'Invalid vote content: Field `{key}` missing from vote'
+                raise InvalidVoteError(err)
+
+        # Check if encrypted ballot fields are correct
+        encrypted_ballot = vote['encrypted_ballot']
+        if set(encrypted_ballot.keys()) != crypto_param_keys.union(ENC_BALLOT_JSON_KEYS):
+            err = 'Invalid vote content: Malformed encrypted ballot'
+            raise InvalidVoteError(err)
+
+        # Extract isncribed election key and main body values
+        pop = encrypted_ballot.pop
+        public = pop('public')
+        alpha = pop('alpha')
+        beta = pop('beta')
+        commitment = pop('commitment')
+        challenge = pop('challenge')
+        response = pop('response')
+
+        # Compare remaining content against server crypto; reject in case of mismatch
+        vote_crypto = encrypted_ballot
+        if vote_crypto != crypto_params:
+            err = 'Invalid vote content: Cryptosystem mismatch'
+            raise InvalidVoteError(err)
+        vote['crypto'] = vote_crypto
+
+        # Check election key and reject in case of mismatch
+        if cryptosys.int_to_element(public) != self.get_election_key():
+            err = 'Invalid vote content: Election key mismatch'
+            raise InvalidVoteError(err)
+        vote['public'] = public
+
+        # Deserialize encrypted ballot's main body
+        encrypted_ballot = cryptosys.deserialize_encrypted_ballot(
+            alpha, beta, commitment, challenge, response)
+        vote['encrypted_ballot'] = encrypted_ballot
+
+        # Leave audit-code as is (hexstring), or set to None if not provided
+        if 'audit_code' not in vote:
+            vote['audit_code'] = None
+
+        # Deserialize voter-secret
+        voter_secret = vote.get('voter_secret')
+        vote['voter_secret'] = cryptosys.int_to_exponent(voter_secret) \
+            if voter_secret else None
+
+        # NOTE: fingerprint left as is (string)
+        return vote
+
 
     def validate_genuine_vote(self, vote):
         """
@@ -58,7 +145,7 @@ class Validator(object, metaclass=ABCMeta):
 
         # ~ If no votes provided, verify all audit-votes from archive
         if not audit_votes:
-            audit_votes = election.get_audit_votes()
+            audit_votes = self.get_audit_votes()
             add_plaintext = 0
         else:
             add_plaintext = 1

@@ -21,11 +21,17 @@ class DummyValidator(Validator):
     def get_cryptosys(self):
         return self.cryptosys
 
+    def get_crypto_params(self):
+        return self.election.get_crypto_params()
+
     def get_election_key(self):
         return self.election.get_election_key()
 
     def get_candidates(self):
         return self.election.get_candidates()
+
+    def get_audit_votes(self):
+        return self.election.get_audit_votes()
 
 
 class TestValidations(unittest.TestCase):

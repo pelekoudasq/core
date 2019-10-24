@@ -68,7 +68,8 @@ class TestVoting(StageTester, unittest.TestCase):
         get_vote = election.get_vote
         for vote in audit_requests:
             with self.subTest(vote=vote):
-                vote = voting.adapt_vote(vote)
+                # vote = voting.adapt_vote(vote)
+                vote = election.adapt_vote(vote)
                 (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
                     extract_vote(vote)
                 submit_audit_request(fingerprint, voter_key, vote)
@@ -90,7 +91,8 @@ class TestVoting(StageTester, unittest.TestCase):
         get_vote = election.get_vote
         for vote in audit_votes:
             with self.subTest(vote=vote):
-                vote = voting.adapt_vote(vote)
+                # vote = voting.adapt_vote(vote)
+                vote = election.adapt_vote(vote)
                 (_, _, voter_key, _, fingerprint, voter_audit_code, \
                     _, _, _, _, _) = extract_vote(vote)
                 voter_audit_codes = election.get_voter_audit_codes(voter_key)
@@ -113,7 +115,8 @@ class TestVoting(StageTester, unittest.TestCase):
         get_vote = election.get_vote
         for vote in votes:
             with self.subTest(vote=vote):
-                vote = voting.adapt_vote(vote)
+                # vote = voting.adapt_vote(vote)
+                vote = election.adapt_vote(vote)
                 (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
                     extract_vote(vote)
                 submit_genuine_vote(fingerprint, voter_key, vote)
