@@ -70,6 +70,12 @@ class TestValidations(unittest.TestCase):
         self.fail(err)
 
 
+    def test_vote_adaptment_success(self):
+        pass
+
+    def test_vote_adaptment_failures(self):
+        pass
+
     def test_genuine_vote_validation_success(self):
         _, cryptosys, validator, client, messages = self.get_context()
 

@@ -59,7 +59,6 @@ class Voting(Stage):
         election = self.get_controller()
 
         try:
-            # vote = self.adapt_vote(vote)
             vote = election.adapt_vote(vote)
         except InvalidVoteError as err:
             # Wrong or extra or missing fields, or malformed encrypted ballot,

@@ -44,20 +44,6 @@ class TestVoting(StageTester, unittest.TestCase):
 
     # ------------------------ Isolated functionalities ------------------------
 
-    def test_detect_voter(self):
-        pass
-
-    def test_fix_audit_code(self):
-        pass
-
-    def test_exclude_voter(self):
-        pass
-
-    def test_vote_adaptment_success(self):
-        pass
-
-    def test_vote_adaptment_rejections(self):
-        pass
 
     def test_submit_audit_request_success(self):
         election, _, voting, _, audit_requests, _, messages = \
@@ -68,7 +54,6 @@ class TestVoting(StageTester, unittest.TestCase):
         get_vote = election.get_vote
         for vote in audit_requests:
             with self.subTest(vote=vote):
-                # vote = voting.adapt_vote(vote)
                 vote = election.adapt_vote(vote)
                 (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
                     extract_vote(vote)
@@ -82,6 +67,7 @@ class TestVoting(StageTester, unittest.TestCase):
     def test_submit_audit_request_rejection(self):
         pass
 
+
     def test_submit_audit_vote_success(self):
         election, _, voting, _, _, audit_votes, messages = \
             self.get_voting_context()
@@ -91,7 +77,6 @@ class TestVoting(StageTester, unittest.TestCase):
         get_vote = election.get_vote
         for vote in audit_votes:
             with self.subTest(vote=vote):
-                # vote = voting.adapt_vote(vote)
                 vote = election.adapt_vote(vote)
                 (_, _, voter_key, _, fingerprint, voter_audit_code, \
                     _, _, _, _, _) = extract_vote(vote)
@@ -106,6 +91,7 @@ class TestVoting(StageTester, unittest.TestCase):
     def test_submit_audit_vote_rejection(self):
         pass
 
+
     def test_submit_genuine_vote_success(self):
         election, _, voting, votes, _, _, messages = \
             self.get_voting_context()
@@ -115,7 +101,6 @@ class TestVoting(StageTester, unittest.TestCase):
         get_vote = election.get_vote
         for vote in votes:
             with self.subTest(vote=vote):
-                # vote = voting.adapt_vote(vote)
                 vote = election.adapt_vote(vote)
                 (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
                     extract_vote(vote)
@@ -126,6 +111,7 @@ class TestVoting(StageTester, unittest.TestCase):
 
     def test_submit_genuine_vote_rejection(self):
         pass
+
 
     def test_cast_vote_success(self):
         pass
