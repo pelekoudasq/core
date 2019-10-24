@@ -128,7 +128,7 @@ class TestValidations(unittest.TestCase):
             audit_vote = client.mk_audit_vote(**kwargs)
             with self.subTest(audit_vote=audit_vote):
                 audit_vote = adapt_vote(cryptosys, audit_vote)
-                missing, failed = validator.validate_audit_votes(audit_votes=[audit_vote,])
+                missing, failed = validator.validate_audit_votes((audit_vote,))
                 try:
                     if msg == 'missing secret':
                         assert missing == [audit_vote,] and not failed

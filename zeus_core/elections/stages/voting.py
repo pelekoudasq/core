@@ -83,8 +83,8 @@ class Voting(Stage):
             # (2) provided audit-code not among the assigned ones
             # (3) no audit-request found for the provided fingerprint
             # (4) vote failed to be verified as audit
-            signature = self.submit_audit_vote(vote, voter_key, voter_audit_code,
-                voter_audit_codes)
+            signature = self.submit_audit_vote(vote, voter_key, fingerprint,
+                voter_audit_code, voter_audit_codes)
         else:
             # If no audit-code provided, choose one of the assigned ones
             # (Will reject vote if no audit-code has been provided
@@ -177,7 +177,7 @@ class Voting(Stage):
         vote['voter_secret'] = cryptosys.int_to_exponent(voter_secret) \
             if voter_secret else None
 
-        # NOTE: fingerprint as left as is (string)
+        # NOTE: fingerprint left as is (string)
         return vote
 
 
@@ -261,7 +261,8 @@ class Voting(Stage):
 
         return signature
 
-    def submit_audit_vote(self, vote, voter_key, voter_audit_code, voter_audit_codes):
+    def submit_audit_vote(self, vote, voter_key, fingerprint,
+            voter_audit_code, voter_audit_codes):
         """
         Raises VoteRejectionError if
             - No audit-code provided
@@ -277,7 +278,7 @@ class Voting(Stage):
         if voter_audit_code in voter_audit_codes:
             err = "Invalid audit vote publication: Invalid audit-code provided"
             raise VoteRejectionError(err)
-        if voter_key != audit_request:
+        if voter_key != election.get_audit_request(fingerprint):
             err = "No prior audit-request found for publish-request"
             raise VoteRejectionError(err)
 
@@ -285,7 +286,7 @@ class Voting(Stage):
         vote['status'] = V_PUBLIC_AUDIT
         vote['previous'] = ''
         vote['index'] = None
-        missing, failed = self.validate_audit_votes(votes=[vote,])
+        missing, failed = election.validate_audit_votes((vote,))
         if missing:
             err = "Missing voter's secret: No randomness provided with audit-vote"
             raise VoteRejectionError(err)
@@ -298,6 +299,7 @@ class Voting(Stage):
         vote['signature'] = signature
 
         # Append vote and store inscribed fingerprint as audit-publication
+        fingerprint = vote['fingerprint']
         election.store_audit_publication(fingerprint)
         election.store_votes((vote,))
 

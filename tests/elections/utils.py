@@ -1,5 +1,6 @@
 import json
 from math import ceil
+from copy import deepcopy
 from zeus_core.elections.elections import ZeusCoreElection
 from zeus_core.elections.stages import Uninitialized
 from tests.elections.sample_configs import config_1
@@ -145,34 +146,48 @@ def mk_election(config=config_1, candidates=None, dupl_candidates=False,
 
 from tests.elections.client import Client
 
+def mk_votes_from_clients(clients):
+    """
+    """
+    votes = []
+    audit_requests = []
+    audit_votes = []
+    nr_clients = len(clients)
+    for count, client in enumerate(clients):
+        voter_key = client.voter_key
+        audit_codes = client.audit_codes
+        if count < ceil(nr_clients / 2):
+            vote = client.mk_genuine_vote()
+            votes.append(vote)
+        else:
+            audit_vote = client.mk_audit_vote()
+            audit_votes.append(audit_vote)
+            audit_request = deepcopy(audit_vote)
+            del audit_request['voter_secret']
+            audit_requests.append(audit_request)
+    return votes, audit_requests, audit_votes
+
+
 def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,
         nr_voters=19, dupl_voters=False, with_votes=False):
     """
     Mocks voting stage setup: runs election over the provided configs until
     voting stage; returns the election along with voters (clients) and
-    votes, if with_votes=True. In the latter case, the first half of
-    votes will be genuine votes and the rest will be audit-requests
+    votes, if with_votes=True
     """
     election = mk_election(config, candidates, dupl_candidates, nr_voters, dupl_voters)
     run_until_voting_stage(election)
     config_crypto = config['crypto']
     election_key = election.get_election_key()
+    nr_candidates = len(election.get_candidates())
     voter_keys = election.get_voters()
     clients = []
-    if with_votes:
-        votes = []
-        audit_requests = []
-    nr_candidates = len(election.get_candidates())
-    for count, voter_key in enumerate(voter_keys):
+    for voter_key in voter_keys:
         audit_codes = election.get_voter_audit_codes(voter_key)
         client = Client(config_crypto, election_key, nr_candidates,
             voter_key, audit_codes)
         clients.append(client)
-        if with_votes:
-            if count < ceil(nr_voters / 2):
-                votes.append(client.mk_genuine_vote())
-            else:
-                audit_requests.append(client.mk_audit_request())
     if with_votes:
-        return election, clients, votes, audit_requests
+        votes, audit_requests, audit_votes = mk_votes_from_clients(clients)
+        return election, clients, votes, audit_requests, audit_votes
     return election, clients

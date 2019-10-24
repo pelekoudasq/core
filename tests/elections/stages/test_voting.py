@@ -5,7 +5,7 @@ import time
 
 from zeus_core.elections.stages import Uninitialized
 from zeus_core.elections.utils import extract_vote
-from zeus_core.elections.exceptions import Abortion
+from zeus_core.elections.exceptions import Abortion, VoteRejectionError
 
 from tests.elections.stages.abstracts import StageTester
 from tests.elections.utils import mk_voting_setup, display_json
@@ -16,12 +16,13 @@ class TestVoting(StageTester, unittest.TestCase):
     # Context implementation
     @classmethod
     def run_until_stage(cls):
-        election, _, votes, audit_requests = \
+        election, _, votes, audit_requests, audit_votes = \
             mk_voting_setup(with_votes=True)
         cls.election = election
         cls.stage = election._get_current_stage()
         cls.votes = votes
         cls.audit_requests = audit_requests
+        cls.audit_votes = audit_votes
 
     def get_voting_context(self):
         """
@@ -30,7 +31,9 @@ class TestVoting(StageTester, unittest.TestCase):
         election, config, stage, messages = self.get_context()
         votes = list(map(deepcopy, self.votes))
         audit_requests = list(map(deepcopy, self.audit_requests))
-        return (election, config, stage, votes, audit_requests, messages,)
+        audit_votes = list(map(deepcopy, self.audit_votes))
+        return (election, config, stage,
+            votes, audit_requests, audit_votes, messages,)
 
     # def setUp(self):
     #     cls = self.__class__
@@ -57,9 +60,9 @@ class TestVoting(StageTester, unittest.TestCase):
         pass
 
     def test_submit_audit_request_success(self):
-        election, _, voting, _, audit_requests, messages = \
+        election, _, voting, _, audit_requests, _, messages = \
             self.get_voting_context()
-        messages.append('\nTesting audit-request submission\n')
+        messages.append('\nTesting audit-requst submission\n')
         submit_audit_request = voting.submit_audit_request
         get_audit_request = election.get_audit_request
         get_vote = election.get_vote
@@ -74,17 +77,35 @@ class TestVoting(StageTester, unittest.TestCase):
                 messages.append('[+] Audit-request successfully submitted')
 
 
+
     def test_submit_audit_request_rejection(self):
         pass
 
     def test_submit_audit_vote_success(self):
-        pass
+        election, _, voting, _, _, audit_votes, messages = \
+            self.get_voting_context()
+        messages.append('\nTesting audit-vote submission\n')
+        submit_audit_vote = voting.submit_audit_vote
+        get_audit_publications = election.get_audit_publications
+        get_vote = election.get_vote
+        for vote in audit_votes:
+            with self.subTest(vote=vote):
+                vote = voting.adapt_vote(vote)
+                (_, _, voter_key, _, fingerprint, voter_audit_code, \
+                    _, _, _, _, _) = extract_vote(vote)
+                voter_audit_codes = election.get_voter_audit_codes(voter_key)
+                submit_audit_vote(vote, voter_key, fingerprint,
+                    voter_audit_code, voter_audit_codes)
+                assert (fingerprint in get_audit_publications() and \
+                    get_vote(fingerprint) is vote)
+                messages.append('[+] Audit-vote successfully submitted')
+
 
     def test_submit_audit_vote_rejection(self):
         pass
 
     def test_submit_genuine_vote_success(self):
-        election, _, voting, votes, _, messages = \
+        election, _, voting, votes, _, _, messages = \
             self.get_voting_context()
         messages.append('\nTesting genuine vote submission\n')
         submit_genuine_vote = voting.submit_genuine_vote
