@@ -230,12 +230,12 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer,):
     def __init__(self, config, **kwargs):
         self.options = kwargs
 
-        # Exported at stage Uninitialized
+        # Modified during stage Uninitialized
         self.cryptosys = None
         self.crypto_params = {}
         self.mixnet = None
 
-        # Exported at stage Creating
+        # Modified during stage Creating
         self.zeus_keypair = None
         self.zeus_private_key = None
         self.zeus_public_key = None
@@ -245,7 +245,7 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer,):
         self.voters = {}
         self.audit_codes = {}
 
-        # Exported at stage Voting
+        # Modified during stage Voting
         self.audit_requests = {}
         self.audit_votes = {}
         self.audit_publications = []
@@ -255,3 +255,19 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer,):
         self.excluded_voters = {}
 
         super().__init__(Uninitialized, config)
+
+    def load_submitted_votes(self):
+        from tests.elections.utils import mk_clients, mk_votes_from_clients
+        config_crypto = self.config['crypto']
+        voter_keys = self.get_voters()
+        nr_candidates = len(self.get_candidates())
+        clients = mk_clients(self)
+        votes, audit_requests, audit_votes = mk_votes_from_clients(clients)
+        submitted_votes = iter(audit_requests + votes + audit_votes)
+        while 1:
+            try:
+                vote = next(submitted_votes)
+            except StopIteration:
+                break
+            else:
+                yield vote

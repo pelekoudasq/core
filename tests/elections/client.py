@@ -91,9 +91,8 @@ class Client(object):
 
     def mk_corrupt_encoding(self, fake_nr_candidates, audit_code):
         """
-        It is meant to be used for testing audit-vote submission:
-        In this case, make sure that the provided audit_code
-        is not None.
+        Meant to be used for testing audit-vote submission: make sure
+        that the provided audit_code is not None
         """
         cryptosys = self.cryptosys
         def get_decrypted_value(adapted_vote):

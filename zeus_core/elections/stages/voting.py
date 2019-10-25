@@ -18,17 +18,26 @@ class Voting(Stage):
         super().__init__(controller, next_stage_cls=Mixing)
 
     def _extract_data(self, config):
-        try:
-            pass
-        except KeyError as e:
-            err = f'Incomplete election config: missing {e}'
-        return ()
+        return ()                               # Will not need to extract any config
 
     def _generate(self, *data):
-        return ()
+        election = self.get_controller()
+        print()
+        print('total votes:', len(election.get_votes()))
+        print('audit requests:', len(election.get_audit_requests()))
+        print('audit publications:', len(election.get_audit_publications()))
+        cast_vote = self.cast_vote
+        for vote in election.load_submitted_votes():
+            cast_vote(vote)
+        print()
+        print('total votes:', len(election.get_votes()))
+        print('audit requests:', len(election.get_audit_requests()))
+        print('audit publications:', len(election.get_audit_publications()))
+        print()
+        return ()                               # Will not need to return anything
 
     def _update_controller(self, *generated):
-        pass
+        pass                                    # Will not need to update anything
 
 
     def cast_vote(self, vote):
