@@ -3,8 +3,9 @@ Tests in standalone fashion the vote-validation interface
 """
 
 import pytest
-import json
 import unittest
+import json
+from copy import deepcopy
 from zeus_core.elections.validations import Validator
 from zeus_core.elections.exceptions import InvalidVoteError
 from tests.elections.utils import display_json, mk_voting_setup, adapt_vote
@@ -71,10 +72,58 @@ class TestValidations(unittest.TestCase):
 
 
     def test_vote_adaptment_success(self):
-        pass
+        _, cryptosys, validator, client, messages = self.get_context()
+
+        vote = client.mk_genuine_vote()
+        adapted = adapt_vote(cryptosys, deepcopy(vote))
+        try:
+            assert adapted == validator.adapt_vote(vote)
+            messages.append('[+] Vote successfully adapted')
+        except AssertionError:
+            err = 'Vote wrongly adapted'
+            self.__fail(err)
+
+
+    def mk_vote_adaptment_failures(self):
+        """
+        """
+        election, cryptosys, validator, client, messages = self.get_context()
+       
+        failures = []
+        for index, msg in enumerate((
+            'Wrong or extra content',
+            'Malformed content',
+            'Cryptosystem mismatch',
+            'Election key mismatch',
+        )):
+            vote = client.mk_genuine_vote()
+            if index == 0:
+                vote.update({'extra_key': 0})
+            elif index == 1:
+                del vote['encrypted_ballot']
+            elif index == 2:
+                vote['encrypted_ballot']['modulus'] += 1
+            elif index == 3:
+                vote['encrypted_ballot']['public'] += 1    
+            failures.append((msg, vote))
+        return failures
 
     def test_vote_adaptment_failures(self):
-        pass
+        """
+        """
+        election, cryptosys, validator, client, messages = self.get_context()
+        
+        failures = self.mk_vote_adaptment_failures()
+        for err, vote in failures:
+            with self.subTest(err=err, vote=vote):
+                try:
+                    validator.adapt_vote(vote)
+                except InvalidVoteError:
+                    messages.append(f'[+] No adaptment: {err} successfully detected')
+                else:
+                    self.__fail(f'Wrong adaptment: {err} failed to be detected')
+
+
 
     def test_genuine_vote_validation_success(self):
         _, cryptosys, validator, client, messages = self.get_context()

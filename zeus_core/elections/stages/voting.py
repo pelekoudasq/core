@@ -22,18 +22,9 @@ class Voting(Stage):
 
     def _generate(self, *data):
         election = self.get_controller()
-        print()
-        print('total votes:', len(election.get_votes()))
-        print('audit requests:', len(election.get_audit_requests()))
-        print('audit publications:', len(election.get_audit_publications()))
         cast_vote = self.cast_vote
         for vote in election.load_submitted_votes():
             cast_vote(vote)
-        print()
-        print('total votes:', len(election.get_votes()))
-        print('audit requests:', len(election.get_audit_requests()))
-        print('audit publications:', len(election.get_audit_publications()))
-        print()
         return ()                               # Will not need to return anything
 
     def _update_controller(self, *generated):

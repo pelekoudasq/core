@@ -22,8 +22,7 @@ class ZeusTestElection(ZeusCoreElection):
                 vote = next(submitted_votes)
             except StopIteration:
                 break
-            else:
-                yield vote
+            yield vote
 
 def adapt_vote(cryptosys, vote, serialize=True):
     """
@@ -53,6 +52,11 @@ def adapt_vote(cryptosys, vote, serialize=True):
             'response': cast_exponent(response),
         }
     }
+    if 'audit_code' not in vote:
+        vote['audit_code'] = None
+    voter_secret = vote.get('voter_secret')
+    vote['voter_secret'] = cast_exponent(voter_secret) \
+        if voter_secret else None
     return vote
 
 from tests.elections.client import Client   # Put here to avoid circular import error
@@ -221,8 +225,14 @@ def trim_json(entity, length=16):
     """
     Returns a "copy" of the provided JSON with trimmed values for nice display
     """
-    trim_value = lambda value: int(f'{value}'[:length]) \
-        if type(value) is not str else f'{value}'[:length]
+    def trim_value(value, length=16):
+        if type(value) is int:
+            return int(f'{value}'[:length])
+        elif type(value) is str:
+            return f'{value}'[:length]
+        elif type(value) is None:
+            return ''
+            
     if type(entity) is list:
         trimmed = []
         for elem in entity:
