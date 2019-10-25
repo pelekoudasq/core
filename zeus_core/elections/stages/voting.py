@@ -194,7 +194,7 @@ class Voting(Stage):
         if not voter_cast_votes:
             previous_fingerprint = ''
         else:
-            previous_fingerprint = cast_votes[-1]
+            previous_fingerprint = voter_cast_votes[-1]
         try:
             election.validate_genuine_vote(vote)
         except InvalidVoteError as err:

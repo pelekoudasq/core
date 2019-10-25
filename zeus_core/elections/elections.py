@@ -1,9 +1,10 @@
 from abc import ABCMeta, abstractmethod
 
-from .abstracts import StageController
-from .stages import Uninitialized
+from .abstracts import StageController, Aborted
+from .stages import (Uninitialized, Creating, Voting, 
+        Mixing, Decrypting, Finished,)
 from .validations import Validator
-from .signatures import Signer, Verifier
+from .signatures import Signer
 
 
 class GenericAPI(object):
@@ -228,6 +229,8 @@ backend_apis = (GenericAPI, UninitializedAPI, CreatingAPI, VotingAPI,
     MixingAPI, DecryptingAPI, FinishedAPI, AbortedAPI,)
 
 class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metaclass=ABCMeta):
+    """
+    """
 
     def __init__(self, config, **kwargs):
         self.options = kwargs
@@ -262,3 +265,71 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
     def load_submitted_votes(self):
         """
         """
+
+    def load_data(self, stage):
+        """
+        """
+        data = []
+        stage_cls = stage.__class__ 
+        
+        if stage_cls is Uninitialized:
+            pass
+        elif stage_cls is Creating:
+            pass
+        elif stage_cls is Voting:
+            pass
+        elif stage_cls is Mixing:
+            pass
+        elif stage_cls is Decrypting:
+            pass
+        elif stage_cls is Finished:
+            pass
+        elif stage_cls is Aborted:
+            pass
+
+        return data
+
+    def load_methods(self, stage):
+        """
+        """
+        functionalities = []
+        stage_cls = stage.__class__
+        
+        if stage_cls is Uninitialized:
+            pass
+        elif stage_cls is Creating:
+            pass
+        elif stage_cls is Voting:
+            pass
+        elif stage_cls is Mixing:
+            pass
+        elif stage_cls is Decrypting:
+            pass
+        elif stage_cls is Finished:
+            pass
+        elif stage_cls is Aborted:
+            pass
+
+        for method in functionalities:
+            setattr(stage, method.__name__, method)
+
+    def update(self, *entities, stage):
+        """
+        """
+        stage_cls = stage.__class__ 
+
+        if stage_cls is Uninitialized:
+            pass
+        elif stage_cls is Creating:
+            pass
+        elif stage_cls is Voting:
+            pass
+        elif stage_cls is Mixing:
+            pass
+        elif stage_cls is Decrypting:
+            pass
+        elif stage_cls is Finished:
+            pass
+        elif stage_cls is Aborted:
+            pass
+    

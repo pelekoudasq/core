@@ -56,20 +56,24 @@ class Stage(object, metaclass=ABCMeta):
 
     def run(self):
         config = self.controller.get_config()
-
+        controller = self.get_controller()              #
         try:
             data = self._extract_data(config)
+            __data = controller.load_current_context()  # Return configs AND attach methods...
         except Abortion as err:
             self.abort(err)
             return
 
         try:
             entities = self._generate(*data)
+            __data = data                               # Remove finally this line
+            __entitities = self._generate(*__data)
         except Abortion as err:
             self.abort(err)
             return
 
         self._update_controller(*entities)
+        controller.update(*entities, stage=self)   # 
 
     def next(self):
         controller = self.get_controller()
@@ -118,7 +122,7 @@ class Aborted(FinalStage):
         print('sorry...:', self._get_message())
 
 
-class StageController(object):
+class StageController(object, metaclass=ABCMeta):
 
     def __init__(self, initial_cls, config):
         if not issubclass(initial_cls, Stage):
@@ -144,3 +148,37 @@ class StageController(object):
 
     def get_config(self):
         return self.config
+
+# ------------------------
+
+    def load_current_context(self):
+        """
+        Must return iterable
+        1. Load data (from election config 
+            or corresponding backend API) 
+        2. Load methods (attach methods from election 
+            or underlying crypto or underlying mixnet
+        3. Return data for elaboration
+        """
+        current_stage = self._get_current_stage()
+        
+        data = self.load_data(current_stage)
+        self.load_methods(current_stage)
+
+        return data
+    
+    @abstractmethod
+    def load_data(self, stage):
+        """
+        """
+
+    @abstractmethod
+    def load_methods(self, stage):
+        """
+        """
+
+    @abstractmethod
+    def update(self, *entities, stage):
+        """
+        """
+
