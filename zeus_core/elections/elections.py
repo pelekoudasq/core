@@ -1,3 +1,5 @@
+from abc import ABCMeta, abstractmethod
+
 from .abstracts import StageController
 from .stages import Uninitialized
 from .validations import Validator
@@ -225,7 +227,7 @@ class AbortedAPI(object): pass
 backend_apis = (GenericAPI, UninitializedAPI, CreatingAPI, VotingAPI,
     MixingAPI, DecryptingAPI, FinishedAPI, AbortedAPI,)
 
-class ZeusCoreElection(StageController, *backend_apis, Validator, Signer,):
+class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metaclass=ABCMeta):
 
     def __init__(self, config, **kwargs):
         self.options = kwargs
@@ -256,18 +258,7 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer,):
 
         super().__init__(Uninitialized, config)
 
+    @abstractmethod
     def load_submitted_votes(self):
-        from tests.elections.utils import mk_clients, mk_votes_from_clients
-        config_crypto = self.config['crypto']
-        voter_keys = self.get_voters()
-        nr_candidates = len(self.get_candidates())
-        clients = mk_clients(self)
-        votes, audit_requests, audit_votes = mk_votes_from_clients(clients)
-        submitted_votes = iter(audit_requests + votes + audit_votes)
-        while 1:
-            try:
-                vote = next(submitted_votes)
-            except StopIteration:
-                break
-            else:
-                yield vote
+        """
+        """

@@ -1,9 +1,29 @@
 import json
 from math import ceil
 from copy import deepcopy
-from zeus_core.elections.elections import ZeusCoreElection
+# from tests.elections.server import ZeusTestElection
+from zeus_core.elections import ZeusCoreElection
 from zeus_core.elections.stages import Uninitialized
 from tests.elections.sample_configs import config_1
+
+class ZeusTestElection(ZeusCoreElection):
+    """
+    Provides the most minimal concrete implementation of the
+    ZeusCoreElection abstract class for testing purposes
+    """
+    def load_submitted_votes(self):
+        """
+        """
+        clients = mk_clients(self)
+        votes, audit_requests, audit_votes = mk_votes_from_clients(clients)
+        submitted_votes = iter(audit_requests + votes + audit_votes)
+        while 1:
+            try:
+                vote = next(submitted_votes)
+            except StopIteration:
+                break
+            else:
+                yield vote
 
 def adapt_vote(cryptosys, vote, serialize=True):
     """
@@ -37,10 +57,10 @@ def adapt_vote(cryptosys, vote, serialize=True):
 
 from tests.elections.client import Client   # Put here to avoid circular import error
 
-
 # Election and election contect emulation
 
-def mk_election(config=config_1, candidates=None, dupl_candidates=False,
+def mk_election(election_cls=ZeusTestElection, config=config_1,
+        candidates=None, dupl_candidates=False,
         nr_voters=19, dupl_voters=False):
     """
     Emulates election over the provided config after complementing the latter
@@ -66,7 +86,7 @@ def mk_election(config=config_1, candidates=None, dupl_candidates=False,
         voters[1] = voters[0]
 
     config.update({'candidates': candidates, 'voters': voters})
-    return ZeusCoreElection(config)
+    return election_cls(config)
 
 
 def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,
@@ -75,8 +95,8 @@ def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,
     Emulates the situation exactly before casting votes (electoral body
     and submitted votes) with failure options for testing
     """
-    election = mk_election(config, candidates, dupl_candidates,
-        nr_voters, dupl_voters)
+    election = mk_election(ZeusTestElection, config,
+        candidates, dupl_candidates, nr_voters, dupl_voters)
     run_until_voting_stage(election)
     config_crypto = config['crypto']
     election_key = election.get_election_key()
