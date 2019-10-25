@@ -1,3 +1,5 @@
+from abc import ABCMeta, abstractmethod
+
 from .abstracts import StageController
 from .stages import Uninitialized
 from .validations import Validator
@@ -218,24 +220,24 @@ class VotingAPI(object):
 
 class MixingAPI(object): pass
 class DecryptingAPI(object): pass
-class FinalizedAPI(object): pass
+class FinishedAPI(object): pass
 class AbortedAPI(object): pass
 
 
 backend_apis = (GenericAPI, UninitializedAPI, CreatingAPI, VotingAPI,
-    MixingAPI, DecryptingAPI, FinalizedAPI, AbortedAPI,)
+    MixingAPI, DecryptingAPI, FinishedAPI, AbortedAPI,)
 
-class ZeusCoreElection(StageController, *backend_apis, Validator, Signer,):
+class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metaclass=ABCMeta):
 
     def __init__(self, config, **kwargs):
         self.options = kwargs
 
-        # Exported at stage Uninitialized
+        # Modified during stage Uninitialized
         self.cryptosys = None
         self.crypto_params = {}
         self.mixnet = None
 
-        # Exported at stage Creating
+        # Modified during stage Creating
         self.zeus_keypair = None
         self.zeus_private_key = None
         self.zeus_public_key = None
@@ -245,7 +247,7 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer,):
         self.voters = {}
         self.audit_codes = {}
 
-        # Exported at stage Voting
+        # Modified during stage Voting
         self.audit_requests = {}
         self.audit_votes = {}
         self.audit_publications = []
@@ -255,3 +257,8 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer,):
         self.excluded_voters = {}
 
         super().__init__(Uninitialized, config)
+
+    @abstractmethod
+    def load_submitted_votes(self):
+        """
+        """

@@ -11,7 +11,7 @@ pip install -r requirements
 ## Demo election
 
 ```shell
-python demo.py
+./demo
 ```
 
 ## Tests

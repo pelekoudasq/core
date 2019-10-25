@@ -3,7 +3,7 @@ from .creating import Creating
 from .voting import Voting
 from .mixing import Mixing
 from .mixing import Decrypting
-from .finalized import Finalized
+from .finished import Finished
 
 __all__ = (
     'Uninitialized',
@@ -11,5 +11,5 @@ __all__ = (
     'Voting',
     'Mixing',
     'Decrypting',
-    'Finalized'
+    'Finished'
 )

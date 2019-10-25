@@ -1,9 +1,29 @@
 import json
 from math import ceil
 from copy import deepcopy
-from zeus_core.elections.elections import ZeusCoreElection
+# from tests.elections.server import ZeusTestElection
+from zeus_core.elections import ZeusCoreElection
 from zeus_core.elections.stages import Uninitialized
 from tests.elections.sample_configs import config_1
+
+class ZeusTestElection(ZeusCoreElection):
+    """
+    Provides the most minimal concrete implementation of the
+    ZeusCoreElection abstract class for testing purposes
+    """
+    def load_submitted_votes(self):
+        """
+        """
+        clients = mk_clients(self)
+        votes, audit_requests, audit_votes = mk_votes_from_clients(clients)
+        submitted_votes = iter(audit_requests + votes + audit_votes)
+        while 1:
+            try:
+                vote = next(submitted_votes)
+            except StopIteration:
+                break
+            else:
+                yield vote
 
 def adapt_vote(cryptosys, vote, serialize=True):
     """
@@ -35,33 +55,103 @@ def adapt_vote(cryptosys, vote, serialize=True):
     }
     return vote
 
-def trim_json(entity, length=16):
-    """
-    Returns a "copy" of the provided JSON with trimmed values for nice display
-    """
-    trim_value = lambda value: int(f'{value}'[:length]) \
-        if type(value) is not str else f'{value}'[:length]
-    if type(entity) is list:
-        trimmed = []
-        for elem in entity:
-            if type(elem) in (list, dict):
-                trimmed.append(trim_json(elem))
-            else:
-                trimmed.append(trim_value(elem))
-    elif type(entity) is dict:
-        trimmed = {}
-        for key, value in entity.items():
-            trimmed[key] = trim_value(value) if type(value) is not dict \
-                else trim_json(value, length=length)
-    return trimmed
+from tests.elections.client import Client   # Put here to avoid circular import error
 
-def display_json(entity, length=16, trimmed=True):
+# Election and election contect emulation
+
+def mk_election(election_cls=ZeusTestElection, config=config_1,
+        candidates=None, dupl_candidates=False,
+        nr_voters=19, dupl_voters=False):
     """
-    Displays JSON object (trims long values by default)
+    Emulates election over the provided config after complementing the latter
+    with voters and candidates. Provides failure options for testing.
     """
-    to_display = trim_json(entity, length=length) \
-        if trimmed else entity
-    print(json.dumps(to_display, sort_keys=False, indent=4))
+    if candidates is None:
+        candidates = [
+            'Party-A: 0-2, 0',
+            'Party-A: Candidate-0000',
+            'Party-A: Candidate-0001',
+            'Party-A: Candidate-0002',
+            'Party-A: Candidate-0003',
+            'Party-B: 0-2, 1',
+            'Party-B: Candidate-0000',
+            'Party-B: Candidate-0001',
+            'Party-B: Candidate-0002',
+        ]
+    if len(candidates) >= 2 and dupl_candidates:
+        candidates[1] = candidates[0]
+
+    voters = [(f'Voter-{str(i).zfill(8)}', 1) for i in range(nr_voters)]
+    if nr_voters >= 2 and dupl_voters:
+        voters[1] = voters[0]
+
+    config.update({'candidates': candidates, 'voters': voters})
+    return election_cls(config)
+
+
+def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,
+        nr_voters=19, dupl_voters=False, with_votes=False):
+    """
+    Emulates the situation exactly before casting votes (electoral body
+    and submitted votes) with failure options for testing
+    """
+    election = mk_election(ZeusTestElection, config,
+        candidates, dupl_candidates, nr_voters, dupl_voters)
+    run_until_voting_stage(election)
+    config_crypto = config['crypto']
+    election_key = election.get_election_key()
+    nr_candidates = len(election.get_candidates())
+    voter_keys = election.get_voters()
+    clients = mk_clients(election)
+    if with_votes:
+        votes, audit_requests, audit_votes = mk_votes_from_clients(clients)
+        return election, clients, votes, audit_requests, audit_votes
+    return election, clients
+
+
+def mk_clients(election):
+    """
+    Emulates the electoral body (one client for each stored voter key)
+    """
+    config_crypto = election.config['crypto']
+    voter_keys = election.get_voters()
+    nr_candidates = len(election.get_candidates())
+    clients = []
+    election_key = election.get_election_key()
+    for voter_key in voter_keys:
+        audit_codes = election.get_voter_audit_codes(voter_key)
+        client = Client(config_crypto, election_key, nr_candidates,
+            voter_key, audit_codes)
+        clients.append(client)
+    return clients
+
+
+def mk_votes_from_clients(clients):
+    """
+    Emulates votes submitted by the totality of the electoral body:
+    about half of them will be genuine votes the rest half will be
+    audit-requests (accompanied by corresponding audit publications)
+    """
+    votes = []
+    audit_requests = []
+    audit_votes = []
+    nr_clients = len(clients)
+    for count, client in enumerate(clients):
+        voter_key = client.voter_key
+        audit_codes = client.audit_codes
+        if count < ceil(nr_clients / 2):
+            vote = client.mk_genuine_vote()
+            votes.append(vote)
+        else:
+            audit_vote = client.mk_audit_vote()
+            audit_votes.append(audit_vote)
+            audit_request = deepcopy(audit_vote)
+            del audit_request['voter_secret']
+            audit_requests.append(audit_request)
+    return votes, audit_requests, audit_votes
+
+
+# Running until stage
 
 def run_until_uninitialized_stage(election):
     """
@@ -106,88 +196,43 @@ def run_until_decrypting_stage(election):
     decrypting = mixing.next()
     return decrypting
 
-def run_until_finalized_stage(election):
+def run_until_finished_stage(election):
     """
-    Runs the provided election until stage finalized
+    Runs the provided election until stage finished
     """
     decrypting = run_until_decrypting_stage(election)
     decrypting.run()
-    finalized = decrypting.next()
-    return finalized
+    finished = decrypting.next()
+    return finished
 
-def mk_election(config=config_1, candidates=None, dupl_candidates=False,
-        nr_voters=19, dupl_voters=False):
+
+# JSON utils
+
+def display_json(entity, length=16, trimmed=True):
     """
-    Returns an election object over the provided config after
-    complementing the latter with voters and candidates
+    Displays JSON object (trims long values by default)
     """
-    if candidates is None:
-        candidates = [
-            'Party-A: 0-2, 0',
-            'Party-A: Candidate-0000',
-            'Party-A: Candidate-0001',
-            'Party-A: Candidate-0002',
-            'Party-A: Candidate-0003',
-            'Party-B: 0-2, 1',
-            'Party-B: Candidate-0000',
-            'Party-B: Candidate-0001',
-            'Party-B: Candidate-0002',
-        ]
-    if len(candidates) >= 2 and dupl_candidates:
-        candidates[1] = candidates[0]
-
-    voters = [(f'Voter-{str(i).zfill(8)}', 1) for i in range(nr_voters)]
-    if nr_voters >= 2 and dupl_voters:
-        voters[1] = voters[0]
-
-    config.update({'candidates': candidates, 'voters': voters})
-    return ZeusCoreElection(config=config)
+    to_display = trim_json(entity, length=length) \
+        if trimmed else entity
+    print(json.dumps(to_display, sort_keys=False, indent=4))
 
 
-from tests.elections.client import Client
-
-def mk_votes_from_clients(clients):
+def trim_json(entity, length=16):
     """
+    Returns a "copy" of the provided JSON with trimmed values for nice display
     """
-    votes = []
-    audit_requests = []
-    audit_votes = []
-    nr_clients = len(clients)
-    for count, client in enumerate(clients):
-        voter_key = client.voter_key
-        audit_codes = client.audit_codes
-        if count < ceil(nr_clients / 2):
-            vote = client.mk_genuine_vote()
-            votes.append(vote)
-        else:
-            audit_vote = client.mk_audit_vote()
-            audit_votes.append(audit_vote)
-            audit_request = deepcopy(audit_vote)
-            del audit_request['voter_secret']
-            audit_requests.append(audit_request)
-    return votes, audit_requests, audit_votes
-
-
-def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,
-        nr_voters=19, dupl_voters=False, with_votes=False):
-    """
-    Mocks voting stage setup: runs election over the provided configs until
-    voting stage; returns the election along with voters (clients) and
-    votes, if with_votes=True
-    """
-    election = mk_election(config, candidates, dupl_candidates, nr_voters, dupl_voters)
-    run_until_voting_stage(election)
-    config_crypto = config['crypto']
-    election_key = election.get_election_key()
-    nr_candidates = len(election.get_candidates())
-    voter_keys = election.get_voters()
-    clients = []
-    for voter_key in voter_keys:
-        audit_codes = election.get_voter_audit_codes(voter_key)
-        client = Client(config_crypto, election_key, nr_candidates,
-            voter_key, audit_codes)
-        clients.append(client)
-    if with_votes:
-        votes, audit_requests, audit_votes = mk_votes_from_clients(clients)
-        return election, clients, votes, audit_requests, audit_votes
-    return election, clients
+    trim_value = lambda value: int(f'{value}'[:length]) \
+        if type(value) is not str else f'{value}'[:length]
+    if type(entity) is list:
+        trimmed = []
+        for elem in entity:
+            if type(elem) in (list, dict):
+                trimmed.append(trim_json(elem))
+            else:
+                trimmed.append(trim_value(elem))
+    elif type(entity) is dict:
+        trimmed = {}
+        for key, value in entity.items():
+            trimmed[key] = trim_value(value) if type(value) is not dict \
+                else trim_json(value, length=length)
+    return trimmed

@@ -2,7 +2,7 @@ from zeus_core.elections.abstracts import FinalStage
 from zeus_core.elections.exceptions import Abortion
 
 
-class Finalized(FinalStage):
+class Finished(FinalStage):
 
     def _extract_data(self, config):
         return ()
