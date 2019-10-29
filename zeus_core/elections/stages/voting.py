@@ -253,12 +253,6 @@ class Voting(Stage):
                 raise VoteRejectionError(err)
         return voter_audit_code
 
-    def exclude_voter(voter_key, reason=''):
-        """
-        """
-        election = self.get_controller()
-        election.store_excluded_voter(voter_key, reason)
-
 
     # Message customization
 

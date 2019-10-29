@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from itertools import repeat
 
 from .abstracts import StageController, Aborted
 from .stages import (Uninitialized, Creating, Voting,
@@ -118,7 +119,7 @@ class GenericAPI(object):
     def get_vote(self, fingerprint):
         return self.votes.get(fingerprint)
 
-    # def get_vote_index(self):
+    # def do_get_vote_index(self):
     def get_cast_vote_index(self):
         # return list(self.cast_vote_index)
         return self.cast_vote_index
@@ -238,7 +239,11 @@ class VotingAPI(object):
         self.excluded_voters[voter_key] = reason
 
 
-class MixingAPI(object): pass
+class MixingAPI(object):
+
+    def store_mix(self, mix):
+        self.mixes.append(mix)
+
 class DecryptingAPI(object): pass
 class FinishedAPI(object): pass
 class AbortedAPI(object): pass
@@ -272,7 +277,6 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         self.zeus_keypair = None
         self.zeus_private_key = None
         self.zeus_public_key = None
-        # self.trustees = {}
         self.trustees = dict()
         self.election_key = None
         self.candidates = []
@@ -287,6 +291,9 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         self.votes = {}
         self.cast_votes = {}
         self.excluded_voters = {}
+
+        # Modified during stage Mixing
+        self.mixes = []
 
         super().__init__(Uninitialized, config)
 
@@ -363,7 +370,8 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         elif stage_cls is Voting:
             pass
         elif stage_cls is Mixing:
-            pass
+            votes_for_mixing, _ = self.extract_votes_for_mixing()
+            self.store_mix(votes_for_mixing)
         elif stage_cls is Decrypting:
             pass
         elif stage_cls is Finished:
@@ -407,7 +415,6 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
             pass
 
 
-
     def do_assert_stage(self, label):
         """
         """
@@ -418,8 +425,97 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
                 expected_stage_cls.__name__, actual_stage_cls.__name__)
             raise AssertionError(err)
 
+
     def invalidate_election_key():
         self.set_election_key(None)
+
+
+    def exclude_voter(voter_key, reason=''):
+        """
+        """
+        current_stage_cls = self._get_current_stage().__class__
+        labels = self.__class__.labels
+        if current_stage_cls in (labels[label] for label in
+            ('Mixing', 'Decrypting', 'Finished',)):
+            err = f'Cannot exclude voter at stage {current_stage_cls.__name__}'
+        self.store_excluded_voter(voter_key, reason)
+
+
+    def extract_votes_for_mixing(self):
+        """
+        """
+        mix = {}
+
+        cast_vote_index = self.get_cast_vote_index()
+        nr_votes = len(cast_vote_index)
+        scratch = list([None]) * nr_votes
+        counted = list([None]) * nr_votes
+
+        get_vote = self.get_vote
+        vote_count = 0
+
+        excluded_votes = set()
+        excluded_voters = self.get_excluded_voters()
+        update = excluded_votes.update
+        for voter_key, reason in excluded_voters.items():
+            update(self.get_cast_votes(voter_key))
+
+        for i, fingerprint in enumerate(cast_vote_index):
+            vote = get_vote(fingerprint)
+            index = vote['index']
+            if i != index:
+                err = f'Vote index mismatch {i} != {index}'
+                raise AssertionError(err) # ----------------> Change exception ?
+            if fingerprint in excluded_votes:
+                continue
+            voter_key = vote['voter']
+            voter_name, voter_weight = self.get_voter(voter_key)
+            enc_ballot = vote['encrypted_ballot']['ciphertext']
+            _vote = [enc_ballot['alpha'], enc_ballot['beta'], voter_weight]
+            scratch[i] = _vote
+            counted[i] = fingerprint
+            previous = vote['previous']
+            if not previous:
+                vote_count += 1
+                continue
+            previous_vote = get_vote(previous)
+            previous_index = previous_vote['index']
+            if previous_index >= index or scratch[previous_index] is None:
+                err = 'Inconsistent index!'
+                raise AssertionError(err) # ----------------> Change exception ?
+            if previous_vote['voter'] != vote['voter']:
+                err = f"Voter mismatch: {vote['voter']} vs {previous_vote['voter']}"
+                raise AssertionError(err)
+            scratch[previous_index] = None
+            counted[previous_index] = None
+
+        votes_for_mixing = []
+        counted_list = []
+        counted_votes = 0
+        extend_votes_for_mixing = votes_for_mixing.extend
+        extend_counted_list = counted_list.extend
+        for c, v in zip(counted, scratch):
+            if (c, v) == (None, None):
+                continue
+            elif None in (c, v):
+                raise AssertionError() # -------------------> Change exception ?
+            counted_votes += 1
+            alpha, beta, weight = v
+            vote = [alpha, beta]
+            extend_votes_for_mixing(repeat(vote, weight))
+            extend_counted_list(repeat(c, weight))
+        if counted_votes != vote_count:
+            err = f'Vote count mismatch: {counted_votes} != {vote_count}'
+            raise AssertionError(err) # --------------------> Change exception ?
+
+        mix.update(self.get_crypto_params())
+        mix.update({
+            'public': self.get_election_key().to_int(),
+            'original_ciphers': votes_for_mixing,
+            'mixed_ciphers': votes_for_mixing,
+        })
+        return mix, counted_list
+
 
     # Individual trustee handling
 

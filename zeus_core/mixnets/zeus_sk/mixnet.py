@@ -21,25 +21,28 @@ class Zeus_sk(Mixnet):
 
     __slots__ = ('__cryptosys', '__group', '__nr_rounds', '__nr_mixes', '__election_key')
 
+
     def __init__(self, config, election_key=None):
         """
         Constructs a Sako-Killian mixnet
 
-        Provided `config` should be a structure of the form
+        Provided `config` be a structure of the form
 
-        {'cryptosys': ModPrimeCrypto, 'nr_rounds': int, 'nr_mixes': int}
+        {'cryptosys': <class>, 'nr_rounds': int, 'nr_mixes': int}
 
-        (otherwise a `MixnetError` will be raised) where `cryptosys` is the
-        mixnet's underlying ElGamal cryptosys, 'nr_rounds' the number of
-        rounds to be performed at each mixing and 'nr_mixes' the fixed length
-        of cipher-collections to mix. If the provided `cryptosys` is not of
-        type ModPrimeCrypto, then a `MixnetError` will be raised.
+        where
+            - the value of `cryptosys` refers to the underlying cryptosystem
+              and its class should be contained in `supported_crypto`
+            - 'nr_rounds' is the number of rounds to be performed at each mixing
+            - 'nr_mixes' is the fixed length of cipher-collections to mix.
 
         Provided `election_key` should be a structure of the form
 
-        {'value': ModPrimElement, 'proof': None}
+        {'value': <GroupElement>, 'proof': None}
 
-        thought of as the fixed public key of the elections' taking place.
+        thought of as the fixed public key of the running election.
+
+        ..raises MixnetError:: if the provided config is not as prescribed
 
         :type config: dict
         :type election_key: dict
@@ -51,7 +54,6 @@ class Zeus_sk(Mixnet):
         except KeyError:
             err = 'Malformed parameters for Zeus SK mixnet'
             raise MixnetError(err)
-
         if not self.supports_cryptosys(cryptosys):
             err = 'Provided crypto type is not supported by Zeus SK mixnet'
             raise MixnetError(err)
@@ -59,7 +61,7 @@ class Zeus_sk(Mixnet):
         # Crypto parameters
 
         self.__cryptosys = cryptosys
-        self.__group = self.__cryptosys.group
+        self.__group = cryptosys.group
 
         parameters = cryptosys.parameters()
         self.__modulus = parameters['modulus']
@@ -90,9 +92,6 @@ class Zeus_sk(Mixnet):
     @property
     def cryptosys(self):
         """
-        Returns the mixnet's underlying cryptosys
-
-        :rtype: ModPrimeCrypto
         """
         return self.__cryptosys
 
@@ -226,7 +225,7 @@ class Zeus_sk(Mixnet):
     #   }                                                                                     #
     #                                                                                         #
     #   where 'modulus', 'order', 'generator' are thought of as the underying                 #
-    #   cryptosys's parameters and 'public' as the mixnet's election key                   #
+    #   cryptosys's parameters and 'public' as the mixnet's election key                      #
     #                                                                                         #
     ###########################################################################################
 
@@ -242,28 +241,25 @@ class Zeus_sk(Mixnet):
         :type cipher_collection: dict
         :rtype: dict
         """
-        res = {}
+        output = {}
 
-        res['modulus'] = self.__modulus
-        res['order'] = self.__order
-        res['generator'] = self.__generator
-        res['public'] = self.__election_key
-
-        res['original_ciphers'] = [(c['alpha'], c['beta'])
-            for c in cipher_collection['original_ciphers']]
-
+        output['modulus'] = self.__modulus
+        output['order'] = self.__order
+        output['generator'] = self.__generator
+        output['public'] = self.__election_key
+        output['original_ciphers'] = [(cipher['alpha'], cipher['beta'])
+                for cipher in cipher_collection['original_ciphers']]
         try:
-            res['mixed_ciphers'] = [(c['alpha'], c['beta'])
-                for c in cipher_collection['mixed_ciphers']]
+            output['mixed_ciphers'] = [(cipher['alpha'], cipher['beta'])
+                for cipher in cipher_collection['mixed_ciphers']]
         except KeyError:
-            res['mixed_ciphers'] = res['original_ciphers']
-
+            output['mixed_ciphers'] = output['original_ciphers']
         try:
-            res['proof'] = cipher_collection['proof']
+            output['proof'] = cipher_collection['proof']
         except KeyError:
             pass
 
-        return res
+        return output
 
     def _extract_cipher_mix(self, cipher_mix):
         """
@@ -275,28 +271,28 @@ class Zeus_sk(Mixnet):
         :type cipher_mix: dict
         :rtype: dict
         """
-        res = {}
+        output = {}
 
-        res['modulus'] = self.__modulus
-        res['order'] = self.__order
-        res['generator'] = self.__generator
-        res['public'] = self.__election_key
-
+        output['modulus'] = self.__modulus
+        output['order'] = self.__order
+        output['generator'] = self.__generator
+        output['public'] = self.__election_key
         for key in ('original_ciphers', 'mixed_ciphers',):
-            res[key] = [{'alpha': c[0], 'beta': c[1]} for c in cipher_mix[key]]
-
+            output[key] = [{'alpha': c[0], 'beta': c[1]} for c in cipher_mix[key]]
         try:
-            res['proof'] = cipher_mix['proof']
+            output['proof'] = cipher_mix['proof']
         except KeyError:
             pass
 
-        return res
+        return output
 
 
     # Core
 
     def mix_ciphers(self, original_mix, teller=_teller, nr_parallel=0):
         """
+        Admits:
+
         {
             'modulus': mpz,
             'order': mpz,
@@ -306,6 +302,8 @@ class Zeus_sk(Mixnet):
             'mixed_ciphers': list[(ModPrimeElement, ModPrimeElement)]
             ...
         }
+
+        Returns:
 
         {
             'modulus': mpz,
@@ -325,10 +323,9 @@ class Zeus_sk(Mixnet):
         :type original_mix: dict
         :rtype: dict
         """
-        nr_rounds = self.__nr_rounds
-
         cipher_mix = {}
 
+        nr_rounds = self.__nr_rounds
         order = self.__order
         public = self.__election_key
         original_ciphers = original_mix['mixed_ciphers']
@@ -375,8 +372,8 @@ class Zeus_sk(Mixnet):
                 collections = [channel.receive(wait=1) for channel in channels]
                 _async.shutdown()
             else:
-                collections = [shuffle_ciphers(original_ciphers, public, encrypt_func, teller=teller)
-                    for _ in range(nr_rounds)]
+                collections = [shuffle_ciphers(original_ciphers,
+                    public, encrypt_func, teller=teller) for _ in range(nr_rounds)]
 
             unzipped = [list(x) for x in zip(*collections)]
             cipher_collections, offset_collections, random_collections = unzipped

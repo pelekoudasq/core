@@ -36,6 +36,16 @@ class TestVoting(StageTester, unittest.TestCase):
         return (election, config, stage,
             votes, audit_requests, audit_votes, messages,)
 
+    def clear_election(self):
+        election, _, _, _ = self.get_context()
+        election.audit_requests = {}
+        election.audit_votes = {}
+        election.audit_publications = []
+        election.cast_vote_index = []
+        election.votes = {}
+        election.cast_votes = {}
+        election.excluded_voters = {}
+
     # def setUp(self):
     #     cls = self.__class__
     #
@@ -94,6 +104,7 @@ class TestVoting(StageTester, unittest.TestCase):
 
 
     def test_submit_genuine_vote_success(self):
+        self.clear_election()
         election, _, voting, votes, _, _, messages = \
             self.get_voting_context()
         messages.append('\nTesting genuine vote submission\n')
@@ -189,6 +200,19 @@ class TestVoting(StageTester, unittest.TestCase):
         except AssertionError:
             err = f'Excluded voters were not: {awaited}'
             raise AssertionError(f'[-] {err}\n')
+
+    def step_2(self):
+        election, _, voting, votes, _, _, messages = \
+            self.get_voting_context()
+        submit_genuine_vote = voting.submit_genuine_vote
+        get_voter_cast_votes = election.get_voter_cast_votes
+        get_vote = election.get_vote
+        for vote in votes:
+            vote = election.adapt_vote(vote)
+            (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
+                extract_vote(vote)
+            submit_genuine_vote(fingerprint, voter_key, vote)
+
 
 
 if __name__ == '__main__':
