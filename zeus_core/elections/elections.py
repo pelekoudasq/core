@@ -359,7 +359,7 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
                 cryptosys._combine_public_keys,
                 cryptosys._set_public_key,
                 cryptosys.validate_public_key,
-                cryptosys.deserialize_public_key,])
+                cryptosys.deserialize_trustees,])
         elif stage_cls is Voting:
             pass
         elif stage_cls is Mixing:

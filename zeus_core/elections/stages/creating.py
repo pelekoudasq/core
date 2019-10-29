@@ -107,14 +107,3 @@ class Creating(Stage):
         voters = new_voters
 
         return voters, audit_codes
-
-    def deserialize_trustees(self, trustees):
-        """
-        """
-        deserialize_public_key = self.deserialize_public_key
-        deserialized = []
-        append = deserialized.append
-        for trustee in trustees:
-            trustee = deserialize_public_key(trustee['value'], trustee['proof'])
-            append(trustee)
-        return deserialized

@@ -78,6 +78,15 @@ class KeyManager(object, metaclass=ABCMeta):
         """
         return public_key['proof']
 
+    def _combine_public_keys(self, initial, public_keys):
+        """
+        Assumes provided keys in the form of group elements
+        """
+        combined = initial
+        for public_key in public_keys:
+            combined = combined * public_key
+        return combined
+
 
 class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
     """
@@ -149,6 +158,17 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
     def hex_to_element(self, hex_string):
         """
         """
+
+    def deserialize_trustees(self, trustees):
+        """
+        """
+        deserialize_public_key = self.deserialize_public_key
+        deserialized = []
+        append = deserialized.append
+        for trustee in trustees:
+            trustee = deserialize_public_key(trustee['value'], trustee['proof'])
+            append(trustee)
+        return deserialized
 
     def serialize_encrypted_ballot(self, encrypted_ballot):
         """
