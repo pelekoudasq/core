@@ -93,6 +93,7 @@ class Stage(object, metaclass=ABCMeta):
     def _generate(self, *data):
         """
         """
+        # Must return iterable
 
     # @abstractmethod
     # def _update_controller(self, *generated):

@@ -17,18 +17,12 @@ class Voting(Stage):
     def __init__(self, controller):
         super().__init__(controller, next_stage_cls=Mixing)
 
-    def _extract_data(self, config):
-        return ()                               # Will not need to extract any config
-
     def _generate(self, *data):
         election = self.get_controller()
         cast_vote = self.cast_vote
         for vote in election.load_submitted_votes():
             cast_vote(vote)
         return ()                               # Will not need to return anything
-
-    def _update_controller(self, *generated):
-        pass                                    # Will not need to update anything
 
 
     def cast_vote(self, vote):

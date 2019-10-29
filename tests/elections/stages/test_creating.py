@@ -62,16 +62,18 @@ class TestCreating(StageTester, unittest.TestCase):
         _, config, creating, messages = self.get_context()
 
         trustees = config['trustees']
+        deserialized_trustees = creating.deserialize_trustees(trustees)
         validated_trustees = creating.validate_trustees(trustees)
-        assert validated_trustees == creating.deserialize_trustees(trustees)
+        expected_trustees = dict(((trustee['value'], trustee['proof']) for trustee in deserialized_trustees))
+        assert validated_trustees == expected_trustees#creating.deserialize_trustees(trustees)
         to_display = trim_json([{
-            'value': trustee['value'].to_int(),
+            'value': public_key.to_int(),
             'proof': {
-                'commitment': trustee['proof']['commitment'].to_int(),
-                'challenge': int(trustee['proof']['challenge']),
-                'response': int(trustee['proof']['response']),
+                'commitment': proof['commitment'].to_int(),
+                'challenge': int(proof['challenge']),
+                'response': int(proof['response']),
             }
-        } for trustee in validated_trustees])
+        } for public_key, proof in validated_trustees.items()])
         messages.append('[+] Successfully created: trustees: %s' %
             json.dumps(to_display, sort_keys=False, indent=4))
 
@@ -290,10 +292,10 @@ class TestCreating(StageTester, unittest.TestCase):
 
         trustees = election.get_trustees()
         try:
-            assert trustees != {}
+            assert trustees != dict()
             messages.append('[+] trustees: \n%s\n' % '\n'.join(22 * ' ' +
-                '%s...' % ('%x' % trustee['value'].value)[:32]
-                    for trustee in trustees))
+                '%s...' % ('%x' % trustee.value)[:32]
+                    for trustee in trustees.keys()))
         except AssertionError:
             err = "No trustees have been created"
             messages.append(f'[-] {err}\n')
@@ -301,8 +303,8 @@ class TestCreating(StageTester, unittest.TestCase):
 
         hex_trustee_keys = election.get_hex_trustee_keys()
         try:
-            hexified_trustees = list('%x' % trustee['value'].value
-                for trustee in trustees)
+            hexified_trustees = list('%x' % trustee.value
+                for trustee in trustees.keys())
             hexified_trustees.sort()
             assert hex_trustee_keys == hexified_trustees
             messages.append('[+] Trustee keys matched')

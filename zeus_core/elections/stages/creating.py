@@ -32,6 +32,19 @@ class Creating(Stage):
             raise Abortion(err)
         return zeus_keypair
 
+    def validate_trustees(self, trustees):
+        trustees = self.deserialize_trustees(trustees)
+        validate_public_key = self.validate_public_key
+        new_trustees = dict()
+        for trustee in trustees:
+            if not validate_public_key(trustee):
+                err = 'Invalid trustee detected: %x' % trustee['value'].value
+                raise Abortion(err)
+            public_key = trustee['value']
+            proof = trustee['proof']
+            new_trustees[public_key] = proof
+        return new_trustees
+
     def compute_election_key(self, trustees, zeus_keypair):
         public_shares = self.get_public_shares(trustees)
         zeus_public_key = self._get_public_value(zeus_keypair)
@@ -39,14 +52,11 @@ class Creating(Stage):
         election_key = self._set_public_key(combined)
         return election_key
 
-    def validate_trustees(self, trustees):
-        trustees = self.deserialize_trustees(trustees)
-        validate_public_key = self.validate_public_key
-        for trustee in trustees:
-            if not validate_public_key(trustee):
-                err = 'Invalid trustee detected: %x' % trustee['value'].value
-                raise Abortion(err)
-        return trustees
+    def get_public_shares(self, trustees):
+        get_key_value = self.get_key_value
+        public_shares = [get_key_value(public_key)
+            for public_key in trustees.keys()]
+        return public_shares
 
     def create_candidates(self, candidates):
         if not candidates:
@@ -103,23 +113,8 @@ class Creating(Stage):
         """
         deserialize_public_key = self.deserialize_public_key
         deserialized = []
+        append = deserialized.append
         for trustee in trustees:
             trustee = deserialize_public_key(trustee['value'], trustee['proof'])
-            deserialized.append(trustee)
+            append(trustee)
         return deserialized
-
-
-    # def validate_election_key(self, election_key, trustees, zeus_keypair):
-    #     election = self.get_controller()
-    #     cryptosys = election.get_cryptosys()
-    #
-    #     election_key = cryptosys.get_key_value(election_key)
-    #     test_key = cryptosys.compute_election_key(trustees, zeus_keypair)
-    #     return election_key == cryptosys.get_key_value(test_key)
-    #
-    # def reprove_trustee():
-    #     pass
-    #
-    # def invalidate_election_key():
-    #     election = self.get_controller()
-    #     election.set_election_key(None)
