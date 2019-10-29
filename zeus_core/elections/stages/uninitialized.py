@@ -13,28 +13,11 @@ class Uninitialized(Stage):
     def __init__(self, controller):
         super().__init__(controller, next_stage_cls=Creating)
 
-    def _extract_data(self, config):
-        try:
-            crypto_cls = config['crypto']['cls']
-            crypto_config = config['crypto']['config']
-            mixnet_cls = config['mixnet']['cls']
-            mixnet_config = config['mixnet']['config']
-        except KeyError as e:
-            err = f'Incomplete election config: missing {e}'
-            raise Abortion(err)
-
-        return crypto_cls, crypto_config, mixnet_cls, mixnet_config
-
     def _generate(self, crypto_cls, crypto_config, mixnet_cls, mixnet_config):
         cryptosys = self.init_cryptosys(crypto_cls, crypto_config)
         mixnet = self.init_mixnet(mixnet_cls, mixnet_config, cryptosys)
 
         return cryptosys, mixnet
-
-    def _update_controller(self, cryptosys, mixnet):
-        election = self.get_controller()
-        election.set_cryptosys(cryptosys)
-        election.set_mixnet(mixnet)
 
     # ---------
 

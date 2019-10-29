@@ -20,6 +20,7 @@ class TestUninitialized(StageTester, unittest.TestCase):
         election = mk_election()
         cls.election = election
         run_until_uninitialized_stage(election)
+        election.load_current_context()
         cls.stage = election._get_current_stage()
 
 

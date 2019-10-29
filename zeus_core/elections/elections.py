@@ -1,9 +1,10 @@
 from abc import ABCMeta, abstractmethod
 
-from .abstracts import StageController
-from .stages import Uninitialized
+from .abstracts import StageController, Aborted
+from .stages import (Uninitialized, Creating, Voting,
+        Mixing, Decrypting, Finished,)
 from .validations import Validator
-from .signatures import Signer, Verifier
+from .signatures import Signer
 
 
 class GenericAPI(object):
@@ -37,6 +38,20 @@ class GenericAPI(object):
 
     def get_trustees(self):
         return self.trustees
+
+    def get_trustee(self, public_key):
+        """
+        """
+        return self.trustees[public_key]
+
+    def get_public_shares(self):
+        """
+        """
+        trustees = self.trustees
+        get_key_value = self.get_cryptosys().get_key_value
+        public_shares = [get_key_value(public_key)
+            for public_key in trustees.keys()]
+        return public_shares
 
     def get_hex_trustee_keys(self):
         """
@@ -160,9 +175,14 @@ class CreatingAPI(object):
 
     def set_trustees(self, trustees):
         self.trustees = trustees
-        self.hex_trustee_keys = list(trustee['value'].to_hex()
-            for trustee in trustees)
+        self.hex_trustee_keys = list(public_key.to_hex()
+            for public_key in trustees.keys())
         self.hex_trustee_keys.sort()
+
+    def store_trustee(self, trustee):
+        public_key = trustee['value']
+        proof = trustee['proof']
+        self.trustees[public_key] = proof
 
     def set_election_key(self, election_key):
         cryptosys = self.get_cryptosys()
@@ -228,6 +248,17 @@ backend_apis = (GenericAPI, UninitializedAPI, CreatingAPI, VotingAPI,
     MixingAPI, DecryptingAPI, FinishedAPI, AbortedAPI,)
 
 class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metaclass=ABCMeta):
+    """
+    """
+
+    labels = {'UNINITIALIZED': Uninitialized,
+              'CREATING': Creating,
+              'VOTING': Voting,
+              'MIXING': Mixing,
+              'DECRYPTING': Decrypting,
+              'FINISHED': Finished,
+              'ABORTED': Aborted,}
+
 
     def __init__(self, config, **kwargs):
         self.options = kwargs
@@ -241,7 +272,8 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         self.zeus_keypair = None
         self.zeus_private_key = None
         self.zeus_public_key = None
-        self.trustees = {}
+        # self.trustees = {}
+        self.trustees = dict()
         self.election_key = None
         self.candidates = []
         self.voters = {}
@@ -258,7 +290,145 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
 
         super().__init__(Uninitialized, config)
 
+
+    # Stage controller implementation
+
     @abstractmethod
     def load_submitted_votes(self):
         """
         """
+
+    def load_data(self, stage):
+        """
+        """
+        config = self.config
+        stage_cls = stage.__class__
+        data = []
+
+        if stage_cls is Uninitialized:
+            try:
+                crypto_cls = config['crypto']['cls']
+                crypto_config = config['crypto']['config']
+                mixnet_cls = config['mixnet']['cls']
+                mixnet_config = config['mixnet']['config']
+            except KeyError as e:
+                err = f'Incomplete election config: missing {e}'
+                raise Abortion(err)
+            data = crypto_cls, crypto_config, mixnet_cls, mixnet_config
+        elif stage_cls is Creating:
+            try:
+                zeus_private_key = config['zeus_private_key']
+            except KeyError:
+                zeus_private_key = None
+            try:
+                trustees = config['trustees']
+                candidates = config['candidates']
+                voters = config['voters']
+            except KeyError as e:
+                err = f'Incomplete election config: missing {e}'
+                raise Abortion(err)
+            data = zeus_private_key, trustees, candidates, voters
+        elif stage_cls is Voting:
+            pass
+        elif stage_cls is Mixing:
+            pass
+        elif stage_cls is Decrypting:
+            pass
+        elif stage_cls is Finished:
+            pass
+        elif stage_cls is Aborted:
+            pass
+
+        return data
+
+    def load_methods(self, stage):
+        """
+        """
+        cryptosys = self.get_cryptosys()
+        stage_cls = stage.__class__
+        functionalities = []
+
+        if stage_cls is Uninitialized:
+            pass
+        elif stage_cls is Creating:
+            functionalities.extend([
+                self.store_trustee,
+                cryptosys.keygen,
+                cryptosys.get_key_value,
+                cryptosys._get_public_value,
+                cryptosys._combine_public_keys,
+                cryptosys._set_public_key,
+                cryptosys.validate_public_key,
+                cryptosys.deserialize_public_key,])
+        elif stage_cls is Voting:
+            pass
+        elif stage_cls is Mixing:
+            pass
+        elif stage_cls is Decrypting:
+            pass
+        elif stage_cls is Finished:
+            pass
+        elif stage_cls is Aborted:
+            pass
+
+        for method in functionalities:
+            setattr(stage, method.__name__, method)
+
+    def update(self, *entities, stage):
+        """
+        """
+        stage_cls = stage.__class__
+
+        if stage_cls is Uninitialized:
+            cryptosys, mixnet = entities
+            self.set_cryptosys(cryptosys)
+            self.set_mixnet(mixnet)
+        elif stage_cls is Creating:
+            (zeus_keypair, trustees, election_key,
+                candidates, voters, audit_codes) = entities
+            self.set_zeus_keypair(zeus_keypair)
+            self.set_trustees(trustees)
+            self.set_election_key(election_key)
+            self.set_candidates(candidates)
+            self.set_voters(voters)
+            self.set_audit_codes(audit_codes)
+        elif stage_cls is Voting:
+            # ~ No need for updates: running election
+            # ~ individually updated with every new
+            # ~ vote during execution of ._generate()
+            pass
+        elif stage_cls is Mixing:
+            pass
+        elif stage_cls is Decrypting:
+            pass
+        elif stage_cls is Finished:
+            pass
+        elif stage_cls is Aborted:
+            pass
+
+
+
+    def do_assert_stage(self, label):
+        """
+        """
+        expected_stage_cls = self.__class__.labels[label.upper()]
+        actual_stage_cls = self.current_stage.__class__
+        if expected_stage_cls != actual_stage_cls:
+            err = 'Election should be at stage %s, not %s' % (
+                expected_stage_cls.__name__, actual_stage_cls.__name__)
+            raise AssertionError(err)
+
+    def invalidate_election_key():
+        self.set_election_key(None)
+
+    # Individual trustee handling
+
+    def reprove_trustee(public_key, proof):
+        """
+        """
+        pass
+
+    def add_trustee(public_key, proof):
+        """
+        """
+        pass

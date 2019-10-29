@@ -232,7 +232,7 @@ def trim_json(entity, length=16):
             return f'{value}'[:length]
         elif type(value) is None:
             return ''
-            
+
     if type(entity) is list:
         trimmed = []
         for elem in entity:
