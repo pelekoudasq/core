@@ -1,9 +1,12 @@
-from abc import ABCMeta, abstractmethod
-import warnings
+"""
+"""
 
+from abc import ABCMeta, abstractmethod
 from .exceptions import Abortion
 
 class Stage(object, metaclass=ABCMeta):
+    """
+    """
 
     def __init__(self, controller, **kwargs):
         controller.current_stage = self
@@ -50,30 +53,40 @@ class Stage(object, metaclass=ABCMeta):
     def _get_next_stage_message(self):
         return self.next_stage_message
 
+
+    def run(self):
+        """
+        """
+        controller = self.get_controller()
+
+        try:
+            data = controller.load_current_context()
+        except Abortion as err:
+            self.abort(err)
+            return
+
+        try:
+            entities = self._generate(*data)
+        except Abortion as err:
+            self.abort(err)
+            return
+
+        controller.update(*entities, stage=self)
+
+
     def abort(self, abort_message):
+        """
+        """
         self._set_next_stage_cls(Aborted)
         self._set_next_stage_message(abort_message)
 
-    def run(self):
-        # config = self.controller.get_config()
-        controller = self.get_controller()              #
-        try:
-            # data = self._extract_data(config)
-            __data = controller.load_current_context()  # Return configs AND attach methods...
-        except Abortion as err:
-            self.abort(err)
-            return
 
-        try:
-            # entities = self._generate(*data)
-            # __data = data                               # Remove finally this line
-            __entities = self._generate(*__data)
-        except Abortion as err:
-            self.abort(err)
-            return
+    @abstractmethod
+    def _generate(self, *data):
+        """
+        """
+        # Must return iterable
 
-        # self._update_controller(*entities)
-        controller.update(*__entities, stage=self)   #
 
     def next(self):
         controller = self.get_controller()
@@ -84,23 +97,10 @@ class Stage(object, metaclass=ABCMeta):
         NextStage = self._get_next_stage_cls()
         return NextStage(controller, **kwargs)
 
-    # @abstractmethod
-    # def _extract_data(self, config):
-    #     """
-    #     """
-
-    @abstractmethod
-    def _generate(self, *data):
-        """
-        """
-        # Must return iterable
-
-    # @abstractmethod
-    # def _update_controller(self, *generated):
-    #     """
-    #     """
 
 class FinalStage(Stage, metaclass=ABCMeta):
+    """
+    """
 
     def __init__(self, controller, **kwargs):
         super().__init__(controller, next_stage_cls=self.__class__, **kwargs)
@@ -109,21 +109,19 @@ class FinalStage(Stage, metaclass=ABCMeta):
         return self
 
 class Aborted(FinalStage):
+    """
+    """
 
     def __init__(self, controller, message):
         super().__init__(controller, message=message)
 
-    def _extract_data(self, config):
-        return ()
-
     def _generate(self, *data):
         return ()
 
-    def _update_controller(self, *generated):
-        print('sorry...:', self._get_message())
-
 
 class StageController(object, metaclass=ABCMeta):
+    """
+    """
 
     def __init__(self, initial_cls, config):
         if not issubclass(initial_cls, Stage):
@@ -150,15 +148,12 @@ class StageController(object, metaclass=ABCMeta):
     def get_config(self):
         return self.config
 
-# ------------------------
-
     def load_current_context(self):
         """
         Must return iterable
-        1. Load data (from election config
-            or corresponding backend API)
+        1. Load data (from election config or corresponding backend API)
         2. Load methods (attach methods from election
-            or underlying crypto or underlying mixnet
+            or underlying crypto or underlying mixnet)
         3. Return data for elaboration
         """
         current_stage = self._get_current_stage()
@@ -171,14 +166,17 @@ class StageController(object, metaclass=ABCMeta):
     @abstractmethod
     def load_data(self, stage):
         """
+        Load data (from controller config or provided stage's backend API)
         """
 
     @abstractmethod
     def load_methods(self, stage):
         """
+        Attach methods from controller or underlying objects
         """
 
     @abstractmethod
     def update(self, *entities, stage):
         """
+        Inform controller about generated entities
         """
