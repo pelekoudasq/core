@@ -34,7 +34,8 @@ class StageTester(metaclass=ABCMeta):
         #
         # election = mk_election()
         # cls.election = election
-        # # Run here `election` until the stage to be tested
+        # # Run here successive stages until the stage to be tested
+        # election.load_current_context()
         # cls.stage = election._get_current_stage()
         #
 

@@ -14,21 +14,6 @@ class Creating(Stage):
     def __init__(self, controller):
         super().__init__(controller, next_stage_cls=Voting)
 
-    def _extract_data(self, config):
-        try:
-            zeus_private_key = config['zeus_private_key']
-        except KeyError:
-            zeus_private_key = None
-        try:
-            trustees = config['trustees']
-            candidates = config['candidates']
-            voters = config['voters']
-        except KeyError as e:
-            err = f'Incomplete election config: missing {e}'
-            raise Abortion(err)
-
-        return zeus_private_key, trustees, candidates, voters
-
     def _generate(self, zeus_private_key, trustees, candidates, voters):
         zeus_keypair = self.create_zeus_keypair(zeus_private_key)
         trustees = self.validate_trustees(trustees)
@@ -38,42 +23,25 @@ class Creating(Stage):
 
         return zeus_keypair, trustees, election_key, candidates, voters, audit_codes
 
-    def _update_controller(self, zeus_keypair, trustees, election_key,
-            candidates, voters, audit_codes):
-        election = self.get_controller()
-        election.set_zeus_keypair(zeus_keypair)
-        election.set_trustees(trustees)
-        election.set_election_key(election_key)
-        election.set_candidates(candidates)
-        election.set_voters(voters)
-        election.set_audit_codes(audit_codes)
-
     # ------
 
     def create_zeus_keypair(self, zeus_private_key):
-        election = self.get_controller()
-        cryptosys = election.get_cryptosys()
         try:
-            zeus_keypair = cryptosys.keygen(zeus_private_key)
+            zeus_keypair = self.keygen(zeus_private_key)
         except InvalidKeyError as err:
             raise Abortion(err)
         return zeus_keypair
 
     def compute_election_key(self, trustees, zeus_keypair):
-        election = self.get_controller()
-        cryptosys = election.get_cryptosys()
-
-        public_shares = cryptosys.get_public_shares(trustees)
-        zeus_public_key = cryptosys._get_public_value(zeus_keypair)
-        combined = cryptosys._combine_public_keys(zeus_public_key, public_shares)
-        election_key = cryptosys._set_public_key(combined)
+        public_shares = self.get_public_shares(trustees)
+        zeus_public_key = self._get_public_value(zeus_keypair)
+        combined = self._combine_public_keys(zeus_public_key, public_shares)
+        election_key = self._set_public_key(combined)
         return election_key
 
     def validate_trustees(self, trustees):
         trustees = self.deserialize_trustees(trustees)
-        election = self.get_controller()
-        cryptosys = election.get_cryptosys()
-        validate_public_key = cryptosys.validate_public_key
+        validate_public_key = self.validate_public_key
         for trustee in trustees:
             if not validate_public_key(trustee):
                 err = 'Invalid trustee detected: %x' % trustee['value'].value
@@ -133,8 +101,7 @@ class Creating(Stage):
     def deserialize_trustees(self, trustees):
         """
         """
-        cryptosys = self.get_controller().get_cryptosys()
-        deserialize_public_key = cryptosys.deserialize_public_key
+        deserialize_public_key = self.deserialize_public_key
         deserialized = []
         for trustee in trustees:
             trustee = deserialize_public_key(trustee['value'], trustee['proof'])

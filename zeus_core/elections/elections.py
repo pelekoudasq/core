@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 from .abstracts import StageController, Aborted
-from .stages import (Uninitialized, Creating, Voting, 
+from .stages import (Uninitialized, Creating, Voting,
         Mixing, Decrypting, Finished,)
 from .validations import Validator
 from .signatures import Signer
@@ -269,13 +269,33 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
     def load_data(self, stage):
         """
         """
+        config = self.config
+        stage_cls = stage.__class__
         data = []
-        stage_cls = stage.__class__ 
-        
+
         if stage_cls is Uninitialized:
-            pass
+            try:
+                crypto_cls = config['crypto']['cls']
+                crypto_config = config['crypto']['config']
+                mixnet_cls = config['mixnet']['cls']
+                mixnet_config = config['mixnet']['config']
+            except KeyError as e:
+                err = f'Incomplete election config: missing {e}'
+                raise Abortion(err)
+            data = crypto_cls, crypto_config, mixnet_cls, mixnet_config
         elif stage_cls is Creating:
-            pass
+            try:
+                zeus_private_key = config['zeus_private_key']
+            except KeyError:
+                zeus_private_key = None
+            try:
+                trustees = config['trustees']
+                candidates = config['candidates']
+                voters = config['voters']
+            except KeyError as e:
+                err = f'Incomplete election config: missing {e}'
+                raise Abortion(err)
+            data = zeus_private_key, trustees, candidates, voters
         elif stage_cls is Voting:
             pass
         elif stage_cls is Mixing:
@@ -292,13 +312,21 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
     def load_methods(self, stage):
         """
         """
-        functionalities = []
+        cryptosys = self.get_cryptosys()
         stage_cls = stage.__class__
-        
+        functionalities = []
+
         if stage_cls is Uninitialized:
             pass
         elif stage_cls is Creating:
-            pass
+            functionalities.extend([
+                cryptosys.keygen,
+                cryptosys.get_public_shares,
+                cryptosys._get_public_value,
+                cryptosys._combine_public_keys,
+                cryptosys._set_public_key,
+                cryptosys.validate_public_key,
+                cryptosys.deserialize_public_key])
         elif stage_cls is Voting:
             pass
         elif stage_cls is Mixing:
@@ -316,12 +344,21 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
     def update(self, *entities, stage):
         """
         """
-        stage_cls = stage.__class__ 
+        stage_cls = stage.__class__
 
         if stage_cls is Uninitialized:
-            pass
+            cryptosys, mixnet = entities
+            self.set_cryptosys(cryptosys)
+            self.set_mixnet(mixnet)
         elif stage_cls is Creating:
-            pass
+            (zeus_keypair, trustees, election_key,
+                candidates, voters, audit_codes) = entities
+            self.set_zeus_keypair(zeus_keypair)
+            self.set_trustees(trustees)
+            self.set_election_key(election_key)
+            self.set_candidates(candidates)
+            self.set_voters(voters)
+            self.set_audit_codes(audit_codes)
         elif stage_cls is Voting:
             pass
         elif stage_cls is Mixing:
@@ -332,4 +369,3 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
             pass
         elif stage_cls is Aborted:
             pass
-    

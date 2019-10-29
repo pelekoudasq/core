@@ -21,6 +21,7 @@ class TestCreating(StageTester, unittest.TestCase):
         election = mk_election()
         cls.election = election
         run_until_creating_stage(election)
+        election.load_current_context()
         cls.stage = election._get_current_stage()
 
     # ------------------------- Isolated funtionalities ------------------------
@@ -29,7 +30,6 @@ class TestCreating(StageTester, unittest.TestCase):
 
     def test_create_zeus_keypair(self):
         election, _, creating, messages = self.get_context()
-
         cryptosys = election.get_cryptosys()
         zeus_keypair_1 = creating.create_zeus_keypair(_2048_SECRET)
         zeus_keypair_2 = _2048_SYSTEM.keygen(_2048_SECRET)
