@@ -197,7 +197,7 @@ class Zeus_sk(Mixnet):
         # cipher_mix['order'] = order
         # cipher_mix['generator'] = self.__generator
         # cipher_mix['public'] = public
-        cipher_mix.update(self.header)
+        cipher_mix.update({'header': self.header})
         cipher_mix['original_ciphers'] = original_ciphers
         cipher_mix['proof'] = {}
 
@@ -304,10 +304,10 @@ class Zeus_sk(Mixnet):
         :type nr_parallel: int
         """
         try:
-            modulus = cipher_mix['modulus']
-            order = cipher_mix['order']
-            generator = cipher_mix['generator']
-            public = cipher_mix['public']
+            modulus = cipher_mix['header']['modulus']
+            order = cipher_mix['header']['order']
+            generator = cipher_mix['header']['generator']
+            public = cipher_mix['header']['public']
             original_ciphers = cipher_mix['original_ciphers']
             mixed_ciphers = cipher_mix['mixed_ciphers']
             proof = cipher_mix['proof']

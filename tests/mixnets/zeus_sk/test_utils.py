@@ -32,10 +32,12 @@ def test_compute_mix_challenge():
         for _ in range(nr_collections)]
 
     cipher_mix = {
-        'modulus': modulus,
-        'order': order,
-        'generator': generator,
-        'public': public,
+        'header': {
+            'modulus': modulus,
+            'order': order,
+            'generator': generator,
+            'public': public,        
+        },
         'original_ciphers': original_ciphers,
         'mixed_ciphers': mixed_ciphers,
         'proof': {

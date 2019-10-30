@@ -74,10 +74,12 @@ __mixnet__cipher_collection__result = [
             'original_ciphers': [{'alpha': 0, 'beta': 1}, {'alpha': 2, 'beta': 3}]
         },
         {
-            'modulus': RES11_ZEUS_SK.cryptosys.group.modulus,
-            'order': RES11_ZEUS_SK.cryptosys.group.order,
-            'generator': RES11_ZEUS_SK.cryptosys.group.generator,
-            'public': RES11_ELECTION_KEY,
+            'header': {
+                'modulus': RES11_ZEUS_SK.cryptosys.group.modulus,
+                'order': RES11_ZEUS_SK.cryptosys.group.order,
+                'generator': RES11_ZEUS_SK.cryptosys.group.generator,
+                'public': RES11_ELECTION_KEY,
+            },
             'original_ciphers': [(0, 1), (2, 3)],
             'mixed_ciphers': [(0, 1), (2, 3)]
         }
@@ -89,10 +91,12 @@ __mixnet__cipher_collection__result = [
             'mixed_ciphers': [{'alpha': 0, 'beta': 1}, {'alpha': 2, 'beta': 3}]
         },
         {
-            'modulus': _4096_ZEUS_SK.cryptosys.group.modulus,
-            'order': _4096_ZEUS_SK.cryptosys.group.order,
-            'generator': _4096_ZEUS_SK.cryptosys.group.generator,
-            'public': _4096_ELECTION_KEY,
+            'header': {
+                'modulus': _4096_ZEUS_SK.cryptosys.group.modulus,
+                'order': _4096_ZEUS_SK.cryptosys.group.order,
+                'generator': _4096_ZEUS_SK.cryptosys.group.generator,
+                'public': _4096_ELECTION_KEY,
+            },
             'original_ciphers': [(4, 5), (6, 7)],
             'mixed_ciphers': [(0, 1), (2, 3)]
         }
@@ -104,10 +108,12 @@ __mixnet__cipher_collection__result = [
             'proof': 666
         },
         {
-            'modulus': _2048_ZEUS_SK.cryptosys.group.modulus,
-            'order': _2048_ZEUS_SK.cryptosys.group.order,
-            'generator': _2048_ZEUS_SK.cryptosys.group.generator,
-            'public': _2048_ELECTION_KEY,
+            'header': {
+                'modulus': _2048_ZEUS_SK.cryptosys.group.modulus,
+                'order': _2048_ZEUS_SK.cryptosys.group.order,
+                'generator': _2048_ZEUS_SK.cryptosys.group.generator,
+                'public': _2048_ELECTION_KEY,
+            },
             'original_ciphers': [(8, 9), (0, 1)],
             'mixed_ciphers': [(8, 9), (0, 1)],
             'proof': 666
@@ -130,10 +136,12 @@ __mixnet__mixed_collection__result = [
             'proof': 666
         },
         {
-            'modulus': RES11_ZEUS_SK.cryptosys.group.modulus,
-            'order': RES11_ZEUS_SK.cryptosys.group.order,
-            'generator': RES11_ZEUS_SK.cryptosys.group.generator.value,
-            'public': RES11_ELECTION_KEY,
+            'header': {
+                'modulus': RES11_ZEUS_SK.cryptosys.group.modulus,
+                'order': RES11_ZEUS_SK.cryptosys.group.order,
+                'generator': RES11_ZEUS_SK.cryptosys.group.generator.value,
+                'public': RES11_ELECTION_KEY,
+            },
             'original_ciphers': [{'alpha': 0, 'beta': 1}, {'alpha': 2, 'beta': 3}],
             'mixed_ciphers': [{'alpha': 4, 'beta': 5}, {'alpha': 6, 'beta': 7}],
             'proof': 666
@@ -180,7 +188,7 @@ for (mixnet, election_key) in (
 
     # Corrupt keys
     corrupt = deepcopy(cipher_mix)
-    del corrupt['public']
+    del corrupt['header']['public']
     __failure_cases.append((mixnet, corrupt))
 
     # Corrupt proof keys

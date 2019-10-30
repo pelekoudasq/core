@@ -78,7 +78,7 @@ class Mixnet(object, metaclass=ABCMeta):
         if get_secret:
             return alpha, beta, randomness
         return alpha, beta
-        
+
 
     # Formats
 
@@ -123,7 +123,7 @@ class Mixnet(object, metaclass=ABCMeta):
         :rtype: dict
         """
         output = {}
-        output.update(self.header)
+        output.update({'header': self.header})
         output['original_ciphers'] = [(cipher['alpha'], cipher['beta'])
                 for cipher in cipher_collection['original_ciphers']]
         try:
@@ -147,7 +147,7 @@ class Mixnet(object, metaclass=ABCMeta):
         :rtype: dict
         """
         output = {}
-        output.update(self.header)
+        output.update({'header': self.header})
         for key in ('original_ciphers', 'mixed_ciphers',):
             output[key] = [{'alpha': cipher[0], 'beta': cipher[1]}
                 for cipher in cipher_mix[key]]
