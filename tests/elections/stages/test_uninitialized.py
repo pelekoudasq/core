@@ -79,7 +79,7 @@ class TestUninitialized(StageTester, unittest.TestCase):
         mixnet_config = config['mixnet']['config']
         cryptosys = uninitialized.init_cryptosys(crypto_cls, crypto_config)
         mixnet = uninitialized.init_mixnet(mixnet_cls, mixnet_config, cryptosys)
-        assert mixnet.parameters() == {
+        assert mixnet.get_config() == {
             'cryptosys': cryptosys,
             'nr_rounds': mixnet_config['nr_rounds'],
             'nr_mixes': mixnet_config['nr_mixes'],}
@@ -187,7 +187,7 @@ class TestUninitialized(StageTester, unittest.TestCase):
             'nr_rounds': mixnet_config['nr_rounds'],
             'nr_mixes': mixnet_config['nr_mixes'],}
         try:
-            assert mixnet.parameters() == awaited
+            assert mixnet.get_config() == awaited
             messages.append('[+] mixnet: ok')
         except AssertionError:
             err = "Wrong mixnet"

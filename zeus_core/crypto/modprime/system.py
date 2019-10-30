@@ -46,7 +46,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type min_gen_size: int
         :type allow_weakness: bool
         """
-
         modulus = mpz(modulus)                                   # p
         primitive = ModPrimeElement(mpz(primitive), modulus)     # g_0
         root_order = mpz(root_order)                             # r
@@ -56,11 +55,9 @@ class ModPrimeCrypto(ElGamalCrypto):
             group = ModPrimeSubgroup(modulus, root_order)
         except AlgebraError:
             raise
-
         self.__group = group
         self.__modulus = group.modulus
         self.__order = group.order
-
         self.__GroupElement = ModPrimeElement
 
         # Resolve generator
@@ -68,14 +65,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         # Algebraic fact: given a primitive g_0 of Z*_p, p > 2 smooth, and 1 < r < p - 1
         # with r | p - 1, then g_0 ^ r generates the q-subgroup of Z*_p, q = (p - 1)/r
         generator = primitive ** root_order
-
         try:
             self.__group.set_generator(generator)
         except AlgebraError:
             raise
-        else:
-            group = self.__group
-
+        group = self.__group
         self.__generator = group.generator.value
 
         # Validate system
@@ -101,21 +95,17 @@ class ModPrimeCrypto(ElGamalCrypto):
             # allowing for efficient verification of quadratic residues
             err = 'Provided modulus is not 3 mod 4'
             raise WrongCryptoError(err)
-
         if prime_order and not is_prime(order):
             err = 'Order of the requested group is not prime'
             raise WrongCryptoError(err)
-
         if not allow_weakness:
-
             MIN_MOD_SIZE = min_mod_size or cls.MIN_MOD_SIZE
             if modulus.bit_length() < MIN_MOD_SIZE:
-                err = 'Provided modulus is < %d bits long' % MIN_MOD_SIZE
+                err = f'Provided modulus is < {MIN_MOD_SIZE} bits long'
                 raise WeakCryptoError(err)
-
             MIN_GEN_SIZE = min_gen_size or cls.MIN_GEN_SIZE
             if generator.bit_length < MIN_GEN_SIZE:
-                err = 'Generator is < %d bits long' % MIN_GEN_SIZE
+                err = f'Generator is < {MIN_GEN_SIZE} bits long'
                 raise WeakCryptoError(err)
 
     @classmethod
@@ -126,11 +116,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         modulus = config['modulus']
         primitive = config['primitive']
-        root_order = config['root_order'] if 'root_order' in config else 2
-        prime_order = config['prime_order'] if 'prime_order' in config else True
-        min_mod_size = config['min_mod_size'] if 'min_mod_size' in config else None
-        min_gen_size = config['min_gen_size'] if 'min_gen_size' in config else None
-        allow_weakness = config['allow_weakness'] if 'allow_weakness' in config else None
+        root_order = config.get('root_order', 2)
+        prime_order = config.get('prime_order', True)
+        min_mod_size = config.get('min_mod_size', None)
+        min_gen_size = config.get('min_gen_size', None)
+        allow_weakness = config.get('allow_weakness', None)
 
         return (modulus, primitive, root_order, prime_order, min_mod_size,
             min_gen_size, allow_weakness)
@@ -998,7 +988,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     ###########################################################
     #                                                         #
-    #   By trustee-factors is meant a dictionary of the form   #
+    #   By trustee-factors is meant a dictionary of the form  #
     #                                                         #
     #   {                                                     #
     #       'public': ModPrimeElement,                        #

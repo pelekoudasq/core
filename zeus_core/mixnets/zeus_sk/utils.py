@@ -8,17 +8,6 @@ from zeus_core.utils.random import random_permutation
 ALPHA = 0
 BETA  = 1
 
-def _raise_RoundNotVerifiedError(round_nr, cipher_nr, bit):
-    """
-    :type round_nr: int
-    :type cipher_nr: int
-    :type bit: int
-    """
-    err = 'MIXING VERIFICATION FAILED AT ROUND %d CIPHER %d bit %d' % (
-            round_nr, cipher_nr, bit)
-    raise RoundNotVerifiedError(err)
-
-
 def compute_mix_challenge(cipher_mix):
     """
     :type cipher_mix: dict
@@ -30,7 +19,7 @@ def compute_mix_challenge(cipher_mix):
     update(('%x' % cipher_mix['modulus']).encode('utf-8'))
     update(('%x' % cipher_mix['order']).encode('utf-8'))
     update(('%x' % cipher_mix['generator']).encode('utf-8'))
-    update(('%x' % cipher_mix['public'].to_int()).encode('utf-8'))
+    update((cipher_mix['public'].to_hex()).encode('utf-8'))
 
     original_ciphers = cipher_mix['original_ciphers']
     mixed_ciphers = cipher_mix['mixed_ciphers']
@@ -38,8 +27,8 @@ def compute_mix_challenge(cipher_mix):
 
     ciphers = chain(original_ciphers, mixed_ciphers, *cipher_collections)
     for cipher in ciphers:
-        update(('%x' % cipher[ALPHA].to_int()).encode('utf-8'))
-        update(('%x' % cipher[BETA].to_int()).encode('utf-8'))
+        update((cipher[ALPHA].to_hex()).encode('utf-8'))
+        update((cipher[BETA].to_hex()).encode('utf-8'))
 
     challenge = hasher.hexdigest()
     return challenge
@@ -128,7 +117,9 @@ def verify_mix_round(round_nr, bit, original_ciphers, mixed_ciphers,
 
         image = images[offset]
         if new_alpha != image[ALPHA] or new_beta != image[BETA]:
-            _raise_RoundNotVerifiedError(round_nr=round_nr, cipher_nr=j, bit=bit)
+            err = 'MIXING VERIFICATION FAILED AT ROUND %d CIPHER %d bit %d' % (
+                    round_nr, j, bit)
+            raise RoundNotVerifiedError(err)
 
         count += 1
         if count >= report_thres:

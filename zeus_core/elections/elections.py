@@ -507,7 +507,6 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         if counted_votes != vote_count:
             err = f'Vote count mismatch: {counted_votes} != {vote_count}'
             raise AssertionError(err) # --------------------> Change exception ?
-
         mix.update(self.get_crypto_params())
         mix.update({
             'public': self.get_election_key().to_int(),
