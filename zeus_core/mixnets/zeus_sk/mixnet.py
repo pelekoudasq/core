@@ -20,8 +20,8 @@ class Zeus_sk(Mixnet):
 
     supported_crypto = (ModPrimeCrypto,)
 
-    __slots__ = ('__cryptosys', '__group', '__nr_rounds', '__nr_mixes', '__election_key', '__header',
-        '__modulus', '__order', '__generator',)
+    # __slots__ = ('__cryptosys', '__group', '__nr_rounds', '__nr_mixes', '__election_key', '__header',
+    #     '__modulus', '__order', '__generator',)
 
 
     def __init__(self, config, election_key=None):
@@ -59,13 +59,20 @@ class Zeus_sk(Mixnet):
             raise MixnetError(err)
         super().__init__(cryptosys, election_key)
 
-        parameters = cryptosys.parameters()
-        self.__modulus = parameters['modulus']
-        self.__order = parameters['order']
-        self.__generator = parameters['generator']
+        # parameters = cryptosys.parameters()
+        # self.__modulus = parameters['modulus']
+        # self.__order = parameters['order']
+        # self.__generator = parameters['generator']
         self.__nr_rounds = nr_rounds
         self.__nr_mixes = nr_mixes
+        self.substract = self.__class__.mk_substract_func(
+            order=cryptosys.parameters()['order'])
 
+    @classmethod
+    def mk_substract_func(cls, order):
+        def substract(min, sub):
+            return (min - sub) % order
+        return substract
 
     def get_config(self):
         config = {}
@@ -180,16 +187,17 @@ class Zeus_sk(Mixnet):
         cipher_mix = {}
 
         nr_rounds = self.__nr_rounds
-        order = self.__order
+        # order = self.__order
         public = self.election_key
         original_ciphers = original_mix['mixed_ciphers']
 
         # Set some data
 
-        cipher_mix['modulus'] = self.__modulus
-        cipher_mix['order'] = order
-        cipher_mix['generator'] = self.__generator
-        cipher_mix['public'] = public
+        # cipher_mix['modulus'] = self.__modulus
+        # cipher_mix['order'] = order
+        # cipher_mix['generator'] = self.__generator
+        # cipher_mix['public'] = public
+        cipher_mix.update(self.header)
         cipher_mix['original_ciphers'] = original_ciphers
         cipher_mix['proof'] = {}
 
@@ -257,7 +265,8 @@ class Zeus_sk(Mixnet):
                     for j in range(nr_ciphers):
                         k = offsets[j]
                         new_offsets[k] = mixed_offsets[j]
-                        new_randoms[k] = (mixed_randoms[j] - randoms[j]) % order
+                        # new_randoms[k] = (mixed_randoms[j] - randoms[j]) % order
+                        new_randoms[k] = self.substract(mixed_randoms[j], randoms[j])
 
                     offset_collections[i] = new_offsets
                     random_collections[i] = new_randoms
