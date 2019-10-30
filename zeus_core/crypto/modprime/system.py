@@ -145,6 +145,20 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def hex_parameters(self):
         """
+        Returns a serialization of the cryptosystem's parameters (the modulus p,
+        order q and generator g), where the values appear as hexstrings
+
+        :rtype: dict
+        """
+        serialized = {}
+        serialized['modulus'] = '%x' % self.__modulus
+        serialized['order'] = '%x' % self.__order
+        serialized['generator'] = '%x' % self.__generator
+
+        return serialized
+
+    def hex_labels(self):
+        """
         """
         hex_p = V_MODULUS + '%x' % self.__modulus
         hex_q = V_ORDER + '%x' % self.__order

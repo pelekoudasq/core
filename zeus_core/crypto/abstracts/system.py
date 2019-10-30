@@ -115,7 +115,12 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def hex_parameters(self, crypto_params):
+    def hex_parameters(self):
+        """
+        """
+
+    @abstractmethod
+    def hex_labels(self, crypto_params):
         """
         """
 

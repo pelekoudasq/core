@@ -71,7 +71,7 @@ class Signer(object, metaclass=ABCMeta):
         """
         cryptosys = self.get_cryptosys()
 
-        hex_crypto_params = cryptosys.hex_parameters()
+        hex_crypto_params = cryptosys.hex_labels()
         hex_zeus_public_key = self.get_hex_zeus_public_key()
         hex_trustee_keys = self.get_hex_trustee_keys()
         hex_election_key = self.get_hex_election_key()

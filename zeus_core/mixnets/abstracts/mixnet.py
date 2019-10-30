@@ -11,11 +11,11 @@ class Mixnet(object, metaclass=ABCMeta):
         self.__cryptosys = cryptosys
         self.__group = cryptosys.group
         header = {}
-        header.update(cryptosys.parameters())
+        header.update(cryptosys.hex_parameters())
         if election_key:
             self.__election_key = cryptosys.get_key_value(election_key)
             header.update({'public':
-                cryptosys.get_key_value(election_key)})
+                self.__election_key.to_hex()})
         self.__header = header
 
 
@@ -28,7 +28,7 @@ class Mixnet(object, metaclass=ABCMeta):
     def set_election_key(self, election_key):
         self.__election_key = cryptosys.get_key_value(election_key)
         self.__header.update({'public':
-            self.__cryptosys.get_key_value(election_key)})
+            self.__cryptosys.get_key_value(election_key).to_hex()})
 
 
     # Properties

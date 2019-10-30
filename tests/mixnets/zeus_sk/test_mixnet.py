@@ -75,10 +75,10 @@ __mixnet__cipher_collection__result = [
         },
         {
             'header': {
-                'modulus': RES11_ZEUS_SK.cryptosys.group.modulus,
-                'order': RES11_ZEUS_SK.cryptosys.group.order,
-                'generator': RES11_ZEUS_SK.cryptosys.group.generator,
-                'public': RES11_ELECTION_KEY,
+                'modulus': '%x' % RES11_ZEUS_SK.cryptosys.group.modulus,
+                'order': '%x' % RES11_ZEUS_SK.cryptosys.group.order,
+                'generator': '%x' % RES11_ZEUS_SK.cryptosys.group.generator.value,
+                'public': RES11_ELECTION_KEY.to_hex(),
             },
             'original_ciphers': [(0, 1), (2, 3)],
             'mixed_ciphers': [(0, 1), (2, 3)]
@@ -92,10 +92,10 @@ __mixnet__cipher_collection__result = [
         },
         {
             'header': {
-                'modulus': _4096_ZEUS_SK.cryptosys.group.modulus,
-                'order': _4096_ZEUS_SK.cryptosys.group.order,
-                'generator': _4096_ZEUS_SK.cryptosys.group.generator,
-                'public': _4096_ELECTION_KEY,
+                'modulus': '%x' % _4096_ZEUS_SK.cryptosys.group.modulus,
+                'order': '%x' % _4096_ZEUS_SK.cryptosys.group.order,
+                'generator': '%x' % _4096_ZEUS_SK.cryptosys.group.generator.value,
+                'public': _4096_ELECTION_KEY.to_hex(),
             },
             'original_ciphers': [(4, 5), (6, 7)],
             'mixed_ciphers': [(0, 1), (2, 3)]
@@ -109,10 +109,10 @@ __mixnet__cipher_collection__result = [
         },
         {
             'header': {
-                'modulus': _2048_ZEUS_SK.cryptosys.group.modulus,
-                'order': _2048_ZEUS_SK.cryptosys.group.order,
-                'generator': _2048_ZEUS_SK.cryptosys.group.generator,
-                'public': _2048_ELECTION_KEY,
+                'modulus': '%x' % _2048_ZEUS_SK.cryptosys.group.modulus,
+                'order': '%x' % _2048_ZEUS_SK.cryptosys.group.order,
+                'generator': '%x' % _2048_ZEUS_SK.cryptosys.group.generator.value,
+                'public': _2048_ELECTION_KEY.to_hex(),
             },
             'original_ciphers': [(8, 9), (0, 1)],
             'mixed_ciphers': [(8, 9), (0, 1)],
@@ -137,10 +137,10 @@ __mixnet__mixed_collection__result = [
         },
         {
             'header': {
-                'modulus': RES11_ZEUS_SK.cryptosys.group.modulus,
-                'order': RES11_ZEUS_SK.cryptosys.group.order,
-                'generator': RES11_ZEUS_SK.cryptosys.group.generator.value,
-                'public': RES11_ELECTION_KEY,
+                'modulus': '%x' % RES11_ZEUS_SK.cryptosys.group.modulus,
+                'order': '%x' % RES11_ZEUS_SK.cryptosys.group.order,
+                'generator': '%x' % RES11_ZEUS_SK.cryptosys.group.generator.value,
+                'public': RES11_ELECTION_KEY.to_hex(),
             },
             'original_ciphers': [{'alpha': 0, 'beta': 1}, {'alpha': 2, 'beta': 3}],
             'mixed_ciphers': [{'alpha': 4, 'beta': 5}, {'alpha': 6, 'beta': 7}],

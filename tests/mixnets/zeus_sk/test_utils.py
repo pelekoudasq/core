@@ -15,7 +15,7 @@ def test_compute_mix_challenge():
     mixnet = RES11_ZEUS_SK
     public = RES11_ELECTION_KEY
 
-    parameters = mixnet.cryptosys.parameters()
+    parameters = mixnet.cryptosys.hex_parameters()
     group = mixnet.group
 
     modulus = parameters['modulus']
@@ -26,17 +26,19 @@ def test_compute_mix_challenge():
     nr_collections = random_integer(2, 7)
     random_element = group.random_element
 
-    original_ciphers = [(random_element(), random_element()) for _ in range(nr_ciphers)]
-    mixed_ciphers = [(random_element(), random_element()) for _ in range(nr_ciphers)]
-    cipher_collections = [[(random_element(), random_element()) for _ in range(nr_ciphers)]
-        for _ in range(nr_collections)]
+    original_ciphers = [(random_element(), random_element())
+        for _ in range(nr_ciphers)]
+    mixed_ciphers = [(random_element(), random_element())
+        for _ in range(nr_ciphers)]
+    cipher_collections = [[(random_element(), random_element())
+        for _ in range(nr_ciphers)] for _ in range(nr_collections)]
 
     cipher_mix = {
         'header': {
             'modulus': modulus,
             'order': order,
             'generator': generator,
-            'public': public,        
+            'public': public.to_hex(),
         },
         'original_ciphers': original_ciphers,
         'mixed_ciphers': mixed_ciphers,
@@ -46,7 +48,7 @@ def test_compute_mix_challenge():
     }
 
     assert compute_mix_challenge(cipher_mix) == \
-        sha256(bytes('%x%x%x%x%s%s%s' % (modulus, order, generator, public.to_int(),
+        sha256(bytes('%s%s%s%s%s%s%s' % (modulus, order, generator, public.to_hex(),
                     ''.join('%x%x' % (c[0].to_int(), c[1].to_int())
                         for c in original_ciphers),
                     ''.join('%x%x' % (c[0].to_int(), c[1].to_int())

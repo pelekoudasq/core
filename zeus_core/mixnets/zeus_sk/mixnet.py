@@ -307,7 +307,7 @@ class Zeus_sk(Mixnet):
             modulus = cipher_mix['header']['modulus']
             order = cipher_mix['header']['order']
             generator = cipher_mix['header']['generator']
-            public = cipher_mix['header']['public']
+            public = self.cryptosys.hex_to_element(cipher_mix['header']['public'])
             original_ciphers = cipher_mix['original_ciphers']
             mixed_ciphers = cipher_mix['mixed_ciphers']
             proof = cipher_mix['proof']
