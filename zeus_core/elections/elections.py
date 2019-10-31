@@ -400,10 +400,10 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
             self.set_candidates(candidates)
             self.set_voters(voters)
             self.set_audit_codes(audit_codes)
+            self.mixnet.set_election_key(election_key)
         elif stage_cls is Voting:
-            # ~ No need for updates: running election
-            # ~ individually updated with every new
-            # ~ vote during execution of ._generate()
+            # ~ No need for updates: running election individually updated
+            # ~ with every new vote during execution of Voting._generate()
             pass
         elif stage_cls is Mixing:
             pass
@@ -444,22 +444,23 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
     def extract_votes_for_mixing(self):
         """
         """
-        mix = {}
-
-        cast_vote_index = self.get_cast_vote_index()
-        nr_votes = len(cast_vote_index)
-        scratch = list([None]) * nr_votes
-        counted = list([None]) * nr_votes
-
-        get_vote = self.get_vote
-        vote_count = 0
+        original_mix = {}
+        original_mix.update({'header': self.mixnet.header})
 
         excluded_votes = set()
         excluded_voters = self.get_excluded_voters()
         update = excluded_votes.update
+        get_cast_votes = self.get_cast_votes
         for voter_key, reason in excluded_voters.items():
-            update(self.get_cast_votes(voter_key))
+            update(get_cast_votes(voter_key))
 
+        cast_vote_index = self.get_cast_vote_index()
+        get_voter = self.get_voter
+        get_vote = self.get_vote
+        vote_count = 0
+        nr_votes = len(cast_vote_index)
+        scratch = list([None]) * nr_votes
+        counted = list([None]) * nr_votes
         for i, fingerprint in enumerate(cast_vote_index):
             vote = get_vote(fingerprint)
             index = vote['index']
@@ -469,9 +470,9 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
             if fingerprint in excluded_votes:
                 continue
             voter_key = vote['voter']
-            voter_name, voter_weight = self.get_voter(voter_key)
+            voter_name, voter_weight = get_voter(voter_key)
             enc_ballot = vote['encrypted_ballot']['ciphertext']
-            _vote = [enc_ballot['alpha'], enc_ballot['beta'], voter_weight]
+            _vote = (enc_ballot['alpha'], enc_ballot['beta'], voter_weight)
             scratch[i] = _vote
             counted[i] = fingerprint
             previous = vote['previous']
@@ -501,19 +502,17 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
                 raise AssertionError() # -------------------> Change exception ?
             counted_votes += 1
             alpha, beta, weight = v
-            vote = [alpha, beta]
+            vote = (alpha, beta)
             extend_votes_for_mixing(repeat(vote, weight))
             extend_counted_list(repeat(c, weight))
         if counted_votes != vote_count:
             err = f'Vote count mismatch: {counted_votes} != {vote_count}'
             raise AssertionError(err) # --------------------> Change exception ?
-        mix.update(self.get_crypto_params())
-        mix.update({
-            'public': self.get_election_key().to_int(),
+        original_mix.update({
             'original_ciphers': votes_for_mixing,
             'mixed_ciphers': votes_for_mixing,
         })
-        return mix, counted_list
+        return original_mix, counted_list
 
 
     # Individual trustee handling

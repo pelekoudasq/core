@@ -26,9 +26,10 @@ class Mixnet(object, metaclass=ABCMeta):
         return cryptosys.__class__ in cls.supported_crypto
 
     def set_election_key(self, election_key):
+        cryptosys = self.__cryptosys
         self.__election_key = cryptosys.get_key_value(election_key)
         self.__header.update({'public':
-            self.__cryptosys.get_key_value(election_key).to_hex()})
+            cryptosys.get_key_value(election_key).to_hex()})
 
 
     # Properties
@@ -50,6 +51,40 @@ class Mixnet(object, metaclass=ABCMeta):
         return self.__header
 
 
+    # Core
+
+    @abstractmethod
+    def mix_ciphers(self, original_mix):
+        """
+        Admits
+
+        {
+            'header': {
+                ...
+                'public': GroupElement
+            },
+            'original_ciphers': list[(GroupElement, GroupElement)]
+            'mixed_ciphers': list[(GroupElement, GroupElement)]
+        }
+
+        where 'original_ciphers' and 'mixed_ciphers' coincide. Returns
+
+        {
+            'header': {
+                ...
+                'public': GroupElement
+            },
+            'original_ciphers': list[(GroupElement, GroupElement)]
+            'mixed_ciphers': list[(GroupElement, GroupElement)]
+            'proof': {
+                ...
+            }
+        }
+
+        where structure of 'proof' is mixnet specific
+        """
+
+
     # Encryption
 
     def _reencrypt(self, alpha, beta, public, randomness=None, get_secret=False):
@@ -60,12 +95,12 @@ class Mixnet(object, metaclass=ABCMeta):
 
         See doc of that function for insight
 
-        :type alpha: ModPrimeElement
-        :type beta: ModPrimeElement
-        :type public: ModPrimeElement
-        :randomness: mpz
+        :type alpha: GroupElemement
+        :type beta: GroupElemement
+        :type public: GroupElemement
+        :randomness: exponent
         :get_secret: bool
-        :rtype: (ModPrimeElement, ModPrimeElement[, mpz])
+        :rtype: (GroupElement, GroupElement[, exponent])
         """
         __group = self.__group
 
@@ -96,17 +131,17 @@ class Mixnet(object, metaclass=ABCMeta):
     #       whereas by cipher-mix is meant a structure of the form                             #
     #                                                                                          #
     #       {                                                                                  #
-    #           'modulus': mpz,                                                                #
-    #           'order': mpz,                                                                  #
-    #           'generator': mpz,                                                              #
-    #           'public': GroupElement,                                                        #
+    #           'header': {                                                                    #
+    #                         ...,                                                             #
+    #                         public: GroupElement                                             #
+    #            },                                                                            #
     #           'original_ciphers': list[(GroupElement, GroupElement)],                        #
     #           'mixed_ciphers': list[(GroupElement, GroupElement)],                           #
     #           ['proof': ...]                                                                 #
     #       }                                                                                  #
     #                                                                                          #
-    #       where 'modulus', 'order', 'generator' are thought of as the underying              #
-    #       cryptosys's parameters and 'public' as the mixnet's election key                   #
+    #       where 'public' is the running election's key and the rest fields of                #
+    #       header refer to the underlying cryptosystem's parameters                           #
     #                                                                                          #
     ############################################################################################
 
@@ -155,3 +190,11 @@ class Mixnet(object, metaclass=ABCMeta):
         if proof:
             output['proof'] = proof
         return output
+
+    def retrieve_election_key(self, cipher_mix):
+        """
+        Unhexifies and returns the election key as inscribed
+        in the provided cipher-mix
+        """
+        public = self.cryptosys.hex_to_element(cipher_mix['header']['public'])
+        return public

@@ -16,10 +16,6 @@ def compute_mix_challenge(cipher_mix):
     hasher = sha256()
     update = hasher.update
 
-    # update(('%x' % cipher_mix['header']['modulus']).encode('utf-8'))
-    # update(('%x' % cipher_mix['header']['order']).encode('utf-8'))
-    # update(('%x' % cipher_mix['header']['generator']).encode('utf-8'))
-    # update((cipher_mix['header']['public'].to_hex()).encode('utf-8'))
     update(''.join(cipher_mix['header'].values()).encode('utf-8'))
 
     original_ciphers = cipher_mix['original_ciphers']

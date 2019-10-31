@@ -3,7 +3,6 @@ Sako-Killian mixnet
 """
 
 from Crypto import Random
-from gmpy2 import mpz
 
 from zeus_core.crypto.modprime import ModPrimeCrypto
 from zeus_core.utils import random_permutation, AsyncController, _teller, bit_iterator
@@ -20,32 +19,21 @@ class Zeus_sk(Mixnet):
 
     supported_crypto = (ModPrimeCrypto,)
 
-    # __slots__ = ('__cryptosys', '__group', '__nr_rounds', '__nr_mixes', '__election_key', '__header',
-    #     '__modulus', '__order', '__generator',)
-
-
     def __init__(self, config, election_key=None):
         """
-        Provided `config` be a structure of the form
+        Provided `config` should be a structure of the form
 
-        {'cryptosys': <ElGamalCrypto>, 'nr_rounds': <int>, 'nr_mixes': <int>}
+        {
+            'cryptosys': ElGamalCrypto,
+            'nr_rounds': int,
+            'nr_mixes': int
+        }
 
-        where
-            - the value of `cryptosys` refers to the underlying cryptosystem
-              and its class should be contained in `supported_crypto`
-            - 'nr_rounds' is the number of rounds to be performed at each mixing
-            - 'nr_mixes' is the fixed length of cipher-collections to mix.
-
-        Provided `election_key` should be a structure of the form
-
-        {'value': <GroupElement>, 'proof': None} or <GroupElement>
-
-        thought of as the combined public key of the running election.
+        where the class of 'cryptosys' should be contained in `supported_crypto`,
+        'nr_rounds' is the number of rounds to be performed during mixing and
+        'nr_mixes' is the fixed length of cipher-collections to mix.
 
         ..raises MixnetError:: if the provided config is not as prescribed
-
-        :type config: dict
-        :type election_key: dict
         """
         try:
             cryptosys = config['cryptosys']
@@ -59,10 +47,6 @@ class Zeus_sk(Mixnet):
             raise MixnetError(err)
         super().__init__(cryptosys, election_key)
 
-        # parameters = cryptosys.parameters()
-        # self.__modulus = parameters['modulus']
-        # self.__order = parameters['order']
-        # self.__generator = parameters['generator']
         self.__nr_rounds = nr_rounds
         self.__nr_mixes = nr_mixes
         self.substract = self.__class__.mk_substract_func(
@@ -70,8 +54,8 @@ class Zeus_sk(Mixnet):
 
     @classmethod
     def mk_substract_func(cls, order):
-        def substract(min, sub):
-            return (min - sub) % order
+        def substract(a, b):
+            return (a - b) % order
         return substract
 
     def get_config(self):
@@ -86,13 +70,6 @@ class Zeus_sk(Mixnet):
 
     def mix(self, cipher_collection):
         """
-        {
-            'original_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],
-            ['mixed_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],]
-            ['proof': ...]
-            ...
-        }
-
         :type cipher_collection: dict
         :rtype: dict
         """
@@ -114,12 +91,6 @@ class Zeus_sk(Mixnet):
 
     def validate(self, cipher_collection):
         """
-        {
-            'original_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],
-            ['mixed_ciphers': list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}],]
-            ['proof': ...]
-            ...
-        }
         :type cipher_collection: dict
         :rtype: bool
         """
@@ -152,51 +123,30 @@ class Zeus_sk(Mixnet):
 
     def mix_ciphers(self, original_mix, teller=_teller, nr_parallel=0):
         """
-        Admits:
+        Structure of the produced cipher-mix is
 
         {
-            'modulus': mpz,
-            'order': mpz,
-            'generator': mpz,
-            'public': ModPrimeElement
-            'original_ciphers': ...
-            'mixed_ciphers': list[(ModPrimeElement, ModPrimeElement)]
-            ...
-        }
-
-        Returns:
-
-        {
-            'modulus': mpz,
-            'order': mpz,
-            'generator': mpz,
-            'public': ModPrimeElement,
-            'original_ciphers': list[(ModPrimeElement, ModPrimeElement)]
-            'mixed_ciphers': list[(ModPrimeElement, ModPrimeElement)]
+            'header': {
+                ...
+                'public': GroupElement
+            },
+            'original_ciphers': list[(GroupElement, GroupElement)]
+            'mixed_ciphers': list[(GroupElement, GroupElement)]
             'proof': {
-                'cipher_collections':,
-                'offset_collections':,
-                'random_collections':
+                'cipher_collections': ...,
+                'offset_collections': ...,
+                'random_collections': ...,
                 'challenge': str
             }
         }
-
-        :type original_mix: dict
-        :rtype: dict
         """
         cipher_mix = {}
 
         nr_rounds = self.__nr_rounds
-        # order = self.__order
         public = self.election_key
         original_ciphers = original_mix['mixed_ciphers']
 
         # Set some data
-
-        # cipher_mix['modulus'] = self.__modulus
-        # cipher_mix['order'] = order
-        # cipher_mix['generator'] = self.__generator
-        # cipher_mix['public'] = public
         cipher_mix.update({'header': self.header})
         cipher_mix['original_ciphers'] = original_ciphers
         cipher_mix['proof'] = {}
@@ -255,59 +205,31 @@ class Zeus_sk(Mixnet):
                 ciphers = cipher_collections[i]
                 offsets = offset_collections[i]
                 randoms = random_collections[i]
-
                 if bit == 0:
-                    pass              # Do nothing, just publish offsets and randoms
+                    pass
                 elif bit == 1:
                     new_offsets = [None] * nr_ciphers
                     new_randoms = [None] * nr_ciphers
-
                     for j in range(nr_ciphers):
                         k = offsets[j]
                         new_offsets[k] = mixed_offsets[j]
-                        # new_randoms[k] = (mixed_randoms[j] - randoms[j]) % order
                         new_randoms[k] = self.substract(mixed_randoms[j], randoms[j])
-
                     offset_collections[i] = new_offsets
                     random_collections[i] = new_randoms
-
                     del offsets, randoms
                 else:
                     err = 'This should be impossible. Something is broken'
                     raise AssertionError(err)
                 teller.advance()
-
         teller.finish('Mixing')
         return cipher_mix
 
 
     def verify_cipher_mix(self, cipher_mix, teller=_teller, min_rounds=None, nr_parallel=0):
         """
-        {
-            'modulus': mpz,
-            'order': mpz,
-            'generator': mpz,
-            'public': ModPrimeElement,
-            'original_ciphers': list[(ModPrimeElement, ModPrimeElement)]
-            'mixed_ciphers': list[(ModPrimeElement, ModPrimeElement)]
-            'proof': {
-                'cipher_collections':,
-                'offset_collections':,
-                'random_collections':
-                'challenge': str
-            }
-        }
-
-        :type cipher_mix: dict
-        :type teller:
-        :type min_rounds: int
-        :type nr_parallel: int
         """
         try:
-            modulus = cipher_mix['header']['modulus']
-            order = cipher_mix['header']['order']
-            generator = cipher_mix['header']['generator']
-            public = self.cryptosys.hex_to_element(cipher_mix['header']['public'])
+            public = self.retrieve_election_key(cipher_mix)
             original_ciphers = cipher_mix['original_ciphers']
             mixed_ciphers = cipher_mix['mixed_ciphers']
             proof = cipher_mix['proof']
