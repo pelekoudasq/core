@@ -188,6 +188,7 @@ class CreatingAPI(object):
     def set_election_key(self, election_key):
         cryptosys = self.get_cryptosys()
         self.election_key = cryptosys.get_key_value(election_key)
+        self.mixnet.set_election_key(self.election_key)
         self.hex_election_key = cryptosys.get_hex_value(self.election_key)
 
     def set_candidates(self, candidates):
@@ -310,7 +311,7 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         """
         config = self.config
         stage_cls = stage.__class__
-        data = []
+        data = ()
 
         if stage_cls is Uninitialized:
             try:
@@ -321,7 +322,10 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
             except KeyError as e:
                 err = f'Incomplete election config: missing {e}'
                 raise Abortion(err)
-            data = crypto_cls, crypto_config, mixnet_cls, mixnet_config
+            data = (crypto_cls,
+                    crypto_config,
+                    mixnet_cls,
+                    mixnet_config,)
         elif stage_cls is Creating:
             try:
                 zeus_private_key = config['zeus_private_key']
@@ -334,11 +338,15 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
             except KeyError as e:
                 err = f'Incomplete election config: missing {e}'
                 raise Abortion(err)
-            data = zeus_private_key, trustees, candidates, voters
+            data = (zeus_private_key,
+                    trustees,
+                    candidates,
+                    voters,)
         elif stage_cls is Voting:
             pass
         elif stage_cls is Mixing:
-            pass
+            votes_for_mixing, _ = self.extract_votes_for_mixing()
+            data = (votes_for_mixing,)
         elif stage_cls is Decrypting:
             pass
         elif stage_cls is Finished:
@@ -370,8 +378,11 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         elif stage_cls is Voting:
             pass
         elif stage_cls is Mixing:
-            votes_for_mixing, _ = self.extract_votes_for_mixing()
-            self.store_mix(votes_for_mixing)
+            functionalities.extend([
+                self.store_mix,
+                self.mixnet.mix_ciphers,
+                self.mixnet.verify_cipher_mix,
+            ])
         elif stage_cls is Decrypting:
             pass
         elif stage_cls is Finished:
@@ -400,7 +411,6 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
             self.set_candidates(candidates)
             self.set_voters(voters)
             self.set_audit_codes(audit_codes)
-            self.mixnet.set_election_key(election_key)
         elif stage_cls is Voting:
             # ~ No need for updates: running election individually updated
             # ~ with every new vote during execution of Voting._generate()
@@ -443,6 +453,7 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
 
     def extract_votes_for_mixing(self):
         """
+        Prepares input of Mixnet.mix_ciphers()
         """
         original_mix = {}
         original_mix.update({'header': self.mixnet.header})

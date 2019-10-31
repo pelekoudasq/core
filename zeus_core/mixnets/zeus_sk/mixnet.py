@@ -121,7 +121,7 @@ class Zeus_sk(Mixnet):
 
     # Core
 
-    def mix_ciphers(self, original_mix, teller=_teller, nr_parallel=0):
+    def mix_ciphers(self, original_mix, nr_rounds=None, nr_parallel=0, teller=_teller):
         """
         Structure of the produced cipher-mix is
 
@@ -225,7 +225,7 @@ class Zeus_sk(Mixnet):
         return cipher_mix
 
 
-    def verify_cipher_mix(self, cipher_mix, teller=_teller, min_rounds=None, nr_parallel=0):
+    def verify_cipher_mix(self, cipher_mix, min_rounds=None, nr_parallel=0, teller=_teller):
         """
         """
         try:

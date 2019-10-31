@@ -54,7 +54,7 @@ class Mixnet(object, metaclass=ABCMeta):
     # Core
 
     @abstractmethod
-    def mix_ciphers(self, original_mix):
+    def mix_ciphers(self, original_mix, **kwargs):
         """
         Admits
 

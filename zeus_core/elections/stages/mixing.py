@@ -9,4 +9,7 @@ class Mixing(Stage):
         super().__init__(controller, next_stage_cls=Decrypting)
 
     def _generate(self, *data):
+        (votes_for_mixing,) = data
+        mixed_ciphers = self.mix_ciphers(votes_for_mixing)
+        assert self.verify_cipher_mix(mixed_ciphers)
         return ()
