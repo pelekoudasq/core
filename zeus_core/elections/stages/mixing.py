@@ -10,6 +10,7 @@ class Mixing(Stage):
         super().__init__(controller, next_stage_cls=Decrypting)
 
     def _generate(self, *data):
+        # nr_parallel =
         (votes_for_mixing,) = data
         mixed_ciphers = self.mix_ciphers(votes_for_mixing)
         last_mix = self.do_get_last_mix()
