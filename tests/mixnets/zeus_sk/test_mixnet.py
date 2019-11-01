@@ -7,7 +7,7 @@ from zeus_core.utils.binutils import bit_iterator
 
 from tests.constants import (RES11_ELECTION_KEY, _2048_ELECTION_KEY,
     _4096_ELECTION_KEY, RES11_ZEUS_SK, _4096_ZEUS_SK, _2048_ZEUS_SK)
-from tests.helpers import _make_ciphers_to_mix
+from tests.mixnets.utils import mk_cipher_mix
 
 
 ROUNDS = 100
@@ -167,7 +167,7 @@ for (mixnet, election_key) in (
     # (_4096_ZEUS_SK, _4096_ELECTION_KEY),
 ):
     __mixnet__ciphers_to_mix.append(
-        (mixnet, _make_ciphers_to_mix(mixnet, election_key)))
+        (mixnet, mk_cipher_mix(mixnet, election_key)))
 
 @pytest.mark.parametrize('mixnet, ciphers_to_mix',
     __mixnet__ciphers_to_mix)
@@ -183,7 +183,7 @@ for (mixnet, election_key) in (
     (_2048_ZEUS_SK, _2048_ELECTION_KEY),
     # (_4096_ZEUS_SK, _4096_ELECTION_KEY)
 ):
-    ciphers_to_mix = _make_ciphers_to_mix(mixnet, election_key)
+    ciphers_to_mix = mk_cipher_mix(mixnet, election_key)
     cipher_mix = mixnet.mix_ciphers(ciphers_to_mix)
 
     # Corrupt proof keys
