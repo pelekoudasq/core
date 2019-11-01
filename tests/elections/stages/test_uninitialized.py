@@ -31,8 +31,8 @@ class TestUninitialized(StageTester, unittest.TestCase):
     def test_init_cryptosys(self):
         _, config, uninitialized, messages = self.get_context()
 
-        crypto_cls = config['crypto']['cls']
-        crypto_config = config['crypto']['config']
+        crypto_cls = config['crypto_cls']
+        crypto_config = config['crypto_config']
         cryptosys = uninitialized.init_cryptosys(crypto_cls, crypto_config)
         assert _2048_SYSTEM.parameters() == cryptosys.parameters()
         messages.append(
@@ -42,8 +42,8 @@ class TestUninitialized(StageTester, unittest.TestCase):
     def mk_init_cryptosys_abort_cases(self):
         _, config, _, _ = self.get_context()
 
-        crypto_cls = config['crypto']['cls']
-        crypto_config = config['crypto']['config']
+        crypto_cls = config['crypto_cls']
+        crypto_config = config['crypto_config']
 
         abort_cases = [{
             'case': [crypto_cls, deepcopy(crypto_config)],
@@ -73,10 +73,10 @@ class TestUninitialized(StageTester, unittest.TestCase):
     def test_init_mixnet(self):
         _, config, uninitialized, messages = self.get_context()
 
-        crypto_cls = config['crypto']['cls']
-        crypto_config = config['crypto']['config']
-        mixnet_cls = config['mixnet']['cls']
-        mixnet_config = config['mixnet']['config']
+        crypto_cls = config['crypto_cls']
+        crypto_config = config['crypto_config']
+        mixnet_cls = config['mixnet_cls']
+        mixnet_config = config['mixnet_config']
         cryptosys = uninitialized.init_cryptosys(crypto_cls, crypto_config)
         mixnet = uninitialized.init_mixnet(mixnet_cls, mixnet_config, cryptosys)
         assert mixnet.get_config() == {
@@ -93,11 +93,11 @@ class TestUninitialized(StageTester, unittest.TestCase):
         pseudo_config = {'nr_mixes': 1}
         abort_cases = [
             {
-                'case': (PseudoMixnet, config['mixnet']['config']),
+                'case': (PseudoMixnet, config['mixnet_config']),
                 'message': 'Unsupported mixnet',
             },
             {
-                'case': (config['mixnet']['cls'], pseudo_config),
+                'case': (config['mixnet_cls'], pseudo_config),
                 'message': 'Insufficient config'
             }
         ]
@@ -106,10 +106,10 @@ class TestUninitialized(StageTester, unittest.TestCase):
     def test_init_mixnet_abort_cases(self):
         _, config, uninitialized, messages = self.get_context()
 
-        crypto_cls = config['crypto']['cls']
-        crypto_config = config['crypto']['config']
-        mixnet_cls = config['mixnet']['cls']
-        mixnet_config = config['mixnet']['config']
+        crypto_cls = config['crypto_cls']
+        crypto_config = config['crypto_config']
+        mixnet_cls = config['mixnet_cls']
+        mixnet_config = config['mixnet_config']
         cryptosys = uninitialized.init_cryptosys(crypto_cls, crypto_config)
         abort_cases = self.mk_init_mixnet_abort_cases()
         for abort_case in abort_cases:
@@ -163,7 +163,7 @@ class TestUninitialized(StageTester, unittest.TestCase):
 
         cryptosys = election.get_cryptosys()
         crypto_params = election.get_crypto_params()
-        mixnet_config = config['mixnet']['config']
+        mixnet_config = config['mixnet_config']
         mixnet = election.get_mixnet()
 
         awaited = _2048_SYSTEM.parameters()

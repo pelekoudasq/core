@@ -102,7 +102,6 @@ def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,
     election = mk_election(ZeusTestElection, config,
         candidates, dupl_candidates, nr_voters, dupl_voters)
     run_until_voting_stage(election)
-    config_crypto = config['crypto']
     election_key = election.get_election_key()
     nr_candidates = len(election.get_candidates())
     voter_keys = election.get_voters()
@@ -117,14 +116,16 @@ def mk_clients(election):
     """
     Emulates the electoral body (one client for each stored voter key)
     """
-    config_crypto = election.config['crypto']
+    crypto = {}
+    crypto['cls'] = election.config['crypto_cls']
+    crypto['config'] = election.config['crypto_config']
     voter_keys = election.get_voters()
     nr_candidates = len(election.get_candidates())
     clients = []
     election_key = election.get_election_key()
     for voter_key in voter_keys:
         audit_codes = election.get_voter_audit_codes(voter_key)
-        client = Client(config_crypto, election_key, nr_candidates,
+        client = Client(crypto, election_key, nr_candidates,
             voter_key, audit_codes)
         clients.append(client)
     return clients

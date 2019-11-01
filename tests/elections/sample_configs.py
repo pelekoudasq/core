@@ -21,7 +21,6 @@ config_1 = \
             'nr_mixes': 2
         }
     },
-    'nr_parallel': 0,
     'zeus_private_key': None,
     'trustees': [
         {

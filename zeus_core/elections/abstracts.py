@@ -123,11 +123,10 @@ class StageController(object, metaclass=ABCMeta):
     """
     """
 
-    def __init__(self, initial_cls, config):
+    def __init__(self, initial_cls):
         if not issubclass(initial_cls, Stage):
             err = "No initial stage provided"
             raise AssertionError(err)
-        self.config = config
         self.current_stage = initial_cls(self)
 
     def run(self):
@@ -145,8 +144,6 @@ class StageController(object, metaclass=ABCMeta):
     def _get_current_stage(self):
         return self.current_stage
 
-    def get_config(self):
-        return self.config
 
     def load_current_context(self):
         """

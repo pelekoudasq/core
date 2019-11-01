@@ -7,7 +7,7 @@ import unittest
 import json
 from copy import deepcopy
 from zeus_core.elections.validations import Validator
-from zeus_core.elections.exceptions import InvalidVoteError
+from zeus_core.elections.exceptions import Abortion, InvalidVoteError
 from tests.elections.utils import display_json, mk_voting_setup, adapt_vote
 
 
@@ -88,7 +88,7 @@ class TestValidations(unittest.TestCase):
         """
         """
         election, cryptosys, validator, client, messages = self.get_context()
-       
+
         failures = []
         for index, msg in enumerate((
             'Wrong or extra content',
@@ -104,7 +104,7 @@ class TestValidations(unittest.TestCase):
             elif index == 2:
                 vote['encrypted_ballot']['modulus'] += 1
             elif index == 3:
-                vote['encrypted_ballot']['public'] += 1    
+                vote['encrypted_ballot']['public'] += 1
             failures.append((msg, vote))
         return failures
 
@@ -112,7 +112,7 @@ class TestValidations(unittest.TestCase):
         """
         """
         election, cryptosys, validator, client, messages = self.get_context()
-        
+
         failures = self.mk_vote_adaptment_failures()
         for err, vote in failures:
             with self.subTest(err=err, vote=vote):

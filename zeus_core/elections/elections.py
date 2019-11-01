@@ -1,23 +1,15 @@
 from abc import ABCMeta, abstractmethod
 from itertools import repeat
+from copy import deepcopy
 
 from .abstracts import StageController, Aborted
-from .stages import (Uninitialized, Creating, Voting,
-        Mixing, Decrypting, Finished,)
+from .stages import (Uninitialized, Creating, Voting, Mixing, Decrypting, Finished,)
 from .validations import Validator
 from .signatures import Signer
+from .exceptions import Abortion
 
 
 class GenericAPI(object):
-
-    def set_option(self, kwarg):
-        self.options.update(kwarg)
-
-    def get_option(self, key):
-        """
-        Returns None if the option doesn't exist
-        """
-        return self.options.get(key)
 
     def get_cryptosys(self):
         return self.cryptosys
@@ -271,7 +263,53 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
 
 
     def __init__(self, config, **kwargs):
+        """
+        """
+        self.config = self.extract_config(config)
         self.options = kwargs
+        self.initialize_entities()
+        super().__init__(Uninitialized)
+
+    @staticmethod
+    def extract_config(config):
+        """
+        """
+        config = deepcopy(config)
+        try:
+            crypto = config['crypto']
+            mixnet = config['mixnet']
+            trustees = config['trustees']
+            candidates = config['candidates']
+            voters = config['voters']
+        except KeyError as e:
+            err = f'Incomplete election config: missing {e}'
+            raise Abortion(err)
+        config['crypto_cls'] = crypto['cls']
+        config['crypto_config'] = crypto['config']
+        config['mixnet_cls'] = mixnet['cls']
+        config['mixnet_config'] = mixnet['config']
+        del config['crypto']
+        del config['mixnet']
+        try:
+            config['zeus_private_key']
+        except KeyError:
+            config['zeus_private_key'] = None
+        return config
+
+    def set_option(self, kwarg):
+        """
+        """
+        self.options.update(kwarg)
+
+    def get_option(self, key):
+        """
+        Returns None if the option doesn't exist
+        """
+        return self.options.get(key)
+
+    def initialize_entities(self):
+        """
+        """
 
         # Modified during stage Uninitialized
         self.cryptosys = None
@@ -300,8 +338,6 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         # Modified during stage Mixing
         self.mixes = []
 
-        super().__init__(Uninitialized, config)
-
 
     # Stage controller implementation
 
@@ -318,30 +354,19 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         data = ()
 
         if stage_cls is Uninitialized:
-            try:
-                crypto_cls = config['crypto']['cls']
-                crypto_config = config['crypto']['config']
-                mixnet_cls = config['mixnet']['cls']
-                mixnet_config = config['mixnet']['config']
-            except KeyError as e:
-                err = f'Incomplete election config: missing {e}'
-                raise Abortion(err)
+            crypto_cls = config['crypto_cls']
+            crypto_config = config['crypto_config']
+            mixnet_cls = config['mixnet_cls']
+            mixnet_config = config['mixnet_config']
             data = (crypto_cls,
                     crypto_config,
                     mixnet_cls,
                     mixnet_config,)
         elif stage_cls is Creating:
-            try:
-                zeus_private_key = config['zeus_private_key']
-            except KeyError:
-                zeus_private_key = None
-            try:
-                trustees = config['trustees']
-                candidates = config['candidates']
-                voters = config['voters']
-            except KeyError as e:
-                err = f'Incomplete election config: missing {e}'
-                raise Abortion(err)
+            zeus_private_key = config['zeus_private_key']
+            trustees = config['trustees']
+            candidates = config['candidates']
+            voters = config['voters']
             data = (zeus_private_key,
                     trustees,
                     candidates,
@@ -363,7 +388,10 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
     def load_methods(self, stage):
         """
         """
+        election = self
         cryptosys = self.get_cryptosys()
+        mixnet = self.get_mixnet()
+
         stage_cls = stage.__class__
         functionalities = []
 
@@ -371,23 +399,24 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
             pass
         elif stage_cls is Creating:
             functionalities.extend([
-                self.store_trustee,
+                election.store_trustee,
                 cryptosys.keygen,
                 cryptosys.get_key_value,
                 cryptosys._get_public_value,
                 cryptosys._combine_public_keys,
                 cryptosys._set_public_key,
                 cryptosys.validate_public_key,
-                cryptosys.deserialize_trustees,])
+                cryptosys.deserialize_trustees,
+            ])
         elif stage_cls is Voting:
             pass
         elif stage_cls is Mixing:
             functionalities.extend([
-                self.store_mix,
-                self.do_get_last_mix,
-                self.mixnet.mix_ciphers,
-                self.mixnet.extract_header,
-                self.mixnet.validate_mix,
+                election.store_mix,
+                election.do_get_last_mix,
+                mixnet.mix_ciphers,
+                mixnet.extract_header,
+                mixnet.validate_mix,
             ])
         elif stage_cls is Decrypting:
             pass
@@ -402,21 +431,22 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
     def update(self, *entities, stage):
         """
         """
+        election = self
         stage_cls = stage.__class__
 
         if stage_cls is Uninitialized:
             cryptosys, mixnet = entities
-            self.set_cryptosys(cryptosys)
-            self.set_mixnet(mixnet)
+            election.set_cryptosys(cryptosys)
+            election.set_mixnet(mixnet)
         elif stage_cls is Creating:
             (zeus_keypair, trustees, election_key,
                 candidates, voters, audit_codes) = entities
-            self.set_zeus_keypair(zeus_keypair)
-            self.set_trustees(trustees)
-            self.set_election_key(election_key)
-            self.set_candidates(candidates)
-            self.set_voters(voters)
-            self.set_audit_codes(audit_codes)
+            election.set_zeus_keypair(zeus_keypair)
+            election.set_trustees(trustees)
+            election.set_election_key(election_key)
+            election.set_candidates(candidates)
+            election.set_voters(voters)
+            election.set_audit_codes(audit_codes)
         elif stage_cls is Voting:
             # ~ No need for updates: running election individually updated
             # ~ with every new vote during execution of Voting._generate()
