@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from copy import deepcopy
 
-from ..exceptions import MixNotVerifiedError
+from ..exceptions import MixNotVerifiedError, InvalidMixError
 
 
 class Mixnet(object, metaclass=ABCMeta):
@@ -59,7 +59,7 @@ class Mixnet(object, metaclass=ABCMeta):
     # Core
 
     @abstractmethod
-    def mix_ciphers(self, original_mix, **kwargs):
+    def mix_ciphers(self, original_mix, nr_parallel=None, **kwargs):
         """
         Admits
 
@@ -90,7 +90,7 @@ class Mixnet(object, metaclass=ABCMeta):
         """
 
 
-    def validate_mix(self, cipher_mix, last_mix=None):
+    def validate_mix(self, cipher_mix, last_mix=None, nr_parallel=None):
         """
         """
         try:
@@ -104,11 +104,13 @@ class Mixnet(object, metaclass=ABCMeta):
         if hex_crypto_params != self.cryptosys.hex_crypto_params():
             err = 'Cryptosystem mismatch'
             raise InvalidMixError(err)
-        if last_mix and original_ciphers != last_mix:
+        if last_mix and original_ciphers != last_mix['original_ciphers']:
             err = 'Not a mix of latest ciphers'
             raise InvalidMixError(err)
         try:
-            self.verify_mix(cipher_mix)
+            if nr_parallel is None:
+                nr_parallel = 0
+            self.verify_mix(cipher_mix, nr_parallel=nr_parallel)
         except MixNotVerifiedError:
             raise
         return True

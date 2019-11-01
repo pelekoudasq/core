@@ -68,15 +68,6 @@ class Zeus_sk(Mixnet):
 
     # API
 
-    # def mix(self, cipher_collection):
-    #     """
-    #     :type cipher_collection: dict
-    #     :rtype: dict
-    #     """
-    #     ciphers_to_mix = self._set_cipher_mix(cipher_collection)
-    #     cipher_mix = self.mix_ciphers(ciphers_to_mix)
-    #     return self._extract_cipher_mix(cipher_mix)
-    #
     # def mix_many(self, prev):
     #     """
     #     :type prev: dict
@@ -88,18 +79,6 @@ class Zeus_sk(Mixnet):
     #         prev = self.mix(prev)
     #         append(prev)
     #     return mixes
-    #
-    # def validate(self, cipher_collection):
-    #     """
-    #     :type cipher_collection: dict
-    #     :rtype: bool
-    #     """
-    #     cipher_mix = self._set_cipher_mix(cipher_collection)
-    #     try:
-    #         self.verify_mix(cipher_mix)
-    #     except MixNotVerifiedError:
-    #         return False # so that it can be used below; otherwise: raise
-    #     return True
     #
     # def validate_many(self, cipher_collections):
     #     """
@@ -121,7 +100,7 @@ class Zeus_sk(Mixnet):
 
     # Core
 
-    def mix_ciphers(self, original_mix, nr_rounds=None, nr_parallel=0, teller=_teller):
+    def mix_ciphers(self, original_mix, nr_parallel=None, nr_rounds=None, teller=_teller):
         """
         Structure of the produced cipher-mix is
 
@@ -140,6 +119,9 @@ class Zeus_sk(Mixnet):
             }
         }
         """
+        if nr_parallel is None:
+            nr_parallel = 0
+
         cipher_mix = {}
         cipher_mix.update({'header': self.header})
         nr_rounds = self.__nr_rounds
@@ -222,7 +204,7 @@ class Zeus_sk(Mixnet):
         return cipher_mix
 
 
-    def verify_mix(self, cipher_mix, min_rounds=None, nr_parallel=0, teller=_teller):
+    def verify_mix(self, cipher_mix, nr_parallel=0, min_rounds=None, teller=_teller):
         """
         """
         _, election_key = self.extract_header(cipher_mix)

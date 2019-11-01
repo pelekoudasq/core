@@ -393,7 +393,7 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         mixnet = self.get_mixnet()
 
         stage_cls = stage.__class__
-        functionalities = [self.get_option]
+        functionalities = []
 
         if stage_cls is Uninitialized:
             pass
