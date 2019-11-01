@@ -1,5 +1,6 @@
 from zeus_core.elections.abstracts import Stage
 from zeus_core.elections.exceptions import Abortion
+from zeus_core.mixnets.exceptions import InvalidMixError
 from .decrypting import Decrypting
 
 
@@ -11,5 +12,6 @@ class Mixing(Stage):
     def _generate(self, *data):
         (votes_for_mixing,) = data
         mixed_ciphers = self.mix_ciphers(votes_for_mixing)
-        assert self.verify_cipher_mix(mixed_ciphers)
+        last_mix = self.do_get_last_mix()
+        self.validate_mix(mixed_ciphers, last_mix)
         return ()

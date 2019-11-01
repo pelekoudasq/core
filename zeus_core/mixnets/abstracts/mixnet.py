@@ -1,4 +1,8 @@
 from abc import ABCMeta, abstractmethod
+from copy import deepcopy
+
+from ..exceptions import MixNotVerifiedError
+
 
 class Mixnet(object, metaclass=ABCMeta):
     """
@@ -11,12 +15,13 @@ class Mixnet(object, metaclass=ABCMeta):
         self.__cryptosys = cryptosys
         self.__group = cryptosys.group
         header = {}
-        header.update(cryptosys.hex_parameters())
+        header.update(cryptosys.hex_crypto_params())
         if election_key:
             self.__election_key = cryptosys.get_key_value(election_key)
             header.update({'public':
                 self.__election_key.to_hex()})
         self.__header = header
+        self.mixes = []
 
 
     # Initialization
@@ -85,6 +90,36 @@ class Mixnet(object, metaclass=ABCMeta):
         """
 
 
+    def validate_mix(self, cipher_mix, last_mix=None):
+        """
+        """
+        try:
+            hex_crypto_params, election_key = self.extract_header(cipher_mix)
+            original_ciphers = cipher_mix['original_ciphers']
+            mixed_ciphers = cipher_mix['mixed_ciphers']
+            proof = cipher_mix['proof']
+        except KeyError as error:
+            err = 'Invalid mix format: \'%s\' missing' % error.args[0]
+            raise InvalidMixError(err)
+        if hex_crypto_params != self.cryptosys.hex_crypto_params():
+            err = 'Cryptosystem mismatch'
+            raise InvalidMixError(err)
+        if last_mix and original_ciphers != last_mix:
+            err = 'Not a mix of latest ciphers'
+            raise InvalidMixError(err)
+        try:
+            self.verify_mix(cipher_mix)
+        except MixNotVerifiedError:
+            raise
+        return True
+
+
+    @abstractmethod
+    def verify_mix(self, cipher_mix, **kwargs):
+        """
+        """
+
+
     # Encryption
 
     def _reencrypt(self, alpha, beta, public, randomness=None, get_secret=False):
@@ -149,7 +184,7 @@ class Mixnet(object, metaclass=ABCMeta):
         """
         Turns the provided cipher-collection into the corresponding cipher-mix
 
-        If provided, the value of 'proof' will be directly extracted from the
+        If provided, the value of 'proof' will be direcelectitly extracted from the
         provided collection's homonymous field. If `mixed_ciphers` is not
         provided, then the output's corresponding value will be the same as
         that of `original_ciphers`
@@ -191,10 +226,13 @@ class Mixnet(object, metaclass=ABCMeta):
             output['proof'] = proof
         return output
 
-    def retrieve_election_key(self, cipher_mix):
+    def extract_header(self, cipher_mix):
         """
-        Unhexifies and returns the election key as inscribed
-        in the provided cipher-mix
+        Extracts from the header of the provided cipher-mix the parameters of
+        the underlying cryptosystem as hexadecimals along with unhexifying
+        inscribed election key
         """
-        public = self.cryptosys.hex_to_element(cipher_mix['header']['public'])
-        return public
+        header = deepcopy(cipher_mix['header'])
+        public = header.pop('public')
+        election_key = self.cryptosys.hex_to_element(public)
+        return header, election_key

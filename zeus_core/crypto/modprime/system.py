@@ -143,7 +143,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return serialized
 
-    def hex_parameters(self):
+    def hex_crypto_params(self):
         """
         Returns a serialization of the cryptosystem's parameters (the modulus p,
         order q and generator g), where the values appear as hexstrings
@@ -1362,7 +1362,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     #     return mixes
     #
     #
-    # def _get_last_mix(mixes):
+    # def _do_get_last_mix(mixes):
     #     """
     #     """
     #     return mixes[-1]

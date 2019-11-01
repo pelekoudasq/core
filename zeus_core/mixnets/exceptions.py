@@ -3,6 +3,12 @@ class MixnetError(Exception):
     """
     pass
 
+class InvalidMixError(BaseException):
+    """
+    Raised when a cipher-mimx fails to be validated
+    """
+    pass
+
 class MixNotVerifiedError(BaseException):
     """
     Raised when a cipher-mix fails to be verified

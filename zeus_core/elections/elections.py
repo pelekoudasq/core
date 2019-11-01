@@ -153,6 +153,10 @@ class GenericAPI(object):
         # return dict(self.excluded_voters)
         return self.excluded_voters
 
+    def do_get_last_mix(self):
+        mixes = self.mixes
+        return None if not mixes else mixes[-1]
+
 
 class UninitializedAPI(object):
 
@@ -380,8 +384,10 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         elif stage_cls is Mixing:
             functionalities.extend([
                 self.store_mix,
+                self.do_get_last_mix,
                 self.mixnet.mix_ciphers,
-                self.mixnet.verify_cipher_mix,
+                self.mixnet.extract_header,
+                self.mixnet.validate_mix,
             ])
         elif stage_cls is Decrypting:
             pass

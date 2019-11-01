@@ -68,55 +68,55 @@ class Zeus_sk(Mixnet):
 
     # API
 
-    def mix(self, cipher_collection):
-        """
-        :type cipher_collection: dict
-        :rtype: dict
-        """
-        ciphers_to_mix = self._set_cipher_mix(cipher_collection)
-        cipher_mix = self.mix_ciphers(ciphers_to_mix)
-        return self._extract_cipher_mix(cipher_mix)
-
-    def mix_many(self, prev):
-        """
-        :type prev: dict
-        :rtype: list[dict]
-        """
-        mixes = []   # mix = [prev]
-        appned = mixes.append
-        for _ in range(self.__nr_mixes):
-            prev = self.mix(prev)
-            append(prev)
-        return mixes
-
-    def validate(self, cipher_collection):
-        """
-        :type cipher_collection: dict
-        :rtype: bool
-        """
-        cipher_mix = self._set_cipher_mix(cipher_collection)
-        try:
-            self.verify_cipher_mix(cipher_mix)
-        except MixNotVerifiedError:
-            return False # so that it can be used below; otherwise: raise
-        return True
-
-    def validate_many(self, cipher_collections):
-        """
-        :type cipher_collections: list[dict]
-        :rtype bool:
-        """
-        if len(cipher_collections) != self.__nr_mixes:
-            err = 'Invalid number of mixes provided'
-            raise AssertionError(err)
-
-        validated = True
-        validate = self.validate
-        for cipher_collection in cipher_collections:
-            # TODO: validate if original_ciphers != previous_mixed (?)
-            validated = validated and validate(cipher_collection)
-
-        return validated
+    # def mix(self, cipher_collection):
+    #     """
+    #     :type cipher_collection: dict
+    #     :rtype: dict
+    #     """
+    #     ciphers_to_mix = self._set_cipher_mix(cipher_collection)
+    #     cipher_mix = self.mix_ciphers(ciphers_to_mix)
+    #     return self._extract_cipher_mix(cipher_mix)
+    #
+    # def mix_many(self, prev):
+    #     """
+    #     :type prev: dict
+    #     :rtype: list[dict]
+    #     """
+    #     mixes = []   # mix = [prev]
+    #     appned = mixes.append
+    #     for _ in range(self.__nr_mixes):
+    #         prev = self.mix(prev)
+    #         append(prev)
+    #     return mixes
+    #
+    # def validate(self, cipher_collection):
+    #     """
+    #     :type cipher_collection: dict
+    #     :rtype: bool
+    #     """
+    #     cipher_mix = self._set_cipher_mix(cipher_collection)
+    #     try:
+    #         self.verify_mix(cipher_mix)
+    #     except MixNotVerifiedError:
+    #         return False # so that it can be used below; otherwise: raise
+    #     return True
+    #
+    # def validate_many(self, cipher_collections):
+    #     """
+    #     :type cipher_collections: list[dict]
+    #     :rtype bool:
+    #     """
+    #     if len(cipher_collections) != self.__nr_mixes:
+    #         err = 'Invalid number of mixes provided'
+    #         raise AssertionError(err)
+    #
+    #     validated = True
+    #     validate = self.validate
+    #     for cipher_collection in cipher_collections:
+    #         # TODO: validate if original_ciphers != previous_mixed (?)
+    #         validated = validated and validate(cipher_collection)
+    #
+    #     return validated
 
 
     # Core
@@ -141,13 +141,10 @@ class Zeus_sk(Mixnet):
         }
         """
         cipher_mix = {}
-
-        nr_rounds = self.__nr_rounds
-        public = self.election_key
-        original_ciphers = original_mix['mixed_ciphers']
-
-        # Set some data
         cipher_mix.update({'header': self.header})
+        nr_rounds = self.__nr_rounds
+        election_key = self.election_key
+        original_ciphers = original_mix['mixed_ciphers']
         cipher_mix['original_ciphers'] = original_ciphers
         cipher_mix['proof'] = {}
 
@@ -161,7 +158,7 @@ class Zeus_sk(Mixnet):
         encrypt_func = self._reencrypt
         with teller.task('Producing final mixed ciphers'):
             mixed_ciphers, mixed_offsets, mixed_randoms = shuffle_ciphers(
-                original_ciphers, public, encrypt_func, teller=teller)
+                original_ciphers, election_key, encrypt_func, teller=teller)
             cipher_mix['mixed_ciphers'] = mixed_ciphers
 
         total = nr_ciphers * nr_rounds
@@ -173,7 +170,7 @@ class Zeus_sk(Mixnet):
                 async_shuffle_ciphers = _async.make_async(shuffle_ciphers)
 
             if _async:
-                channels = [async_shuffle_ciphers(original_ciphers, public, encrypt_func,
+                channels = [async_shuffle_ciphers(original_ciphers, election_key, encrypt_func,
                                 teller=teller) for _ in range(nr_rounds)]
                 count = 0
                 while count < total:
@@ -185,7 +182,7 @@ class Zeus_sk(Mixnet):
                 _async.shutdown()
             else:
                 collections = [shuffle_ciphers(original_ciphers,
-                    public, encrypt_func, teller=teller) for _ in range(nr_rounds)]
+                    election_key, encrypt_func, teller=teller) for _ in range(nr_rounds)]
 
             unzipped = [list(x) for x in zip(*collections)]
             cipher_collections, offset_collections, random_collections = unzipped
@@ -225,18 +222,13 @@ class Zeus_sk(Mixnet):
         return cipher_mix
 
 
-    def verify_cipher_mix(self, cipher_mix, min_rounds=None, nr_parallel=0, teller=_teller):
+    def verify_mix(self, cipher_mix, min_rounds=None, nr_parallel=0, teller=_teller):
         """
         """
-        try:
-            public = self.retrieve_election_key(cipher_mix)
-            original_ciphers = cipher_mix['original_ciphers']
-            mixed_ciphers = cipher_mix['mixed_ciphers']
-            proof = cipher_mix['proof']
-        except KeyError as error:
-            err = 'Invalid mix format: \'%s\' missing' % error.args[0]
-            raise MixNotVerifiedError(err)
-
+        _, election_key = self.extract_header(cipher_mix)
+        original_ciphers = cipher_mix['original_ciphers']
+        mixed_ciphers = cipher_mix['mixed_ciphers']
+        proof = cipher_mix['proof']
         try:
             cipher_collections = proof['cipher_collections']
             offset_collections = proof['offset_collections']
@@ -289,12 +281,12 @@ class Zeus_sk(Mixnet):
                     append(async_verify_mix_round(i, bit,
                                     original_ciphers, mixed_ciphers, ciphers,
                                     offsets, randoms, encrypt_func,
-                                    public, teller=None))
+                                    election_key, teller=None))
                 else:
                     try:
                         verify_mix_round(i, bit, original_ciphers, mixed_ciphers,
                                         ciphers, offsets, randoms, encrypt_func,
-                                        public, teller=None)
+                                        election_key, teller=None)
                     except RoundNotVerifiedError as error:
                         err = error.args[0]
                         raise MixNotVerifiedError(err)

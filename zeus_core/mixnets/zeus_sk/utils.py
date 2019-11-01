@@ -31,15 +31,15 @@ def compute_mix_challenge(cipher_mix):
     return challenge
 
 
-def shuffle_ciphers(ciphers, public, encrypt_func, teller=None,
+def shuffle_ciphers(ciphers, election_key, encrypt_func, teller=None,
             report_thres=128, async_channel=None):
     """
-    Reencrypts the provided `ciphers` under the given key `public` and returns a random
+    Reencrypts the provided `ciphers` under the given key `election_key` and returns a random
     permutation of the new ciphers, along with the list of indices encoding this
     permutation and the randomnesses used for re-encryption in the original order
 
     :type ciphers: list[(ModPrimeElement, ModPrimeElement)]
-    :type public: ModPrimeElement
+    :type election_key: ModPrimeElement
     :type encrypt_func:
     :rtype: (list[(ModPrimeElement, ModPrimeElement)], list[int], list[mpz])
     """
@@ -52,7 +52,7 @@ def shuffle_ciphers(ciphers, public, encrypt_func, teller=None,
     for i in range(nr_ciphers):
 
         alpha, beta = ciphers[i]
-        alpha, beta, secret = encrypt_func(alpha, beta, public, get_secret=True)
+        alpha, beta, secret = encrypt_func(alpha, beta, election_key, get_secret=True)
 
         mixed_randoms[i] = secret
         j = mixed_offsets[i]
@@ -70,7 +70,7 @@ def shuffle_ciphers(ciphers, public, encrypt_func, teller=None,
 
 
 def verify_mix_round(round_nr, bit, original_ciphers, mixed_ciphers,
-        ciphers, offsets, randoms, encrypt_func, public,
+        ciphers, offsets, randoms, encrypt_func, election_key,
         teller=None, report_thres=128, async_channel=None):
     """
     Returns True if the round is successfully verified, otherwise raises
@@ -84,7 +84,7 @@ def verify_mix_round(round_nr, bit, original_ciphers, mixed_ciphers,
     :type offsets: list[mpz]
     :type randoms: list[mpz]
     :type encrypt_func:
-    :type public: ModPrimeElement
+    :type election_key: ModPrimeElement
     :type teller:
     :type report_thres: int
     :type async_channel:
@@ -110,7 +110,7 @@ def verify_mix_round(round_nr, bit, original_ciphers, mixed_ciphers,
 
         alpha = preimage[ALPHA]
         beta = preimage[BETA]
-        new_alpha, new_beta = encrypt_func(alpha, beta, public, randomness=random)
+        new_alpha, new_beta = encrypt_func(alpha, beta, election_key, randomness=random)
 
         image = images[offset]
         if new_alpha != image[ALPHA] or new_beta != image[BETA]:

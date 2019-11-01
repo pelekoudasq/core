@@ -173,7 +173,7 @@ for (mixnet, election_key) in (
     __mixnet__ciphers_to_mix)
 def test_cipher_mix_verification_success(mixnet, ciphers_to_mix):
     cipher_mix = mixnet.mix_ciphers(ciphers_to_mix, nr_parallel=0)
-    assert mixnet.verify_cipher_mix(cipher_mix, nr_parallel=0)
+    assert mixnet.verify_mix(cipher_mix, nr_parallel=0)
 
 # Failures (sync)
 
@@ -185,11 +185,6 @@ for (mixnet, election_key) in (
 ):
     ciphers_to_mix = _make_ciphers_to_mix(mixnet, election_key)
     cipher_mix = mixnet.mix_ciphers(ciphers_to_mix)
-
-    # Corrupt keys
-    corrupt = deepcopy(cipher_mix)
-    del corrupt['header']['public']
-    __failure_cases.append((mixnet, corrupt))
 
     # Corrupt proof keys
     corrupt = deepcopy(cipher_mix)
@@ -222,4 +217,4 @@ for (mixnet, election_key) in (
 @pytest.mark.parametrize('mixnet, cipher_mix', __failure_cases)
 def test_cipher_mix_verification_failure(mixnet, cipher_mix):
     with pytest.raises(MixNotVerifiedError):
-        mixnet.verify_cipher_mix(cipher_mix, nr_parallel=0)
+        mixnet.verify_mix(cipher_mix, nr_parallel=0)

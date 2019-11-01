@@ -70,7 +70,7 @@ if __name__=='__main__':
     print('\nPerforming synchronous verifications\n')
     sleep(1)
     try:
-        mixnet.verify_cipher_mix(cipher_mix, nr_parallel=0)
+        mixnet.verify_mix(cipher_mix, nr_parallel=0)
     except:
         _exit(' - Sync verification failed to be performed')
     else:
@@ -81,7 +81,7 @@ if __name__=='__main__':
     corrupt = deepcopy(cipher_mix)
     del corrupt['public']
     try:
-        mixnet.verify_cipher_mix(corrupt, nr_parallel=0)
+        mixnet.verify_mix(corrupt, nr_parallel=0)
     except MixNotVerifiedError:
         print(' + Malformed cipher mix successfully detected')
     else:
@@ -90,7 +90,7 @@ if __name__=='__main__':
     corrupt = deepcopy(cipher_mix)
     del corrupt['proof']['cipher_collections']
     try:
-        mixnet.verify_cipher_mix(corrupt, nr_parallel=0)
+        mixnet.verify_mix(corrupt, nr_parallel=0)
     except MixNotVerifiedError:
         print(' + Malformed mix proof successfully detected')
     else:
@@ -99,7 +99,7 @@ if __name__=='__main__':
     corrupt = deepcopy(cipher_mix)
     corrupt['proof']['challenge'] += '0'
     try:
-        mixnet.verify_cipher_mix(corrupt, nr_parallel=0)
+        mixnet.verify_mix(corrupt, nr_parallel=0)
     except MixNotVerifiedError:
         print(' + Invalid challenge successfully detected')
     else:
@@ -107,7 +107,7 @@ if __name__=='__main__':
 
     try:
         lower_bound = ROUNDS + 1
-        mixnet.verify_cipher_mix(cipher_mix, min_rounds=lower_bound)
+        mixnet.verify_mix(cipher_mix, min_rounds=lower_bound)
     except MixNotVerifiedError:
         print(' + Wrong lower bound successfully detected')
     else:
@@ -116,7 +116,7 @@ if __name__=='__main__':
     corrupt = deepcopy(cipher_mix)
     corrupt['proof']['offset_collections'] += [0]
     try:
-        mixnet.verify_cipher_mix(corrupt, nr_parallel=0)
+        mixnet.verify_mix(corrupt, nr_parallel=0)
     except MixNotVerifiedError:
         print(' + Wrong collection length successfully detected')
     else:
@@ -132,7 +132,7 @@ if __name__=='__main__':
         images = corrupt['mixed_ciphers']
     images[0][0].reduce_value()
     try:
-        mixnet.verify_cipher_mix(corrupt, nr_parallel=0)
+        mixnet.verify_mix(corrupt, nr_parallel=0)
     except MixNotVerifiedError:
         print(' + Unverified round successfully detected')
     else:
