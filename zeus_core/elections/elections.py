@@ -149,6 +149,10 @@ class GenericAPI(object):
         mixes = self.mixes
         return None if not mixes else mixes[-1]
 
+    def get_mixed_ballots(self):
+        last_mix = self.do_get_last_mix()
+        return last_mix['mixed_ciphers'] if last_mix is not None else []
+
 
 class UninitializedAPI(object):
 

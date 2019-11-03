@@ -131,15 +131,15 @@ class StageController(object, metaclass=ABCMeta):
 
     def run(self):
         from time import sleep
-        current_stage = self._get_current_stage()   # Initial stage
-        current_stage.run()
         print(self._get_current_stage().__class__.__name__)
         sleep(.5)
+        current_stage = self._get_current_stage()   # Initial stage
+        current_stage.run()
         while not isinstance(current_stage, FinalStage):
-            current_stage = current_stage.next()
-            current_stage.run()
             print(self._get_current_stage().__class__.__name__)
             sleep(.5)
+            current_stage = current_stage.next()
+            current_stage.run()
 
     def _get_current_stage(self):
         return self.current_stage

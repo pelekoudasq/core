@@ -3,7 +3,6 @@ import unittest
 from copy import deepcopy
 import time
 
-from zeus_core.elections.stages import Uninitialized
 from zeus_core.elections.utils import extract_vote
 from zeus_core.elections.exceptions import Abortion, VoteRejectionError
 

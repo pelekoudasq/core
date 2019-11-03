@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from copy import deepcopy
 
-from ..exceptions import MixNotVerifiedError, InvalidMixError
+from .exceptions import MixNotVerifiedError, InvalidMixError
 
 
 class Mixnet(object, metaclass=ABCMeta):
@@ -21,7 +21,6 @@ class Mixnet(object, metaclass=ABCMeta):
             header.update({'public':
                 self.__election_key.to_hex()})
         self.__header = header
-        self.mixes = []
 
 
     # Initialization

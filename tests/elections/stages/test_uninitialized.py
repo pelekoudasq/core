@@ -4,11 +4,10 @@ import sys
 from copy import deepcopy
 import time
 
-from zeus_core.elections.stages import Uninitialized
 from zeus_core.crypto.constants import _2048_PRIME, _2048_ORDER, _2048_GENERATOR
 from zeus_core.elections.exceptions import Abortion
 from tests.constants import _2048_SYSTEM
-from tests.elections.utils import run_until_uninitialized_stage, mk_election
+from tests.elections.utils import mk_election
 from tests.elections.stages.abstracts import StageTester, get_cls_name
 
 
@@ -19,7 +18,7 @@ class TestUninitialized(StageTester, unittest.TestCase):
     def run_until_stage(cls):
         election = mk_election()
         cls.election = election
-        run_until_uninitialized_stage(election)
+        election.run_until_uninitialized_stage()
         election.load_current_context()
         cls.stage = election._get_current_stage()
 

@@ -1,7 +1,6 @@
 import json
 from math import ceil
 from copy import deepcopy
-# from tests.elections.server import ZeusTestElection
 from zeus_core.elections import ZeusCoreElection
 from zeus_core.elections.stages import Uninitialized
 from tests.elections.sample_configs import config_1
@@ -23,6 +22,44 @@ class ZeusTestElection(ZeusCoreElection):
             except StopIteration:
                 break
             yield vote
+
+
+    # Test utils (irrelevant to implementation of ZeusCoreElection abstract class)
+
+    def run_until_uninitialized_stage(self):
+        uninitialized = self._get_current_stage()
+        return uninitialized
+
+    def run_until_creating_stage(self):
+        uninitialized = self.run_until_uninitialized_stage()
+        uninitialized.run()
+        creating = uninitialized.next()
+        return creating
+
+    def run_until_voting_stage(self):
+        creating = self.run_until_creating_stage()
+        creating.run()
+        voting = creating.next()
+        return voting
+
+    def run_until_mixing_stage(self):
+        voting = self.run_until_voting_stage()
+        voting.run()
+        mixing = voting.next()
+        return mixing
+
+    def run_until_decrypting_stage(self):
+        mixing = self.run_until_mixing_stage()
+        mixing.run()
+        decrypting = mixing.next()
+        return decrypting
+
+    def run_until_finished_stage(self):
+        decrypting = self.run_until_decrypting_stage()
+        decrypting.run()
+        finished = decrypting.next()
+        return finished
+
 
 def adapt_vote(cryptosys, vote, serialize=True):
     """
@@ -60,6 +97,7 @@ def adapt_vote(cryptosys, vote, serialize=True):
     return vote
 
 from tests.elections.client import Client   # Put here to avoid circular import error
+
 
 # Election and election contect emulation
 
@@ -101,7 +139,7 @@ def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,
     """
     election = mk_election(ZeusTestElection, config,
         candidates, dupl_candidates, nr_voters, dupl_voters)
-    run_until_voting_stage(election)
+    election.run_until_voting_stage()
     election_key = election.get_election_key()
     nr_candidates = len(election.get_candidates())
     voter_keys = election.get_voters()
@@ -154,61 +192,6 @@ def mk_votes_from_clients(clients):
             del audit_request['voter_secret']
             audit_requests.append(audit_request)
     return votes, audit_requests, audit_votes
-
-
-# Running until stage
-
-def run_until_uninitialized_stage(election):
-    """
-    Runs the provided election until stage uninitialized
-    """
-    uninitialized = Uninitialized(election)
-    return uninitialized
-
-def run_until_creating_stage(election):
-    """
-    Runs the provided election until stage creating
-    """
-    uninitialized = run_until_uninitialized_stage(election)
-    uninitialized.run()
-    creating = uninitialized.next()
-    return creating
-
-def run_until_voting_stage(election):
-    """
-    Runs the provided election until stage voting
-    """
-    creating = run_until_creating_stage(election)
-    creating.run()
-    voting = creating.next()
-    return voting
-
-def run_until_mixing_stage(election):
-    """
-    Runs the provided election until stage mixing
-    """
-    voting = run_until_voting_stage(election)
-    voting.run()
-    mixing = voting.next()
-    return mixing
-
-def run_until_decrypting_stage(election):
-    """
-    Runs the provided election until stage decrypting
-    """
-    mixing = run_until_mixing_stage(election)
-    mixing.run()
-    decrypting = mixing.next()
-    return decrypting
-
-def run_until_finished_stage(election):
-    """
-    Runs the provided election until stage finished
-    """
-    decrypting = run_until_decrypting_stage(election)
-    decrypting.run()
-    finished = decrypting.next()
-    return finished
 
 
 # JSON utils

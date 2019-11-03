@@ -4,12 +4,11 @@ from copy import deepcopy
 import time
 import json
 
-from zeus_core.elections.stages import Uninitialized
 from zeus_core.elections.constants import VOTER_SLOT_CEIL
 from zeus_core.elections.exceptions import Abortion
 
 from tests.constants import _2048_SYSTEM, _2048_SECRET
-from tests.elections.utils import run_until_creating_stage, trim_json, mk_election
+from tests.elections.utils import trim_json, mk_election
 from tests.elections.stages.abstracts import StageTester, get_cls_name
 
 
@@ -20,7 +19,7 @@ class TestCreating(StageTester, unittest.TestCase):
     def run_until_stage(cls):
         election = mk_election()
         cls.election = election
-        run_until_creating_stage(election)
+        election.run_until_creating_stage()
         election.load_current_context()
         cls.stage = election._get_current_stage()
 
@@ -65,7 +64,7 @@ class TestCreating(StageTester, unittest.TestCase):
         deserialized_trustees = creating.deserialize_trustees(trustees)
         validated_trustees = creating.validate_trustees(trustees)
         expected_trustees = dict(((trustee['value'], trustee['proof']) for trustee in deserialized_trustees))
-        assert validated_trustees == expected_trustees#creating.deserialize_trustees(trustees)
+        assert validated_trustees == expected_trustees
         to_display = trim_json([{
             'value': public_key.to_int(),
             'proof': {
