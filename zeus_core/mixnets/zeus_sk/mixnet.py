@@ -119,19 +119,18 @@ class Zeus_sk(Mixnet):
             }
         }
         """
-        if nr_parallel is None:
-            nr_parallel = 0
-
         cipher_mix = {}
-        cipher_mix.update({'header': self.header})
-        nr_rounds = self.__nr_rounds
-        election_key = self.election_key
+        cipher_mix['header'] = self.header
         original_ciphers = original_mix['mixed_ciphers']
         cipher_mix['original_ciphers'] = original_ciphers
         cipher_mix['proof'] = {}
 
-        proof = cipher_mix['proof']
+        nr_rounds = self.__nr_rounds
+        if nr_parallel is None:
+            nr_parallel = 0
+        election_key = self.election_key
         nr_ciphers = len(original_ciphers)
+        proof = cipher_mix['proof']
 
         # Proceed to mixing
 

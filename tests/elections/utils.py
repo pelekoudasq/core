@@ -65,7 +65,7 @@ from tests.elections.client import Client   # Put here to avoid circular import 
 
 def mk_election(election_cls=ZeusTestElection, config=config_1,
         candidates=None, dupl_candidates=False,
-        nr_voters=19, dupl_voters=False):
+        nr_voters=19, dupl_voters=False, **kwargs):
     """
     Emulates election over the provided config after complementing the latter
     with voters and candidates. Provides failure options for testing.
@@ -90,7 +90,7 @@ def mk_election(election_cls=ZeusTestElection, config=config_1,
         voters[1] = voters[0]
 
     config.update({'candidates': candidates, 'voters': voters})
-    return election_cls(config)
+    return election_cls(config, **kwargs)
 
 
 def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,

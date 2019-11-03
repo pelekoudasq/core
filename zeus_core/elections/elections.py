@@ -491,8 +491,8 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         """
         Prepares input of Mixnet.mix_ciphers()
         """
-        original_mix = {}
-        original_mix.update({'header': self.mixnet.header})
+        unmixed_votes = {}
+        unmixed_votes.update({'header': self.mixnet.header})
 
         excluded_votes = set()
         excluded_voters = self.get_excluded_voters()
@@ -555,11 +555,11 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
         if counted_votes != vote_count:
             err = f'Vote count mismatch: {counted_votes} != {vote_count}'
             raise AssertionError(err) # --------------------> Change exception ?
-        original_mix.update({
+        unmixed_votes.update({
             'original_ciphers': votes_for_mixing,
             'mixed_ciphers': votes_for_mixing,
         })
-        return original_mix, counted_list
+        return unmixed_votes, counted_list
 
 
     # Individual trustee handling

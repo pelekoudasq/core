@@ -16,7 +16,7 @@ class TestMixing(StageTester, unittest.TestCase):
     # Context implementation
     @classmethod
     def run_until_stage(cls):
-        election = mk_election()
+        election = mk_election(nr_mixes=7)
         cls.election = election
         run_until_mixing_stage(election)
         election.load_current_context()

@@ -1,6 +1,29 @@
 #!/usr/bin/env python3
 
+"""
+Zeus Demo Election
+"""
+
+import sys
+import argparse
 from tests.elections.utils import mk_election
 
 if __name__ == '__main__':
-    mk_election().run()
+    prog = sys.argv[0]
+
+    usage = '%s [--mixes=...]' % prog
+    description = 'Zeus Demo Election'
+    epilog = '\n'
+    parser = argparse.ArgumentParser(prog=prog,
+                        usage=usage,
+                        description=__doc__,
+                        epilog=epilog)
+
+    parser.add_argument('--mixes',
+                        type=int, default=7,
+                        dest='nr_mixes', help="Number of times to mix")
+
+    args = parser.parse_args()
+    nr_mixes = args.nr_mixes
+
+    mk_election(nr_mixes=nr_mixes).run()

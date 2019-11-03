@@ -104,15 +104,17 @@ class Mixnet(object, metaclass=ABCMeta):
         if hex_crypto_params != self.cryptosys.hex_crypto_params():
             err = 'Cryptosystem mismatch'
             raise InvalidMixError(err)
-        if last_mix and original_ciphers != last_mix['original_ciphers']:
+        if last_mix and original_ciphers != last_mix['mixed_ciphers']:
             err = 'Not a mix of latest ciphers'
             raise InvalidMixError(err)
+
+        if nr_parallel is None:
+            nr_parallel = 0
         try:
-            if nr_parallel is None:
-                nr_parallel = 0
             self.verify_mix(cipher_mix, nr_parallel=nr_parallel)
         except MixNotVerifiedError:
             raise
+
         return True
 
 
