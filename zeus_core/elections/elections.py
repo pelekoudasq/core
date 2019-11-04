@@ -139,7 +139,7 @@ class GenericAPI(object):
         # if voter_key not in cast_votes:
         #     return None
         # return cast_votes[voter_key]
-        return self.cast_votes.get(voter_key)
+        return self.cast_votes.get(voter_key, [])
 
     def get_excluded_voters(self):
         # return dict(self.excluded_voters)

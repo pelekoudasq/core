@@ -45,17 +45,11 @@ class TestVoting(StageTester, unittest.TestCase):
         election.cast_votes = {}
         election.excluded_voters = {}
 
-    # def setUp(self):
-    #     cls = self.__class__
-    #
-    #     cls.election.votes = {}
-    #     cls.election.cast_votes = {}
-
 
     # ------------------------ Isolated functionalities ------------------------
 
 
-    def test_submit_audit_request_success(self):
+    def test_0_submit_audit_request(self):
         election, _, voting, _, audit_requests, _, messages = \
             self.get_voting_context()
         messages.append('\nTesting audit-requst submission\n')
@@ -63,6 +57,7 @@ class TestVoting(StageTester, unittest.TestCase):
         get_audit_request = election.get_audit_request
         get_vote = election.get_vote
         for vote in audit_requests:
+            vote = deepcopy(vote)
             with self.subTest(vote=vote):
                 vote = election.adapt_vote(vote)
                 (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
@@ -72,20 +67,24 @@ class TestVoting(StageTester, unittest.TestCase):
                     get_vote(fingerprint) is vote)
                 messages.append('[+] Audit-request successfully submitted')
 
+        # Test rejection of already submitted request
+        with self.subTest(vote=audit_requests[0]):
+            (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
+                extract_vote(vote)
+            with self.assertRaises(VoteRejectionError):
+                submit_audit_request(fingerprint, voter_key, vote)
+            messages.append('[+] Audit-request successfully rejected')
 
 
-    def test_submit_audit_request_rejection(self):
-        pass
-
-
-    def test_submit_audit_vote_success(self):
+    def test_2_submit_audit_vote_success(self):
         election, _, voting, _, _, audit_votes, messages = \
             self.get_voting_context()
-        messages.append('\nTesting audit-vote submission\n')
+        messages.append('\nTesting audit-vote submission on success\n')
         submit_audit_vote = voting.submit_audit_vote
         get_audit_publications = election.get_audit_publications
         get_vote = election.get_vote
         for vote in audit_votes:
+            vote = deepcopy(vote)
             with self.subTest(vote=vote):
                 vote = election.adapt_vote(vote)
                 (_, _, voter_key, _, fingerprint, voter_audit_code, \
@@ -98,11 +97,58 @@ class TestVoting(StageTester, unittest.TestCase):
                 messages.append('[+] Audit-vote successfully submitted')
 
 
-    def test_submit_audit_vote_rejection(self):
-        pass
+    def test_3_submit_audit_vote_rejection(self):
+        election, _, voting, _, _, audit_votes, messages = \
+            self.get_voting_context()
+        messages.append('\nTesting audit-vote submission on failure\n')
+
+        votes_and_messages = []
+
+        # No audit-code provided
+        vote_0 = deepcopy(audit_votes[0])
+        del vote_0['audit_code']
+        votes_and_messages.append((
+            vote_0,
+            '[+] Missing audit-code: Successfully rejected',
+        ))
+        # Invalid audit-code provided
+        vote_1 = deepcopy(audit_votes[1])
+        voter_key = vote_1['voter']
+        voter_audit_codes = election.get_voter_audit_codes(voter_key)
+        vote_1['audit_code'] = voter_audit_codes[0]
+        votes_and_messages.append((
+            vote_1,
+            '[+] Invalid audit-code: Successfully rejected',
+        ))
+        # No prior audit-requst
+        vote_2 = deepcopy(audit_votes[2])
+        vote_2['fingerprint'] += '0'
+        votes_and_messages.append((
+            vote_2,
+            '[+] No prior request: Successfully rejected',
+        ))
+        # Missing voter's secret
+        vote_3 = deepcopy(audit_votes[3])
+        del vote_3['voter_secret']
+        votes_and_messages.append((
+            vote_3,
+            '[+] Missing secret: Successfully rejected',
+        ))
+
+        submit_audit_vote = voting.submit_audit_vote
+        for vote, success_msg in votes_and_messages:
+            with self.subTest(vote=vote):
+                vote = election.adapt_vote(vote)
+                (_, _, voter_key, _, fingerprint, voter_audit_code, \
+                    _, _, _, _, _) = extract_vote(vote)
+                voter_audit_codes = election.get_voter_audit_codes(voter_key)
+                with self.assertRaises(VoteRejectionError):
+                    submit_audit_vote(vote, voter_key, fingerprint,
+                        voter_audit_code, voter_audit_codes)
+                messages.append(success_msg)
 
 
-    def test_submit_genuine_vote_success(self):
+    def test_4_submit_genuine_vote(self):
         self.clear_election()
         election, _, voting, votes, _, _, messages = \
             self.get_voting_context()
@@ -112,6 +158,7 @@ class TestVoting(StageTester, unittest.TestCase):
         get_vote = election.get_vote
         for vote in votes:
             with self.subTest(vote=vote):
+                vote = deepcopy(vote)
                 vote = election.adapt_vote(vote)
                 (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
                     extract_vote(vote)
@@ -120,20 +167,50 @@ class TestVoting(StageTester, unittest.TestCase):
                     get_vote(fingerprint) is vote)
                 messages.append('[+] Vote successfully submitted')
 
-    def test_submit_genuine_vote_rejection(self):
+        # Test rejection of already submitted vote
+        with self.subTest(vote=votes[0]):
+            vote = deepcopy(vote)
+            (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
+                extract_vote(vote)
+            with self.assertRaises(VoteRejectionError):
+                submit_genuine_vote(fingerprint, voter_key, vote)
+            messages.append('[+] Submitted vote: Successfully rejected')
+
+        # Test rejection upon vote limit
+        election.options['vote_limit'] = 1
+        with self.subTest(vote=votes[0]):
+            vote = deepcopy(vote)
+            vote['fingerprint'] += '0'
+            (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
+                extract_vote(vote)
+            with self.assertRaises(VoteRejectionError):
+                submit_genuine_vote(fingerprint, voter_key, vote)
+            messages.append('[+] Vote limit reached: Successfully rejected')
+        del election.options['vote_limit']
+
+        # Test rejection upon invalidity
+        with self.subTest(vote=votes[0]):
+            vote = deepcopy(vote)
+            (_, _, voter_key, _, fingerprint, _, _, _, _, _, _) = \
+                extract_vote(vote)
+            vote['public'] += 1
+            with self.assertRaises(VoteRejectionError):
+                submit_genuine_vote(fingerprint, voter_key, vote)
+            messages.append('[+] Invalid vote: Successfully rejected')
+
+
+    def test_6_cast_vote_success(self):
         pass
 
-
-    def test_cast_vote_success(self):
-        pass
-
-    def test_cast_vote_rejection(self):
+    def test_7_cast_vote_rejection(self):
         pass
 
     # ------------------------- Overall stage testing --------------------------
 
 
     def step_1(self):
+        self.clear_election()
+
         election, _, _, messages = self.get_context()
         messages.append('\nBefore running:\n')
 
@@ -143,7 +220,7 @@ class TestVoting(StageTester, unittest.TestCase):
             assert cast_vote_index == awaited
             messages.append(f'[+] cast_vote_index: {cast_vote_index}')
         except AssertionError:
-            err = 'Cast vote index was not: {awaited}'
+            err = f'Cast vote index was not: {awaited}'
             raise AssertionError(f'[-] {err}\n')
 
         votes = election.get_votes()

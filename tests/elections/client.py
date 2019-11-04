@@ -46,7 +46,7 @@ class Client(object):
             enc_ballot['challenge'] = response
             enc_ballot['response'] = challenge
         if corrupt_fingerprint:
-            vote['fingerprint'] += '__corupt_part'
+            vote['fingerprint'] += '__corrupt_part'
         if election_mismatch:
             vote['encrypted_ballot']['public'] += 1 # Corrupt inscribed election key
         return vote
