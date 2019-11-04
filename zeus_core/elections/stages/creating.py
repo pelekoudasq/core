@@ -93,9 +93,9 @@ class Creating(Stage):
         for name, weight in voters:
             voter_key = random_hex(VOTER_KEY_CEIL)
             while voter_key in new_voters:
-                # ~ Avoid duplicate voter keys
-                # ~ Note for dev: this may lead to infinite loop for small
-                # ~ values of VOTER_KEY_CEIL! (not the case in production)
+                # ~ Avoid duplicate voter keys. Note for dev:
+                # ~ This may lead to infinite loop for small values
+                # ~ of VOTER_KEY_CEIL! (not the case in production)
                 voter_key = random_hex(VOTER_KEY_CEIL)
             voter_audit_codes = list(random_hex(voter_slot_ceil) for _ in range(3))
             new_voters[voter_key] = (name, weight)

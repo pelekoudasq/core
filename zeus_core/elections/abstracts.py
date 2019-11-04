@@ -71,7 +71,8 @@ class Stage(object, metaclass=ABCMeta):
             self.abort(err)
             return
 
-        controller.update(*entities, stage=self)
+        if entities is not None:
+            controller.update(*entities, stage=self)
 
 
     def abort(self, abort_message):
@@ -116,7 +117,7 @@ class Aborted(FinalStage):
         super().__init__(controller, message=message)
 
     def _generate(self, *data):
-        return ()
+        pass
 
 
 class StageController(object, metaclass=ABCMeta):

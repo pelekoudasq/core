@@ -22,7 +22,6 @@ class Voting(Stage):
         cast_vote = self.cast_vote
         for vote in election.load_submitted_votes():
             cast_vote(vote)
-        return ()                               # Will not need to return anything
 
 
     def cast_vote(self, vote):

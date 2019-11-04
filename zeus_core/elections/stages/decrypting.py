@@ -23,6 +23,3 @@ class Decrypting(Stage):
             except InvalidFactorError as err:
                 raise Abortion(err)
             election.store_trustee_factors(trustee_factors)
-
-
-        return ()

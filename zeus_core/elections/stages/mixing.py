@@ -24,4 +24,3 @@ class Mixing(Stage):
             mixnet.validate_mix(mixed_ciphers, last_mix, nr_parallel=nr_parallel)
             election.store_mix(mixed_ciphers)
             mix_count += 1
-        return ()
