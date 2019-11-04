@@ -6,6 +6,7 @@ from .abstracts import StageController, Aborted
 from .stages import (Uninitialized, Creating, Voting, Mixing, Decrypting, Finished,)
 from .validations import Validator
 from .signatures import Signer
+from .decryption import Decryptor
 from .exceptions import Abortion
 
 
@@ -245,7 +246,14 @@ class MixingAPI(object):
     def store_mix(self, mix):
         self.mixes.append(mix)
 
-class DecryptingAPI(object): pass
+class DecryptingAPI(object):
+
+    def store_trustee_factors(self, trustee_factors):
+        public_key, factors = self.extract_trustee_factors(trustee_factors)
+        self.trustee_factors.update({
+            public_key: trustee_factors
+        })
+
 class FinishedAPI(object): pass
 class AbortedAPI(object): pass
 
@@ -253,7 +261,8 @@ class AbortedAPI(object): pass
 backend_apis = (GenericAPI, UninitializedAPI, CreatingAPI, VotingAPI,
     MixingAPI, DecryptingAPI, FinishedAPI, AbortedAPI,)
 
-class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metaclass=ABCMeta):
+class ZeusCoreElection(StageController, *backend_apis,
+            Validator, Signer, Decryptor, metaclass=ABCMeta):
     """
     """
 
@@ -341,6 +350,9 @@ class ZeusCoreElection(StageController, *backend_apis, Validator, Signer, metacl
 
         # Modified during stage Mixing
         self.mixes = []
+
+        # Modified during stage Decrypting
+        self.trustee_factors = {}
 
 
     # Stage controller implementation

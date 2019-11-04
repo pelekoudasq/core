@@ -37,3 +37,9 @@ class InvalidVoteSignature(BaseException):
     """
     """
     pass
+
+class InvalidFactorError(BaseException):
+    """
+    Raised when a trustee's factors was found to be invalid
+    """
+    pass

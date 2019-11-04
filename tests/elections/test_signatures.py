@@ -1,5 +1,5 @@
 """
-Tests in standalone fashio the vote-signing and
+Tests in standalone fashion the vote-signing and
 vote-signature-verification interface
 """
 

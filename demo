@@ -20,8 +20,8 @@ if __name__ == '__main__':
                         epilog=epilog)
 
     parser.add_argument('--mixes',
-                        type=int, default=7,
-                        dest='nr_mixes', help="Number of times to mix")
+                        type=int, default=3, dest='nr_mixes',
+                        help="Number of times to mix")
 
     args = parser.parse_args()
     nr_mixes = args.nr_mixes

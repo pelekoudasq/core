@@ -1222,7 +1222,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         append = factors.append
         for cipher in ciphers:
 
-            alpha, _ = self.extract_ciphertext(cipher)             # g ^ r         (mod p)
+            alpha, _ = self.extract_ciphertext(cipher)              # g ^ r         (mod p)
             data = alpha ** secret                                  # g ^ (x * r)   (mod p)
 
             ddh = (alpha, public, data)
