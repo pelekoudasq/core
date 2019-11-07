@@ -58,16 +58,13 @@ class Voting(Stage):
             # or cryptosystem mismatch, or election key mismatch
             raise VoteRejectionError(err)
 
-        (_, _, voter_key, _, fingerprint, voter_audit_code, voter_secret, \
+        (_, _, voter_key, _, fingerprint, voter_audit_code, voter_secret,
             _, _, _, _) = extract_vote(vote)
 
         try:
             voter, voter_audit_codes = self.detect_voter(voter_key)
         except VoteRejectionError:
-            # Voter's key could not be detected
-            raise
-        except Abortion:
-            # Voter's key detected but not assigned any audit-codes
+            # Voter's key not detected or not assigned any audit-codes
             raise
         if voter_secret:
             # Will reject vote if:
@@ -228,7 +225,7 @@ class Voting(Stage):
             raise VoteRejectionError()
         elif not voter_audit_codes:
             err = 'Voter audit-codes inconsistency'
-            raise Abortion(err)
+            raise VoteRejectionError(err)
 
         return voter, voter_audit_codes
 

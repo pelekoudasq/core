@@ -200,10 +200,54 @@ class TestVoting(StageTester, unittest.TestCase):
 
 
     def test_6_cast_vote_success(self):
-        pass
+        self.clear_election()
+        (election, _, voting, votes, audit_requests,
+            audit_votes, messages) = self.get_voting_context()
+        messages.append('\nTesting vote casting on success\n')
+        cast_vote = voting.cast_vote
+        for vote in audit_requests:
+            with self.subTest(vote=vote):
+                cast_vote(vote)
+                messages.append('[+] Audit-request successfully cast')
+        for vote in audit_votes:
+            with self.subTest(vote=vote):
+                cast_vote(vote)
+                messages.append('[+] Audit-vote successfully cast')
+        for vote in votes[:-1]:
+            with self.subTest(vote=vote):
+                cast_vote(vote)
+                messages.append('[+] Vote successfully cast')
 
     def test_7_cast_vote_rejection(self):
-        pass
+        self.clear_election()
+        (election, _, voting, votes, _,
+            audit_votes, messages) = self.get_voting_context()
+        messages.append('\nTesting vote casting on failure\n')
+
+        vote = votes[0]
+        with self.subTest(vote=vote):
+            del vote['voter']
+            with self.assertRaises(VoteRejectionError):
+                voting.cast_vote(vote)
+            messages.append('[+] Vote successfully rejected: missing fields')
+
+        vote = votes[1]
+        with self.subTest(vote=vote):
+            voter = vote['voter']
+            (voter_name, voter_weight) = election.voters[voter]
+            del election.voters[voter]
+            with self.assertRaises(VoteRejectionError):
+                voting.cast_vote(vote)
+            messages.append('[+] Vote successfully rejected: voter not detected')
+            election.voters[voter] = (voter_name, voter_weight) # restore election
+
+        audit_vote = audit_votes[0]
+        with self.subTest(audit_vote=audit_vote):
+            del audit_vote['audit_code']
+            with self.assertRaises(VoteRejectionError):
+                voting.cast_vote(vote)
+            messages.append('[+] Audit-vote successfully rejected: no audit-code provided')
+
 
     # ------------------------- Overall stage testing --------------------------
 
