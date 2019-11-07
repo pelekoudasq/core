@@ -10,6 +10,7 @@ class ZeusTestElection(ZeusCoreElection):
     Provides the most minimal concrete implementation of the
     ZeusCoreElection abstract class for testing purposes
     """
+
     def load_submitted_votes(self):
         """
         """
@@ -23,6 +24,8 @@ class ZeusTestElection(ZeusCoreElection):
                 break
             yield vote
 
+    def get_trustee_keypair(self):
+        pass
 
     # Test utils (irrelevant to implementation of ZeusCoreElection abstract class)
 

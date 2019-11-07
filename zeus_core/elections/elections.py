@@ -254,6 +254,9 @@ class DecryptingAPI(object):
             public_key: trustee_factors
         })
 
+    def store_results(self, results):
+        self.results = results
+
 class FinishedAPI(object): pass
 class AbortedAPI(object): pass
 
@@ -353,6 +356,7 @@ class ZeusCoreElection(StageController, *backend_apis,
 
         # Modified during stage Decrypting
         self.trustee_factors = {}
+        self.results = []
 
 
     # Stage controller implementation
@@ -468,9 +472,12 @@ class ZeusCoreElection(StageController, *backend_apis,
             # ~ with every new vote during execution of Voting._generate()
             pass
         elif stage_cls is Mixing:
+            # ~ No need for updates: running election individually updated
+            # ~ with every new mix during execution of Mixing._generate()
             pass
         elif stage_cls is Decrypting:
-            pass
+            (results,) = entitites
+            election.store_results(results)
         elif stage_cls is Finished:
             pass
         elif stage_cls is Aborted:
@@ -580,12 +587,17 @@ class ZeusCoreElection(StageController, *backend_apis,
 
     # Individual trustee handling
 
-    def reprove_trustee(public_key, proof):
+    def reprove_trustee(self, public_key, proof):
         """
         """
         pass
 
-    def add_trustee(public_key, proof):
+    def add_trustee(self, public_key, proof):
         """
         """
         pass
+
+    @abstractmethod
+    def get_trustee_keypair(self, trustee):
+        """
+        """

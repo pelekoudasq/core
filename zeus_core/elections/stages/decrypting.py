@@ -9,17 +9,35 @@ class Decrypting(Stage):
         super().__init__(controller, next_stage_cls=Finished)
 
     def _generate(self, *data):
-        #
-        # Not yet complete
-        #
         election = self.get_controller()
-        ciphers = election.get_mixed_ballots()
+
+        mixed_ballots = election.get_mixed_ballots()
         nr_parallel = election.get_option('nr_parallel')
+
+        # Compute zeus factors
+
+        zeus_factors = election.compute_zeus_factors(mixed_ballots)
+        try:
+            election.validate_trustee_factors(zeus_factors)
+        except InvalidFactorError as err:
+            raise Abortion(err)
+        election.store_trustee_factors(factors)
+
+        # Compute trustee factors for all trustees
+
         for trustee in election.trustees:
-            factors = election.compute_trustee_factors(trustee)
-            trustee_factors = election.set_trustee_factors(trustee, factors)
+            trustee_keypair = election.get_trustee_keypair(trustee)
+            factors = election.compute_trustee_factors(mixed_ballots, trustee_keypair)
             try:
                 election.validate_trustee_factors(trustee_factors)
             except InvalidFactorError as err:
                 raise Abortion(err)
-            election.store_trustee_factors(trustee_factors)
+            election.store_trustee_factors(factors)
+
+        # Decrypt ballots
+
+        plaintexts = election.decrypt_ballots(mixed_ballots, trustees_factors, zeus_factors)
+
+        # Store results
+
+        return plaintexts
