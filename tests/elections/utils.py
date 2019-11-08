@@ -3,11 +3,11 @@ from math import ceil
 from copy import deepcopy
 from zeus_core.elections import ZeusCoreElection
 from zeus_core.elections.stages import Uninitialized
-from tests.elections.sample_configs import config_1
+from tests.elections.config_samples import config_1
 
 class ZeusTestElection(ZeusCoreElection):
     """
-    Provides the most minimal concrete implementation of the
+    Provides a most minimal concrete implementation of the
     ZeusCoreElection abstract class for testing purposes
     """
 
@@ -24,8 +24,27 @@ class ZeusTestElection(ZeusCoreElection):
                 break
             yield vote
 
-    def get_trustee_keypair(self):
-        pass
+    def get_trustee_keypair(self, public_key):
+        """
+        """
+        with open('tests/elections/trustee-publics.json') as f:
+            trustee_publics = json.load(f)
+        with open('tests/elections/trustee-privates.json') as f:
+            trustee_privates = json.load(f)
+        trustee_index = [i for i in range(len(trustee_publics)) if public_key.value == trustee_publics[i]['value']][0]
+
+        cryptosys = self.get_cryptosys()
+
+        proof = self.trustees[public_key]
+        private_key = cryptosys.int_to_exponent(trustee_privates[trustee_index])
+
+        return {
+            'private': private_key,
+            'public': {
+                'value': public_key,
+                'proof': proof
+            }
+        }
 
     # Test utils (irrelevant to implementation of ZeusCoreElection abstract class)
 
@@ -99,8 +118,8 @@ def adapt_vote(cryptosys, vote, serialize=True):
         if voter_secret else None
     return vote
 
-from tests.elections.client import Client   # Put here to avoid circular import error
 
+from tests.elections.client import Client   # Put here to avoid circular import error
 
 # Election and election contect emulation
 

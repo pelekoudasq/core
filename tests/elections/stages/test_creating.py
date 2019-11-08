@@ -94,14 +94,14 @@ class TestCreating(StageTester, unittest.TestCase):
 
         trustees = config['trustees']
         election_key_hex = \
-        '75142c805b7ba32068e48293d711e78fdbc8ff3bd6c080337d409554bb50287cb73e6eb' + \
-        '56924ea287aa7902ecc3169f275e4ccf8cd9ead105f1c3907e81cdf16f7b6d5ab34afb6' + \
-        'fdbcd41b4dd6c9172935d8e41a725dac0f308c6ea755d936e258f33127f976a2dcbe7d2' + \
-        '5fdc001bae7847bd29b2c0448cc4fae1fba892d327667218836cd30a09a5f903dacab7d' + \
-        '323b786898b77d3bc4ba117630749ebb9b8b061b320e67c3d8cd19d9ac34332eb909a49' + \
-        '873510414c0fb15e8872c3dfec2ef9bdc5c72e35cdeb6216465967e7f725feefa55ea91' + \
-        '86debb96d7aceefc480915f1f569283239efbbe058a72f1dcbfdec33149fcdfaddb5170' + \
-        'a7f7ac0d81e51c8'
+        '45f055e79fc09d665e36b2f4a74f365a4111acca1c3dcade352a539871517487be7b2f2' + \
+        'b6c08094cee06601783e081cee5fcf39b33647546f143ccf485fd0f61b7352f14b9b8f3' + \
+        'e7f0a5707f2aa1368b5f92c94401304b522c13c8550ebc6241bb89536ff88cf0147b0ee' + \
+        '647b7e46822a9076430df51cd93fef5ab233f31932a5ac28d5fcaa22a2974dbc9085d31' + \
+        '9ccf9a440fc92374f0258640834538e857da5e4c6d9b7120ae7e16c219b8a7b2eb1edd2' + \
+        '2c7b7bd09d023314e7194cba802fc6d6279ac462c60acf526f8f8b29fea80607efdf954' + \
+        '8f375974969f572e36d7edd369f918c460212a26b73ce48bf88822d57b139f97e6683e4' + \
+        '53384b4cbd02449'
         zeus_keypair = creating.create_zeus_keypair(_2048_SECRET)
         validated_trustees = creating.validate_trustees(trustees)
         election_key = creating.compute_election_key(validated_trustees, zeus_keypair)

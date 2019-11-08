@@ -239,7 +239,7 @@ class TestVoting(StageTester, unittest.TestCase):
             with self.assertRaises(VoteRejectionError):
                 voting.cast_vote(vote)
             messages.append('[+] Vote successfully rejected: voter not detected')
-            election.voters[voter] = (voter_name, voter_weight) # restore election
+            election.voters[voter] = (voter_name, voter_weight) # restore for subsequent test
 
         audit_vote = audit_votes[0]
         with self.subTest(audit_vote=audit_vote):

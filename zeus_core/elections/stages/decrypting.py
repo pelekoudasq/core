@@ -18,10 +18,11 @@ class Decrypting(Stage):
 
         zeus_factors = election.compute_zeus_factors(mixed_ballots)
         try:
-            election.validate_trustee_factors(zeus_factors)
+            zeus_public_key = election.get_zeus_public_key()
+            election.validate_trustee_factors(mixed_ballots, zeus_public_key, zeus_factors)
         except InvalidFactorError as err:
             raise Abortion(err)
-        election.store_trustee_factors(factors)
+        election.store_zeus_factors(zeus_factors)
 
         # Compute trustee factors for all trustees
 
@@ -29,15 +30,15 @@ class Decrypting(Stage):
             trustee_keypair = election.get_trustee_keypair(trustee)
             factors = election.compute_trustee_factors(mixed_ballots, trustee_keypair)
             try:
-                election.validate_trustee_factors(trustee_factors)
+                election.validate_trustee_factors(mixed_ballots, trustee, factors)
             except InvalidFactorError as err:
                 raise Abortion(err)
             election.store_trustee_factors(factors)
 
+        # print(election.trustees_factors)
+
         # Decrypt ballots
 
-        plaintexts = election.decrypt_ballots(mixed_ballots, trustees_factors, zeus_factors)
-
-        # Store results
-
-        return plaintexts
+        # plaintexts = election.decrypt_ballots(mixed_ballots, trustees_factors, zeus_factors)
+        # return plaintexts
+        pass

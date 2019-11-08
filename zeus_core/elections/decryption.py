@@ -19,7 +19,9 @@ class Decryptor(object, metaclass=ABCMeta):
         """
         """
         zeus_private = self.get_zeus_private_key()
+        zeus_public = self.get_zeus_public_key()
         zeus_factors = self.compute_decryption_factors(zeus_private, mixed_ballots)
+        zeus_factors = self.set_trustee_factors(zeus_public, zeus_factors)
         return zeus_factors
 
     def compute_trustee_factors(self, mixed_ballots, trustee_keypair):
@@ -62,9 +64,9 @@ class Decryptor(object, metaclass=ABCMeta):
     def compute_decryption_factors(self, secret, ciphers):
         """
         Use the provided secret x to construct an acclaimed DDH tuple for each
-        of the given ciphers and generate presumed proof-of-knowledge that the
-        produced tuple is DDH. Returns a list of these proofs along with the
-        last member of the corresponding DDH.
+        of the given ciphers and generate proof-of-knowledge that the produced
+        tuple is DDH. Returns a list of these proofs along with the last member
+        of the corresponding DDH.
 
         For each ciphertext
 
@@ -101,7 +103,7 @@ class Decryptor(object, metaclass=ABCMeta):
             ddh = (alpha, public, data)
 
             proof = cryptosys._chaum_pedersen_proof(ddh, secret)
-            factor = cryptosys._set_factor(data, proof)
+            factor = self.set_factor(data, proof)
             append(factor)
 
         return factors
@@ -112,32 +114,31 @@ class Decryptor(object, metaclass=ABCMeta):
 
         Given a 2D structure
 
-        [[f_11, ..., f_1n], ..., [f_m1, ... f_mn]]
+                    [[f_11, ..., f_1n], ..., [f_m1, ... f_mn]]
 
         of group elements, computes and returns the list
 
-        [f_11 * ... * f_m1, ..., f_1n * ... * f_mn]
+                    [f_11 * ... * f_m1, ..., f_1n * ... * f_mn]
 
         .. note:: Returns a non-sensical 0 if the provided collection comprises
-        of empty lists (including the case that the collection itself is empty)
+        of empty lists (including the case of the collection itself being empty)
 
-        :type trustees_factors: list[list[{'data': ModPrimeElement, 'proof': ...}]]
-        :rtype: list[ModPrimeElement]
+        :type trustees_factors: list[list[{'data': GroupElement, 'proof': ...}]]
+        :rtype: list[GroupElement]
         """
         if not trustees_factors or trustees_factors == [[]] * len(trustees_factors):
             return 0
-
         master_factors = []
         append = master_factors.append
-
+        group = self.get_cryptosys().group
         for factors_column in zip(*trustees_factors):
-            master_factor = self.__group.unit
+            master_factor = group.unit
             for trustee_factor in factors_column:
-                data, _ = self._extract_factor(trustee_factor)
+                data, _ = self.extract_factor(trustee_factor)
                 master_factor *= data
             append(master_factor)
-
         return master_factors
+
 
     # Formats
 
@@ -206,15 +207,17 @@ class Decryptor(object, metaclass=ABCMeta):
     def validate_trustee_factors(self, mixed_ballots, trustee_public, trustee_factors):
         """
         """
+        cryptosys = self.get_cryptosys()
+
         # trustee_public, decryption_factors = self._extract_trustee_factors(trustee_factors)
-        _, decryption_factors = self._extract_trustee_factors(trustee_factors)
+        _, decryption_factors = self.extract_trustee_factors(trustee_factors)
 
         # Delete this snipset in alterative version
         if not trustee_public or not trustee_factors:
             err = 'Malformed trustee factors'
             raise InvalidFactorError(err)
 
-        trustee_public = self.get_value(trustee_public)
+        trustee_public = cryptosys.get_key_value(trustee_public)
 
         if not self.verify_decryption_factors(trustee_public, mixed_ballots, decryption_factors):
             err = 'Invalid trustee factors'
@@ -251,15 +254,17 @@ class Decryptor(object, metaclass=ABCMeta):
         :type factors: list[dict]
         :rtype: bool
         """
+        cryptosys = self.get_cryptosys()
+
         if len(ciphers) != len(factors):
             return False
 
         for cipher, factor in zip(ciphers, factors):
-            alpha, _ = self.extract_ciphertext(cipher)
-            data, proof = self._extract_factor(factor)
+            alpha, _ = cryptosys.extract_ciphertext(cipher)
+            data, proof = self.extract_factor(factor)
 
             ddh = (alpha, public, data)
-            if not self._chaum_pedersen_verify(ddh, proof):
+            if not cryptosys._chaum_pedersen_verify(ddh, proof):
                 return False
 
         return True
@@ -295,13 +300,13 @@ class Decryptor(object, metaclass=ABCMeta):
         aux_factors = {}
         for trustee_factors in trustees_factors:
             public, factors = self._extract_trustee_factors(trustee_factors)
-            public = self.get_value(public)
+            public = self.get_key_value(public)
             aux_factors[public] = factors
         trustees_factors = aux_factors
 
         # Verify trustees' factors
         for share in public_shares:
-            trustee_public = self.get_value(share)
+            trustee_public = self.get_key_value(share)
             try:
                 trustee_factors = trustees_factors[trustee_public]
             except KeyError:
@@ -313,7 +318,7 @@ class Decryptor(object, metaclass=ABCMeta):
                 raise BallotDecryptionError(err)
 
         # Verify zeus's factors
-        zeus_public_key = self.get_value(zeus_public_key)
+        zeus_public_key = self.get_key_value(zeus_public_key)
         if not self.verify_decryption_factors(zeus_public_key, mixed_ballots, zeus_factors):
             err = 'Zeus\'s factors could not be verified'
             raise BallotDecryptionError(err)

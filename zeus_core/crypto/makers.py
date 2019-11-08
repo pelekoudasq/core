@@ -1,6 +1,6 @@
 from .exceptions import WrongCryptoError
 from .modprime import ModPrimeCrypto
-from .constants import _2048_PRIME, _2048_ORDER, _4096_PRIME, _4096_ORDER
+from .constants import _2048_PRIME, _2048_PRIMITIVE, _4096_PRIME, _4096_PRIMITIVE
 
 supported_crypto = (ModPrimeCrypto,)
 

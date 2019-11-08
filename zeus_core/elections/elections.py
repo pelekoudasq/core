@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from itertools import repeat
 from copy import deepcopy
+import json
 
 from .abstracts import StageController, Aborted
 from .stages import (Uninitialized, Creating, Voting, Mixing, Decrypting, Finished,)
@@ -152,7 +153,21 @@ class GenericAPI(object):
 
     def get_mixed_ballots(self):
         last_mix = self.do_get_last_mix()
-        return last_mix['mixed_ciphers'] if last_mix is not None else []
+        if last_mix is None:
+            return []
+        mixed_ballots = last_mix['mixed_ciphers']
+        mixed_ballots = list(map(
+            lambda ballot: {'alpha': ballot[0], 'beta': ballot[1]},
+            mixed_ballots
+        ))
+        # mixed_ballots = last_mix['mixed_ciphers']
+        # for i in range(len(mixed_ballots)):
+        #     ballot = mixed_ballots[i]
+        #     adapted = {}
+        #     adapted['alpha'] = ballot[0]
+        #     adapted['beta'] = ballot[1]
+        #     mixed_ballots[i] = adapted
+        return mixed_ballots
 
 
 class UninitializedAPI(object):
@@ -248,10 +263,20 @@ class MixingAPI(object):
 
 class DecryptingAPI(object):
 
+    def store_zeus_factors(self, zeus_factors):
+        public_key, factors = self.extract_trustee_factors(zeus_factors)
+        cryptosys = self.get_cryptosys()
+        public_key = cryptosys.get_key_value(public_key)
+        self.zeus_factors = {
+            public_key: factors
+        }
+
     def store_trustee_factors(self, trustee_factors):
         public_key, factors = self.extract_trustee_factors(trustee_factors)
-        self.trustee_factors.update({
-            public_key: trustee_factors
+        cryptosys = self.get_cryptosys()
+        public_key = cryptosys.get_key_value(public_key)
+        self.trustees_factors.update({
+            public_key: factors
         })
 
     def store_results(self, results):
@@ -269,20 +294,11 @@ class ZeusCoreElection(StageController, *backend_apis,
     """
     """
 
-    labels = {'UNINITIALIZED': Uninitialized,
-              'CREATING': Creating,
-              'VOTING': Voting,
-              'MIXING': Mixing,
-              'DECRYPTING': Decrypting,
-              'FINISHED': Finished,
-              'ABORTED': Aborted,}
-
-
-    def __init__(self, config, **kwargs):
+    def __init__(self, config, **options):
         """
         """
         self.config = self.extract_config(config)
-        self.options = kwargs
+        self.options = options
         self.initialize_entities()
         super().__init__(Uninitialized)
 
@@ -294,7 +310,7 @@ class ZeusCoreElection(StageController, *backend_apis,
         try:
             crypto = config['crypto']
             mixnet = config['mixnet']
-            trustees = config['trustees']
+            trustees_file_path = config['trustees_file']
             candidates = config['candidates']
             voters = config['voters']
         except KeyError as e:
@@ -310,6 +326,8 @@ class ZeusCoreElection(StageController, *backend_apis,
             config['zeus_private_key']
         except KeyError:
             config['zeus_private_key'] = None
+        with open(trustees_file_path) as trustees_file:
+            config['trustees'] = json.load(trustees_file)
         return config
 
     def set_option(self, kwarg):
@@ -355,7 +373,8 @@ class ZeusCoreElection(StageController, *backend_apis,
         self.mixes = []
 
         # Modified during stage Decrypting
-        self.trustee_factors = {}
+        self.zeus_factors = None
+        self.trustees_factors = {}
         self.results = []
 
 
@@ -484,17 +503,6 @@ class ZeusCoreElection(StageController, *backend_apis,
             pass
 
 
-    def do_assert_stage(self, label):
-        """
-        """
-        expected_stage_cls = self.__class__.labels[label.upper()]
-        actual_stage_cls = self.current_stage.__class__
-        if expected_stage_cls != actual_stage_cls:
-            err = 'Election should be at stage %s, not %s' % (
-                expected_stage_cls.__name__, actual_stage_cls.__name__)
-            raise AssertionError(err)
-
-
     def invalidate_election_key():
         self.set_election_key(None)
 
@@ -502,11 +510,6 @@ class ZeusCoreElection(StageController, *backend_apis,
     def exclude_voter(voter_key, reason=''):
         """
         """
-        current_stage_cls = self._get_current_stage().__class__
-        labels = self.__class__.labels
-        if current_stage_cls in (labels[label] for label in
-            ('Mixing', 'Decrypting', 'Finished',)):
-            err = f'Cannot exclude voter at stage {current_stage_cls.__name__}'
         self.store_excluded_voter(voter_key, reason)
 
 
