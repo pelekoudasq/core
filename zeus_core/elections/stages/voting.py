@@ -64,7 +64,7 @@ class Voting(Stage):
         try:
             voter, voter_audit_codes = self.detect_voter(voter_key)
         except VoteRejectionError:
-            # Voter's key not detected or not assigned any audit-codes
+            # 's key not detected or not assigned any audit-codes
             raise
         if voter_secret:
             # Will reject vote if:
@@ -208,7 +208,7 @@ class Voting(Stage):
         return signature
 
 
-    # Voter fixation
+    #  fixation
 
     def detect_voter(self, voter_key):
         """
@@ -224,7 +224,7 @@ class Voting(Stage):
             err = 'Invalid voter key'
             raise VoteRejectionError()
         elif not voter_audit_codes:
-            err = 'Voter audit-codes inconsistency'
+            err = ' audit-codes inconsistency'
             raise VoteRejectionError(err)
 
         return voter, voter_audit_codes

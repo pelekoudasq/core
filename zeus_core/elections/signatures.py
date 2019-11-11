@@ -118,7 +118,7 @@ class Signer(object, metaclass=ABCMeta):
 
 class Verifier(object):
     """
-    Vote-signature verification interface to client
+    Vote-signature verification interface to voter
     """
 
     @abstractmethod

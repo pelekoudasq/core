@@ -266,11 +266,11 @@ class ModPrimeSubgroup(Group):
         """
         :type generator: ModPrimeElement or mpz
         """
-        Element = self.__Element
         if isinstance(generator, Element):
             self.__generator = generator
         else:
-            self.__generator = Element(generator, self.__modulus)
+            self.__generator = self.__Element(generator, self.__modulus)
+
 
     def generate(self, exponent):
         """
@@ -287,6 +287,7 @@ class ModPrimeSubgroup(Group):
         """
         return sum(args) % self.__order
 
+
     def random_exponent(self, min=2):
         """
         Returns a random exponent >= `min`, bounded by the group's order
@@ -295,6 +296,7 @@ class ModPrimeSubgroup(Group):
         """
         exponent = random_integer(min, self.__order)
         return exponent
+
 
     def exponent_from_texts(self, *texts):
         """
@@ -310,12 +312,14 @@ class ModPrimeSubgroup(Group):
 
         return exponent
 
+
     def random_element(self):
         """
         :rtype: ModPrimeElement
         """
         random_exp = self.random_exponent()
         return self.__generator ** random_exp
+
 
     def element_from_texts(self, *texts):
         """
@@ -325,6 +329,7 @@ class ModPrimeSubgroup(Group):
         exp = self.exponent_from_texts(*texts)
         return self.generate(exp)
 
+
     def fiatshamir(self, *elements):
         """
         The output of this method is only involved in exponent operations
@@ -332,7 +337,6 @@ class ModPrimeSubgroup(Group):
         :type: mpz or ModePrimeElement
         :rtype: mpz
         """
-
         __p, __q, __g = self.parameters()
 
         elements = (_.value if isinstance(_, ModPrimeElement) else _ for _ in elements)
@@ -342,6 +346,7 @@ class ModPrimeSubgroup(Group):
         output = self.generate(reduced).value
 
         return output                    # g ^ ( H( p | g | q | elements)  modq )  modp
+
 
     def contains(self, element):
         """
@@ -356,16 +361,17 @@ class ModPrimeSubgroup(Group):
             return element ** self.__order == 1
         return False
 
+
     def encode_integer(self, integer):
         """
         Encodes the provided `integer` x from the range 0 < x + 1 < q - 1
         as a modp element with the value
 
-        (x + 1) mod p
+                                (x + 1) mod p
 
         if this happens to be r-residue modp, otherwise with the mirror value
 
-        - (x + 1) mod p
+                              - (x + 1) mod p
 
         .. raises:: AlgebraError if x is not in the specified range
 
@@ -390,27 +396,25 @@ class ModPrimeSubgroup(Group):
 
         return encoded
 
+
     def decode_with_randomness(self, encoded):
         """
         Given a mod p element with value z, it returns the element
 
-        z - 1 (mod p)
+                                z - 1 (mod p)
 
         if z's numerical value happens to be smaller than the order
         of the present subgroup; otherwise the element
 
-        (-z (mod p)) - 1 (mod p)
+                            (-z (mod p)) - 1 (mod p)
 
-        is returned
+        is returned.
 
         :type element: ModPrimeElement
         :rtype: int
         """
         decoded = encoded.clone()
-
-        # if not decoded.contained_in(self):
         if decoded.value >= self.__order:
             decoded.mirror_value()
         decoded.reduce_value()
-
         return decoded

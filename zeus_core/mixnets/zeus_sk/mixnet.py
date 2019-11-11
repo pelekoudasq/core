@@ -5,17 +5,13 @@ Sako-Killian mixnet
 from Crypto import Random
 from itertools import chain
 from hashlib import sha256
-
-from ..exceptions import MixNotVerifiedError, RoundNotVerifiedError
+from zeus_core.crypto.modprime import ModPrimeCrypto
+from zeus_core.utils import random_permutation, AsyncController, _teller, bit_iterator
+from ..abstracts import Mixnet
+from ..exceptions import MixnetError, MixNotVerifiedError, RoundNotVerifiedError
 
 ALPHA = 0
 BETA  = 1
-
-from zeus_core.crypto.modprime import ModPrimeCrypto
-from zeus_core.utils import random_permutation, AsyncController, _teller, bit_iterator
-
-from ..abstracts import Mixnet
-from ..exceptions import MixnetError, MixNotVerifiedError, RoundNotVerifiedError
 
 
 class Zeus_sk(Mixnet):

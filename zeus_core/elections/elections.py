@@ -160,13 +160,6 @@ class GenericAPI(object):
             lambda ballot: {'alpha': ballot[0], 'beta': ballot[1]},
             mixed_ballots
         ))
-        # mixed_ballots = last_mix['mixed_ciphers']
-        # for i in range(len(mixed_ballots)):
-        #     ballot = mixed_ballots[i]
-        #     adapted = {}
-        #     adapted['alpha'] = ballot[0]
-        #     adapted['beta'] = ballot[1]
-        #     mixed_ballots[i] = adapted
         return mixed_ballots
 
     def get_all_factors(self):
@@ -584,7 +577,7 @@ class ZeusCoreElection(StageController, *backend_apis,
                 err = 'Inconsistent index!'
                 raise AssertionError(err) # ----------------> Change exception ?
             if previous_vote['voter'] != vote['voter']:
-                err = f"Voter mismatch: {vote['voter']} vs {previous_vote['voter']}"
+                err = f" mismatch: {vote['voter']} vs {previous_vote['voter']}"
                 raise AssertionError(err)
             scratch[previous_index] = None
             counted[previous_index] = None

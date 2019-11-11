@@ -24,6 +24,7 @@ class Decryptor(object, metaclass=ABCMeta):
         zeus_factors = self.set_trustee_factors(zeus_public, zeus_factors)
         return zeus_factors
 
+
     def compute_trustee_factors(self, mixed_ballots, trustee_keypair):
         """
         """
@@ -34,7 +35,7 @@ class Decryptor(object, metaclass=ABCMeta):
         trustee_factors = self.set_trustee_factors(public, factors)
         return trustee_factors
 
-    # def decrypt_ballots(self, mixed_ballots, trustees_factors, zeus_factors):
+
     def decrypt_ballots(self, mixed_ballots, all_factors):
         """
         """
@@ -45,7 +46,9 @@ class Decryptor(object, metaclass=ABCMeta):
 
         decryption_factors = self.combine_decryption_factors(all_factors)
         for ballot, factor in zip(mixed_ballots, decryption_factors):
+            #
             # decryption_factors:
+            #
             #          |ballot_1   |ballot_2   |ballot_3   |.........
             # ---------|-----------------------------------|---------
             #     zeus |factor01   |factor02   |factor03   |.........
@@ -54,6 +57,7 @@ class Decryptor(object, metaclass=ABCMeta):
             # trustee3 |factor31   |factor32   |factor33   |.........
             # ---------|-----------------------------------|---------
             #          |factor_1   |factor_2   |factor_3   |.........
+            #
             encoded = cryptosys._decrypt_with_decryptor(ballot, factor)
             append(encoded.to_int())
 
@@ -108,6 +112,7 @@ class Decryptor(object, metaclass=ABCMeta):
             append(factor)
 
         return factors
+
 
     def combine_decryption_factors(self, trustees_factors):
         """
@@ -203,7 +208,7 @@ class Decryptor(object, metaclass=ABCMeta):
         return element, proof
 
 
-    # Testing ----> Transfer the following methods to tests/elections/test_decryption module
+    # Validations
 
     def validate_trustee_factors(self, mixed_ballots, trustee_public, trustee_factors):
         """
@@ -211,10 +216,9 @@ class Decryptor(object, metaclass=ABCMeta):
         """
         cryptosys = self.get_cryptosys()
 
-        # trustee_public, decryption_factors = self._extract_trustee_factors(trustee_factors)
         _, decryption_factors = self.extract_trustee_factors(trustee_factors)
 
-        # Delete this snipset in alterative version
+        # TODO: Delete this snipset in alterative version
         if not trustee_public or not trustee_factors:
             err = 'Malformed trustee factors'
             raise InvalidFactorError(err)
@@ -251,7 +255,7 @@ class Decryptor(object, metaclass=ABCMeta):
 
         is DDH.
 
-        :type public: ModPrimeElement
+        :type public: GroupElement
         :type ciphers: list[dict]
         :type factors: list[dict]
         :rtype: bool

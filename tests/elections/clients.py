@@ -1,5 +1,4 @@
 """
-Client reference
 """
 from json import dumps
 from copy import deepcopy
@@ -11,8 +10,24 @@ from zeus_core.utils import (random_integer, random_selection,
     gamma_encoding_max, random_party_selection, hash_nums, encode_selection)
 from zeus_core.elections.constants import VOTER_SLOT_CEIL
 
+
 class Client(object):
     """
+    General client reference (contains what is common to both voter and trustee)
+    """
+    pass
+
+
+class Trustee(Client):
+    """
+    Trustee reference
+    """
+    pass
+
+
+class Voter(Client):
+    """
+    Voter reference
     """
 
     def __init__(self, config_crypto, election_key, nr_candidates,
@@ -35,7 +50,7 @@ class Client(object):
     def mk_genuine_vote(self, corrupt_proof=False, corrupt_fingerprint=False,
             election_mismatch=False):
         """
-        Audit code among the assigned ones. Voter's secret not advertised.
+        Audit code among the assigned ones. 's secret not advertised.
         """
         vote = self.mk_random_vote(selection=None,
             audit_code=None, publish=None)
@@ -63,7 +78,7 @@ class Client(object):
             corrupt_alpha=False, election_mismatch=False,
             corrupt_encoding=False, fake_nr_candidates=None):
         """
-        Voter's secret by default advertised
+        's secret by default advertised
         """
         random_hex = lambda: '%x' % random_integer(2, VOTER_SLOT_CEIL)
         audit_code = random_hex()

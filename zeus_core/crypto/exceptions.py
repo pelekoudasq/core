@@ -22,15 +22,3 @@ class InvalidKeyError(BaseException):
     Raised when the provided private key is not valid in the current context
     """
     pass
-
-class InvalidFactorError(BaseException):
-    """
-    Raised when a trustee's factors could not be validated
-    """
-    pass
-
-class BallotDecryptionError(BaseException):
-    """
-    Raised when decryption of a ballot collection could not be validated
-    """
-    pass

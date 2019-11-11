@@ -5,15 +5,16 @@ Contains standalone interface for vote-validation
 from abc import ABCMeta, abstractmethod
 
 from zeus_core.utils import hash_nums, gamma_encoding_max
-from zeus_core.elections.constants import (MAX_VOTE_JSON_KEYS, 
+from zeus_core.elections.constants import (MAX_VOTE_JSON_KEYS,
         MIN_VOTE_JSON_KEYS, ENC_BALLOT_JSON_KEYS)
 from zeus_core.elections.utils import extract_vote
 from zeus_core.elections.exceptions import InvalidVoteError
 
 class Validator(object, metaclass=ABCMeta):
     """
+    Vote-validation interface to election server
     """
-    
+
     @abstractmethod
     def get_cryptosys(self):
         """

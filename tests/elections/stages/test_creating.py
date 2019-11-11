@@ -147,7 +147,7 @@ class TestCreating(StageTester, unittest.TestCase):
                     creating.create_candidates(candidates)
                 messages.append(f'[+] Successfully aborted: {message}')
 
-    # Voters and audit codes creation
+    # s and audit codes creation
 
     def test_create_voters_and_audit_codes(self):
         _, config, creating, messages = self.get_context()
@@ -158,7 +158,7 @@ class TestCreating(StageTester, unittest.TestCase):
         get_audit_codes = lambda voter: audit_codes[inverse_voters[voter]]
         assert all(audit_codes[voter_key] == get_audit_codes(new_voters[voter_key])
             for voter_key in new_voters.keys())
-        messages.append('[+] Successfully created: Voters and audit codes')
+        messages.append('[+] Successfully created: s and audit codes')
 
 
     def mk_create_voters_and_audit_codes_abort_cases(self):
@@ -250,7 +250,7 @@ class TestCreating(StageTester, unittest.TestCase):
             assert voters == awaited
             messages.append('[+] voters: %s' % voters)
         except AssertionError:
-            err = "Voters were not: %s" % awaited
+            err = "s were not: %s" % awaited
             messages.append(f'[-] {err}\n')
             raise AssertionError(err)
 

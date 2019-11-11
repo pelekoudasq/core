@@ -39,12 +39,12 @@ class TestValidations(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        election, clients = mk_voting_setup()
+        election, voters = mk_voting_setup()
 
         cls.election = election
         cls.cryptosys = election.get_cryptosys()
         cls.validator = DummyValidator(election)
-        cls.client = clients[0]
+        cls.voter = voters[0]
         cls.messages = []
 
     @classmethod
@@ -61,10 +61,10 @@ class TestValidations(unittest.TestCase):
         election = cls.election
         cryptosys = cls.cryptosys
         validator = cls.validator
-        client = cls.client
+        voter = cls.voter
         messages = cls.messages
 
-        return election, cryptosys, validator, client, messages
+        return election, cryptosys, validator, voter, messages
 
     def __fail(self, err):
         self.__class__.messages.append(f'[-] {err}')
@@ -72,9 +72,9 @@ class TestValidations(unittest.TestCase):
 
 
     def test_vote_adaptment_success(self):
-        _, cryptosys, validator, client, messages = self.get_context()
+        _, cryptosys, validator, voter, messages = self.get_context()
 
-        vote = client.mk_genuine_vote()
+        vote = voter.mk_genuine_vote()
         adapted = adapt_vote(cryptosys, deepcopy(vote))
         try:
             assert adapted == validator.adapt_vote(vote)
@@ -87,7 +87,7 @@ class TestValidations(unittest.TestCase):
     def mk_vote_adaptment_failures(self):
         """
         """
-        election, cryptosys, validator, client, messages = self.get_context()
+        election, cryptosys, validator, voter, messages = self.get_context()
 
         failures = []
         for index, msg in enumerate((
@@ -96,7 +96,7 @@ class TestValidations(unittest.TestCase):
             'Cryptosystem mismatch',
             'Election key mismatch',
         )):
-            vote = client.mk_genuine_vote()
+            vote = voter.mk_genuine_vote()
             if index == 0:
                 vote.update({'extra_key': 0})
             elif index == 1:
@@ -111,7 +111,7 @@ class TestValidations(unittest.TestCase):
     def test_vote_adaptment_failures(self):
         """
         """
-        election, cryptosys, validator, client, messages = self.get_context()
+        election, cryptosys, validator, voter, messages = self.get_context()
 
         failures = self.mk_vote_adaptment_failures()
         for err, vote in failures:
@@ -126,9 +126,9 @@ class TestValidations(unittest.TestCase):
 
 
     def test_genuine_vote_validation_success(self):
-        _, cryptosys, validator, client, messages = self.get_context()
+        _, cryptosys, validator, voter, messages = self.get_context()
 
-        vote = client.mk_genuine_vote()
+        vote = voter.mk_genuine_vote()
         vote = adapt_vote(cryptosys, vote)
         try:
             validator.validate_genuine_vote(vote)
@@ -138,14 +138,14 @@ class TestValidations(unittest.TestCase):
             self.__fail(err)
 
     def test_genuine_vote_validation_failures(self):
-        _, cryptosys, validator, client, messages = self.get_context()
+        _, cryptosys, validator, voter, messages = self.get_context()
 
         err = 'Invalid vote failed to be detected'
         for kwargs, msg in (
             ({'corrupt_proof': True}, 'invalid encryption'),
             ({'corrupt_fingerprint': True}, 'fingerprint mismatch'),
         ):
-            vote = client.mk_genuine_vote(**kwargs)
+            vote = voter.mk_genuine_vote(**kwargs)
             with self.subTest(vote=vote):
                 vote = adapt_vote(cryptosys, vote)
                 try:
@@ -156,9 +156,9 @@ class TestValidations(unittest.TestCase):
                     self.__fail(f'{err} ({msg})')
 
     def test_audit_vote_validation_success(self):
-        _, cryptosys, validator, client, messages = self.get_context()
+        _, cryptosys, validator, voter, messages = self.get_context()
 
-        audit_vote = client.mk_audit_vote()
+        audit_vote = voter.mk_audit_vote()
         audit_vote = adapt_vote(cryptosys, audit_vote)
         missing, failed = validator.validate_audit_votes(audit_votes=[audit_vote,])
         try:
@@ -169,7 +169,7 @@ class TestValidations(unittest.TestCase):
             self.__fail(err)
 
     def test_audit_vote_validation_failures(self):
-        election, cryptosys, validator, client, messages = self.get_context()
+        election, cryptosys, validator, voter, messages = self.get_context()
 
         err = 'Invalid audit-vote failed to be detected'
         for kwargs, msg in (
@@ -186,7 +186,7 @@ class TestValidations(unittest.TestCase):
                 election.set_candidates(save_candidates[:1])
                 fake_nr_candidates = len(election.get_candidates())
                 kwargs.update({'fake_nr_candidates': fake_nr_candidates})
-            audit_vote = client.mk_audit_vote(**kwargs)
+            audit_vote = voter.mk_audit_vote(**kwargs)
             with self.subTest(audit_vote=audit_vote):
                 audit_vote = adapt_vote(cryptosys, audit_vote)
                 missing, failed = validator.validate_audit_votes((audit_vote,))

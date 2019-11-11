@@ -167,13 +167,13 @@ class TestSignatures(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        election, clients = mk_voting_setup()
+        election, voters = mk_voting_setup()
 
         cls.election = election
         cls.cryptosys = election.get_cryptosys()
         cls.signer = DummySigner(election)
         cls.verifier = DummyVerifier(election)
-        cls.client = clients[0]
+        cls.voter = voters[0]
         cls.messages = []
 
     @classmethod
@@ -191,21 +191,21 @@ class TestSignatures(unittest.TestCase):
         cryptosys = cls.cryptosys
         signer = cls.signer
         verifier = cls.verifier
-        client = cls.client
+        voter = cls.voter
         messages = cls.messages
 
-        return election, cryptosys, signer, verifier, client, messages
+        return election, cryptosys, signer, verifier, voter, messages
 
     def __fail(self, err):
         self.__class__.messages.append(f'[-] {err}')
         self.fail(err)
 
     def get_vote_makings(self):
-        _, _, _, _, client, _ = self.get_context()
+        _, _, _, _, voter, _ = self.get_context()
 
-        mk_genuine_vote = client.mk_genuine_vote
-        mk_audit_request = client.mk_audit_request
-        mk_audit_vote = client.mk_audit_vote
+        mk_genuine_vote = voter.mk_genuine_vote
+        mk_audit_request = voter.mk_audit_request
+        mk_audit_vote = voter.mk_audit_vote
 
         vote_makings = (
             ('Vote:', mk_genuine_vote),

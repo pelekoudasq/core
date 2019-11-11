@@ -8,7 +8,7 @@ from .algebra import ModPrimeElement, ModPrimeSubgroup
 
 from ..abstracts import ElGamalCrypto
 from ..exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
-    InvalidKeyError, InvalidFactorError, BallotDecryptionError)
+    InvalidKeyError)
 
 V_MODULUS   = 'MODULUS: '
 V_ORDER     = 'ORDER: '

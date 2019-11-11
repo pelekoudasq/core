@@ -13,13 +13,17 @@ class KeyManager(object, metaclass=ABCMeta):
     def _set_keypair(self, private_key, public_key):
         """
         """
-        keypair = {'private': private_key, 'public': public_key}
+        keypair = {}
+        keypair['private'] = private_key
+        keypair['public'] = public_key
         return keypair
 
     def extract_keypair(self, keypair):
         """
         """
-        return keypair['private'], keypair['public']
+        private_key = keypair['private']
+        public_key = keypair['public']
+        return private_key, public_key
 
     def _get_private(self, keypair):
         """
@@ -44,7 +48,9 @@ class KeyManager(object, metaclass=ABCMeta):
     def _set_public_key(self, element, proof=None):
         """
         """
-        public_key = {'value': element, 'proof': proof}
+        public_key = {}
+        public_key['value'] = element
+        public_key['proof'] = proof
         return public_key
 
     @abstractmethod
@@ -422,7 +428,10 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
     def set_ciphertext(self, alpha, beta):
         """
         """
-        return {'alpha': alpha, 'beta': beta}
+        ciphertext = {}
+        ciphertext['alpha'] = alpha
+        ciphertext['beta'] = beta
+        return ciphertext
 
     def extract_ciphertext(self, ciphertext):
         """
@@ -439,7 +448,10 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
     def set_ciphertext_proof(self, ciphertext, proof):
         """
         """
-        return {'ciphertext': ciphertext, 'proof': proof}
+        ciphertext_proof = {}
+        ciphertext_proof['ciphertext'] = ciphertext
+        ciphertext_proof['proof'] = proof
+        return ciphertext_proof
 
     def extract_ciphertext_proof(self, ciphertext_proof):
         """

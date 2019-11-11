@@ -14,8 +14,8 @@ class ZeusTestElection(ZeusCoreElection):
     def load_submitted_votes(self):
         """
         """
-        clients = mk_clients(self)
-        votes, audit_requests, audit_votes = mk_votes_from_clients(clients)
+        voters = mk_voters(self)
+        votes, audit_requests, audit_votes = mk_votes_from_voters(voters)
         submitted_votes = iter(audit_requests + votes + audit_votes)
         while 1:
             try:
@@ -119,7 +119,7 @@ def adapt_vote(cryptosys, vote, serialize=True):
     return vote
 
 
-from tests.elections.client import Client   # Put here to avoid circular import error
+from tests.elections.clients import Voter   # Put here to avoid circular import error
 
 # Election and election contect emulation
 
@@ -145,7 +145,7 @@ def mk_election(election_cls=ZeusTestElection, config=config_1,
     if len(candidates) >= 2 and dupl_candidates:
         candidates[1] = candidates[0]
 
-    voters = [(f'Voter-{str(i).zfill(8)}', 1) for i in range(nr_voters)]
+    voters = [(f'-{str(i).zfill(8)}', 1) for i in range(nr_voters)]
     if nr_voters >= 2 and dupl_voters:
         voters[1] = voters[0]
 
@@ -165,33 +165,33 @@ def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,
     election_key = election.get_election_key()
     nr_candidates = len(election.get_candidates())
     voter_keys = election.get_voters()
-    clients = mk_clients(election)
+    voters = mk_voters(election)
     if with_votes:
-        votes, audit_requests, audit_votes = mk_votes_from_clients(clients)
-        return election, clients, votes, audit_requests, audit_votes
-    return election, clients
+        votes, audit_requests, audit_votes = mk_votes_from_voters(voters)
+        return election, voters, votes, audit_requests, audit_votes
+    return election, voters
 
 
-def mk_clients(election):
+def mk_voters(election):
     """
-    Emulates the electoral body (one client for each stored voter key)
+    Emulates the electoral body (one voter for each stored voter key)
     """
     crypto = {}
     crypto['cls'] = election.config['crypto_cls']
     crypto['config'] = election.config['crypto_config']
     voter_keys = election.get_voters()
     nr_candidates = len(election.get_candidates())
-    clients = []
+    voters = []
     election_key = election.get_election_key()
     for voter_key in voter_keys:
         audit_codes = election.get_voter_audit_codes(voter_key)
-        client = Client(crypto, election_key, nr_candidates,
+        voter = Voter(crypto, election_key, nr_candidates,
             voter_key, audit_codes)
-        clients.append(client)
-    return clients
+        voters.append(voter)
+    return voters
 
 
-def mk_votes_from_clients(clients):
+def mk_votes_from_voters(voters):
     """
     Emulates votes submitted by the totality of the electoral body:
     about half of them will be genuine votes the rest half will be
@@ -200,15 +200,15 @@ def mk_votes_from_clients(clients):
     votes = []
     audit_requests = []
     audit_votes = []
-    nr_clients = len(clients)
-    for count, client in enumerate(clients):
-        voter_key = client.voter_key
-        audit_codes = client.audit_codes
-        if count < ceil(nr_clients / 2):
-            vote = client.mk_genuine_vote()
+    nr_voters = len(voters)
+    for count, voter in enumerate(voters):
+        voter_key = voter.voter_key
+        audit_codes = voter.audit_codes
+        if count < ceil(nr_voters / 2):
+            vote = voter.mk_genuine_vote()
             votes.append(vote)
         else:
-            audit_vote = client.mk_audit_vote()
+            audit_vote = voter.mk_audit_vote()
             audit_votes.append(audit_vote)
             audit_request = deepcopy(audit_vote)
             del audit_request['voter_secret']
