@@ -263,15 +263,7 @@ class MixingAPI(object):
 
 class DecryptingAPI(object):
 
-    def store_zeus_factors(self, zeus_factors):
-        public_key, factors = self.extract_trustee_factors(zeus_factors)
-        cryptosys = self.get_cryptosys()
-        public_key = cryptosys.get_key_value(public_key)
-        self.zeus_factors = {
-            public_key: factors
-        }
-
-    def store_trustee_factors(self, trustee_factors):
+    def store_factors(self, trustee_factors):
         public_key, factors = self.extract_trustee_factors(trustee_factors)
         cryptosys = self.get_cryptosys()
         public_key = cryptosys.get_key_value(public_key)

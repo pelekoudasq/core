@@ -10,7 +10,7 @@ class ModPrimeElement(GroupElement):
     Element of the multiplicative group Z*_p = Z_p - {0}, p > 2 prime
     """
 
-    __slots__ = ('__value', '__modulus', '__inverse')
+    __slots__ = ('__value', '__modulus',)
 
     def __init__(self, value, modulus):
         """
@@ -19,12 +19,6 @@ class ModPrimeElement(GroupElement):
         """
         self.__value = value % modulus
         self.__modulus = modulus
-
-        # Set here modular inverse (costly to compute everytime)
-        try:
-            self.__inverse = invert(self.__value, modulus)
-        except ZeroDivisionError:
-            pass                               # Set nothing if it doesn't exist
 
 
     @property
@@ -75,7 +69,12 @@ class ModPrimeElement(GroupElement):
         """
         :rtype: ModPrimeElement
         """
-        return self.__class__(self.__inverse, self.__modulus)
+        __modulus = self.__modulus
+        try:
+            __inverse = invert(self.__value, __modulus)
+        except ZeroDivisionError:
+            return
+        return self.__class__(__inverse, __modulus)
 
 
     @property
@@ -295,7 +294,7 @@ class ModPrimeSubgroup(Group):
         :rtype: mpz
         """
         exponent = random_integer(min, self.__order)
-        return exponent # mpz(exponent)
+        return exponent
 
     def exponent_from_texts(self, *texts):
         """

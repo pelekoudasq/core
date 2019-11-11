@@ -8,6 +8,7 @@ from zeus_core.utils.binutils import bit_iterator
 from tests.constants import (RES11_ELECTION_KEY, _2048_ELECTION_KEY,
     _4096_ELECTION_KEY, RES11_ZEUS_SK, _4096_ZEUS_SK, _2048_ZEUS_SK)
 from tests.mixnets.utils import mk_cipher_mix
+from zeus_core.utils.random import random_integer
 
 
 ROUNDS = 100
@@ -218,3 +219,42 @@ for (mixnet, election_key) in (
 def test_cipher_mix_verification_failure(mixnet, cipher_mix):
     with pytest.raises(MixNotVerifiedError):
         mixnet.verify_mix(cipher_mix, nr_parallel=0)
+
+
+# Challenge computation
+
+def test_compute_mix_challenge():
+    mixnet = _2048_ZEUS_SK
+    public = _2048_ELECTION_KEY
+
+    parameters = mixnet.cryptosys.hex_crypto_params()
+    group = mixnet.group
+
+    modulus = parameters['modulus']
+    order = parameters['order']
+    generator = parameters['generator']
+
+    nr_ciphers = random_integer(2, 10)
+    nr_collections = random_integer(2, 7)
+    random_element = group.random_element
+
+    original_ciphers = [(random_element(), random_element())
+        for _ in range(nr_ciphers)]
+    mixed_ciphers = [(random_element(), random_element())
+        for _ in range(nr_ciphers)]
+    cipher_collections = [[(random_element(), random_element())
+        for _ in range(nr_ciphers)] for _ in range(nr_collections)]
+
+    cipher_mix = {
+        'header': {
+            'modulus': modulus,
+            'order': order,
+            'generator': generator,
+            'public': public.to_hex(),
+        },
+        'original_ciphers': original_ciphers,
+        'mixed_ciphers': mixed_ciphers,
+        'proof': {
+            'cipher_collections': cipher_collections
+        }
+    }

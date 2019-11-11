@@ -55,7 +55,7 @@ class Mixnet(object, metaclass=ABCMeta):
         return self.__header
 
 
-    # Core
+    # Mixing
 
     @abstractmethod
     def mix_ciphers(self, original_mix, nr_parallel=None, **kwargs):
@@ -88,6 +88,35 @@ class Mixnet(object, metaclass=ABCMeta):
         where structure of 'proof' is mixnet specific
         """
 
+    def _reencrypt(self, alpha, beta, public, randomness=None, get_secret=False):
+        """
+        This is a slighlty modified version of the `ModPrimeCrypto.reencrypt()`
+        method adapted to the context of mixnet input/output (so that no
+        unnecessary extractions need take place)
+
+        See doc of that function for insight
+
+        :type alpha: GroupElemement
+        :type beta: GroupElemement
+        :type public: GroupElemement
+        :randomness: exponent
+        :get_secret: bool
+        :rtype: (GroupElement, GroupElement[, exponent])
+        """
+        __group = self.__group
+
+        if randomness is None:
+            randomness = __group.random_exponent(min=3)
+
+        alpha = alpha * __group.generate(randomness)                # a * g ^ r
+        beta = beta * public ** randomness                          # b * y ^ r
+
+        if get_secret:
+            return alpha, beta, randomness
+        return alpha, beta
+
+
+    # Testing
 
     def validate_mix(self, cipher_mix, last_mix=None, nr_parallel=None):
         """
@@ -121,36 +150,6 @@ class Mixnet(object, metaclass=ABCMeta):
     def verify_mix(self, cipher_mix, **kwargs):
         """
         """
-
-
-    # Encryption
-
-    def _reencrypt(self, alpha, beta, public, randomness=None, get_secret=False):
-        """
-        This is a slighlty modified version of the `ModPrimeCrypto.reencrypt()`
-        method adapted to the context of mixnet input/output (so that no
-        unnecessary extractions need take place)
-
-        See doc of that function for insight
-
-        :type alpha: GroupElemement
-        :type beta: GroupElemement
-        :type public: GroupElemement
-        :randomness: exponent
-        :get_secret: bool
-        :rtype: (GroupElement, GroupElement[, exponent])
-        """
-        __group = self.__group
-
-        if randomness is None:
-            randomness = __group.random_exponent(min=3)
-
-        alpha = alpha * __group.generate(randomness)                # a * g ^ r
-        beta = beta * public ** randomness                          # b * y ^ r
-
-        if get_secret:
-            return alpha, beta, randomness
-        return alpha, beta
 
 
     # Formats

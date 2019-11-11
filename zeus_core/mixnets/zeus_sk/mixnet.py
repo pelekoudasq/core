@@ -3,13 +3,19 @@ Sako-Killian mixnet
 """
 
 from Crypto import Random
+from itertools import chain
+from hashlib import sha256
+
+from ..exceptions import MixNotVerifiedError, RoundNotVerifiedError
+
+ALPHA = 0
+BETA  = 1
 
 from zeus_core.crypto.modprime import ModPrimeCrypto
 from zeus_core.utils import random_permutation, AsyncController, _teller, bit_iterator
 
 from ..abstracts import Mixnet
 from ..exceptions import MixnetError, MixNotVerifiedError, RoundNotVerifiedError
-from .utils import (shuffle_ciphers, compute_mix_challenge, verify_mix_round)
 
 
 class Zeus_sk(Mixnet):
@@ -66,39 +72,7 @@ class Zeus_sk(Mixnet):
         return config
 
 
-    # API
-
-    # def mix_many(self, prev):
-    #     """
-    #     :type prev: dict
-    #     :rtype: list[dict]
-    #     """
-    #     mixes = []   # mix = [prev]
-    #     appned = mixes.append
-    #     for _ in range(self.__nr_mixes):
-    #         prev = self.mix(prev)
-    #         append(prev)
-    #     return mixes
-    #
-    # def validate_many(self, cipher_collections):
-    #     """
-    #     :type cipher_collections: list[dict]
-    #     :rtype bool:
-    #     """
-    #     if len(cipher_collections) != self.__nr_mixes:
-    #         err = 'Invalid number of mixes provided'
-    #         raise AssertionError(err)
-    #
-    #     validated = True
-    #     validate = self.validate
-    #     for cipher_collection in cipher_collections:
-    #         # TODO: validate if original_ciphers != previous_mixed (?)
-    #         validated = validated and validate(cipher_collection)
-    #
-    #     return validated
-
-
-    # Core
+    # Mixing
 
     def mix_ciphers(self, original_mix, nr_parallel=None, nr_rounds=None, teller=_teller):
         """
@@ -138,7 +112,7 @@ class Zeus_sk(Mixnet):
 
         encrypt_func = self._reencrypt
         with teller.task('Producing final mixed ciphers'):
-            mixed_ciphers, mixed_offsets, mixed_randoms = shuffle_ciphers(
+            mixed_ciphers, mixed_offsets, mixed_randoms = self.shuffle_ciphers(
                 original_ciphers, election_key, encrypt_func, teller=teller)
             cipher_mix['mixed_ciphers'] = mixed_ciphers
 
@@ -162,6 +136,7 @@ class Zeus_sk(Mixnet):
                 collections = [channel.receive(wait=1) for channel in channels]
                 _async.shutdown()
             else:
+                shuffle_ciphers = self.shuffle_ciphers
                 collections = [shuffle_ciphers(original_ciphers,
                     election_key, encrypt_func, teller=teller) for _ in range(nr_rounds)]
 
@@ -173,11 +148,13 @@ class Zeus_sk(Mixnet):
 
         # Produce challenge
         with teller.task('Producing cryptographic hash challenge'):
-            challenge = compute_mix_challenge(cipher_mix)
+            # challenge = compute_mix_challenge(cipher_mix)
+            challenge = self.compute_mix_challenge(cipher_mix)
             proof['challenge'] = challenge
 
         # Modify collections according to challenge
         bits = bit_iterator(int(challenge, 16))
+        substract = self.substract
         with teller.task('Making collections according to challenge', total=nr_rounds):
             for i, bit in zip(range(nr_rounds), bits):
                 ciphers = cipher_collections[i]
@@ -203,6 +180,68 @@ class Zeus_sk(Mixnet):
         return cipher_mix
 
 
+    def shuffle_ciphers(self, ciphers, election_key, encrypt_func, teller=None,
+                report_thres=128, async_channel=None):
+        """
+        Reencrypts the provided `ciphers` under the given key `election_key` and returns a random
+        permutation of the new ciphers, along with the list of indices encoding this
+        permutation and the randomnesses used for re-encryption in the original order
+
+        :type ciphers: list[(ModPrimeElement, ModPrimeElement)]
+        :type election_key: ModPrimeElement
+        :type encrypt_func:
+        :rtype: (list[(ModPrimeElement, ModPrimeElement)], list[int], list[mpz])
+        """
+        nr_ciphers = len(ciphers)
+        mixed_offsets = random_permutation(nr_ciphers)
+
+        mixed_ciphers = [None] * nr_ciphers
+        mixed_randoms = [None] * nr_ciphers
+        count = 0
+        _reencrypt = self._reencrypt
+        for i in range(nr_ciphers):
+
+            alpha, beta = ciphers[i]
+            alpha, beta, secret = _reencrypt(alpha, beta, election_key, get_secret=True)
+
+            mixed_randoms[i] = secret
+            j = mixed_offsets[i]
+            mixed_ciphers[j] = (alpha, beta)
+
+            count += 1
+            if teller:
+                teller.advance(count)
+            if async_channel:
+                async_channel.send_shared(count, wait=1)
+            if count >= report_thres:
+                count = 0
+
+        return mixed_ciphers, mixed_offsets, mixed_randoms
+
+
+    def compute_mix_challenge(self, cipher_mix):
+        """
+        """
+        hasher = sha256()
+        update = hasher.update
+
+        update(''.join(cipher_mix['header'].values()).encode('utf-8'))
+
+        original_ciphers = cipher_mix['original_ciphers']
+        mixed_ciphers = cipher_mix['mixed_ciphers']
+        cipher_collections = cipher_mix['proof']['cipher_collections']
+
+        ciphers = chain(original_ciphers, mixed_ciphers, *cipher_collections)
+        for cipher in ciphers:
+            update((cipher[ALPHA].to_hex()).encode('utf-8'))
+            update((cipher[BETA].to_hex()).encode('utf-8'))
+
+        challenge = hasher.hexdigest()
+        return challenge
+
+
+    # Testing
+
     def verify_mix(self, cipher_mix, nr_parallel=0, min_rounds=None, teller=_teller):
         """
         """
@@ -223,7 +262,7 @@ class Zeus_sk(Mixnet):
         nr_rounds = len(cipher_collections)
 
         # Validate challenge
-        if challenge != compute_mix_challenge(cipher_mix):
+        if challenge != self.compute_mix_challenge(cipher_mix):
             err = 'Invalid challenge'
             raise MixNotVerifiedError(err)
 
@@ -253,6 +292,7 @@ class Zeus_sk(Mixnet):
                 async_verify_mix_round = _async.make_async(verify_mix_round)
 
             encrypt_func = self._reencrypt
+            verify_mix_round = self.verify_mix_round
             for i, bit in zip(range(nr_rounds), bit_iterator(int(challenge, 16))):
                 ciphers = cipher_collections[i]
                 offsets = offset_collections[i]
@@ -290,4 +330,56 @@ class Zeus_sk(Mixnet):
                 _async.shutdown()
 
         teller.finish('Verifying mixing')
+        return True
+
+    def verify_mix_round(self, round_nr, bit, original_ciphers, mixed_ciphers,
+            ciphers, offsets, randoms, encrypt_func, election_key,
+            teller=None, report_thres=128, async_channel=None):
+        """
+        Returns True if the round is successfully verified,
+        otherwise raises `RoundNotVerifiedError`
+        """
+        nr_ciphers = len(original_ciphers)
+
+        if bit == 0:
+            preimages = original_ciphers
+            images = ciphers
+        elif bit == 1:
+            preimages = ciphers
+            images = mixed_ciphers
+        else:
+            err = 'This should be impossible. Something is broken'
+            raise AssertionError(err)
+
+        count = 0
+        _reencrypt = self._reencrypt
+        for j in range(nr_ciphers):
+            preimage = preimages[j]
+            random = randoms[j]
+            offset = offsets[j]
+
+            alpha = preimage[ALPHA]
+            beta = preimage[BETA]
+            new_alpha, new_beta = _reencrypt(alpha, beta, election_key, randomness=random)
+
+            image = images[offset]
+            if new_alpha != image[ALPHA] or new_beta != image[BETA]:
+                err = 'MIXING VERIFICATION FAILED AT ROUND %d CIPHER %d bit %d' % (
+                        round_nr, j, bit)
+                raise RoundNotVerifiedError(err)
+
+            count += 1
+            if count >= report_thres:
+                if async_channel:
+                    async_channel.send_shared(count)
+                if teller:
+                    teller.advance(count)
+                count = 0
+
+        if count:
+            if async_channel:
+                async_channel.send_shared(count)
+            if teller:
+                teller.advance(count)
+
         return True

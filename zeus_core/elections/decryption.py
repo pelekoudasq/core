@@ -59,6 +59,7 @@ class Decryptor(object, metaclass=ABCMeta):
 
         return plaintexts
 
+
     # Internal crypto
 
     def compute_decryption_factors(self, secret, ciphers):

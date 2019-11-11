@@ -21,6 +21,5 @@ class Mixing(Stage):
         while mix_count < nr_mixes:
             last_mix = election.do_get_last_mix()
             mixed_ciphers = mixnet.mix_ciphers(last_mix, nr_parallel=nr_parallel)
-            mixnet.validate_mix(mixed_ciphers, last_mix, nr_parallel=nr_parallel)
             election.store_mix(mixed_ciphers)
             mix_count += 1
