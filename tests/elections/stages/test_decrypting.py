@@ -22,6 +22,9 @@ class TestDecrypting(StageTester, unittest.TestCase):
 
     # ------------------------ Isolated functionalities ------------------------
 
+    def test_decrypt_ballots(self):
+        pass
+
     # ------------------------- Overall stage testing --------------------------
 
 if __name__ == '__main__':

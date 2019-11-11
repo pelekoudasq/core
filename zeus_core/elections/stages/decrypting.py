@@ -28,6 +28,7 @@ class Decrypting(Stage):
 
         for trustee in election.trustees:
             trustee_keypair = election.get_trustee_keypair(trustee)
+            # TODO: Transfer this to trustee's side
             factors = election.compute_trustee_factors(mixed_ballots, trustee_keypair)
             try:
                 election.validate_trustee_factors(mixed_ballots, trustee, factors)
@@ -35,10 +36,10 @@ class Decrypting(Stage):
                 raise Abortion(err)
             election.store_factors(factors)
 
-        # print(election.trustees_factors)
-
         # Decrypt ballots
 
-        # plaintexts = election.decrypt_ballots(mixed_ballots, trustees_factors, zeus_factors)
-        # return plaintexts
-        pass
+        all_factors = election.get_all_factors()
+        plaintexts = election.decrypt_ballots(mixed_ballots, all_factors)
+
+        # print(plaintexts)
+        return (plaintexts,)

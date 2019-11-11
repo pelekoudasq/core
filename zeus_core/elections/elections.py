@@ -169,6 +169,40 @@ class GenericAPI(object):
         #     mixed_ballots[i] = adapted
         return mixed_ballots
 
+    def get_all_factors(self):
+        """
+        {
+            public: {
+                value: ...
+                proof: Schnorr-proof
+            }: [
+                ...
+                {
+                    data: GroupElement
+                    proof: Chaum-Pedersen-proof
+                }
+                ...
+            ]
+        }
+
+        ----------------->
+
+        [
+            ...
+            [
+                ...
+                {
+                    data: GroupElement
+                    proof: Chaum-Pedersen-proof
+                }
+                ...
+            ]
+            ...
+        ]
+        """
+        trustees_factors = list(self.trustees_factors.values()) # Includes zeus factors!
+        return [[factor for factor in trustee_factors] for trustee_factors in trustees_factors]
+
 
 class UninitializedAPI(object):
 
@@ -487,7 +521,7 @@ class ZeusCoreElection(StageController, *backend_apis,
             # ~ with every new mix during execution of Mixing._generate()
             pass
         elif stage_cls is Decrypting:
-            (results,) = entitites
+            (results,) = entities
             election.store_results(results)
         elif stage_cls is Finished:
             pass

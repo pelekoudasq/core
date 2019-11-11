@@ -25,9 +25,6 @@ class TestDecryption(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-    #
-    # Not yet implemented
-    #
         pass
 
     @classmethod
@@ -40,18 +37,6 @@ class TestDecryption(unittest.TestCase):
                 print(message)
 
     def get_context(self):
-        # cls = self.__class__
-        # election = cls.election
-        # cryptosys = cls.cryptosys
-        # signer = cls.signer
-        # verifier = cls.verifier
-        # client = cls.client
-        # messages = cls.messages
-        #
-        # return election, cryptosys, signer, verifier, client, messages
-        #
-        # Not yet implemented
-        #
         pass
 
     def __fail(self, err):

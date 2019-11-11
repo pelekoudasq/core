@@ -917,11 +917,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         Given the ciphertext `ciphertext`
 
-        {'alpha': a, 'beta': b}
+                            {'alpha': a, 'beta': b}
 
         and `decryptor` d, computes and returns the element
 
-        d ^ -1 * b
+                                  d ^ -1 * b
 
         :type ciphertext: dict
         :type decryptor: ModPrimeElement

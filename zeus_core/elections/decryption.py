@@ -34,14 +34,14 @@ class Decryptor(object, metaclass=ABCMeta):
         trustee_factors = self.set_trustee_factors(public, factors)
         return trustee_factors
 
-    def decrypt_ballots(self, mixed_ballots, trustees_factors, zeus_factors):
+    # def decrypt_ballots(self, mixed_ballots, trustees_factors, zeus_factors):
+    def decrypt_ballots(self, mixed_ballots, all_factors):
         """
         """
+        cryptosys = self.get_cryptosys()
+
         plaintexts = []
         append = plaintexts.append
-
-        all_factors = [trustee_factors['factors'] for trustee_factors in trustees_factors]
-        all_factors.append(zeus_factors)
 
         decryption_factors = self.combine_decryption_factors(all_factors)
         for ballot, factor in zip(mixed_ballots, decryption_factors):
@@ -54,7 +54,7 @@ class Decryptor(object, metaclass=ABCMeta):
             # trustee3 |factor31   |factor32   |factor33   |.........
             # ---------|-----------------------------------|---------
             #          |factor_1   |factor_2   |factor_3   |.........
-            encoded = self._decrypt_with_decryptor(ballot, factor)
+            encoded = cryptosys._decrypt_with_decryptor(ballot, factor)
             append(encoded.to_int())
 
         return plaintexts
@@ -182,7 +182,7 @@ class Decryptor(object, metaclass=ABCMeta):
     #         'proof': dict                                             #
     #       }                                                           #
     #                                                                   #
-    #       where the value of 'proof' is usually a Schnorr-proof       #
+    #       where the value of 'proof' is a Chaum-Pedersen-proof        #
     #                                                                   #
     #####################################################################
 
@@ -207,6 +207,7 @@ class Decryptor(object, metaclass=ABCMeta):
 
     def validate_trustee_factors(self, mixed_ballots, trustee_public, trustee_factors):
         """
+        OK
         """
         cryptosys = self.get_cryptosys()
 
@@ -237,18 +238,18 @@ class Decryptor(object, metaclass=ABCMeta):
 
         For each ciphertext
 
-        {'alpha': a, 'beta': ...}
+                            {'alpha': a, 'beta': ...}
 
         from the provided `ciphers` and corresponding factor
 
-        {'data': c, 'proof': s}
+                             {'data': c, 'proof': s}
 
         from the provided `factors`, the current cipher-factor pair will be
-        verified iff the (Shnorr-proof) s proves knowledge that the tuple
+        verified iff the (Chaum-Pedersen-proof) proves knowledge that the tuple
 
-        (a, y, c)
+                                    (a, y, c)
 
-        is a DDH
+        is DDH.
 
         :type public: ModPrimeElement
         :type ciphers: list[dict]
@@ -267,61 +268,5 @@ class Decryptor(object, metaclass=ABCMeta):
             ddh = (alpha, public, data)
             if not cryptosys._chaum_pedersen_verify(ddh, proof):
                 return False
-
-        return True
-
-
-    def validate_ballots_decryption(self, mixed_ballots, trustees_factors,
-            public_shares, zeus_factors, zeus_public_key):
-        """
-        Mixed ballots: list[{'alpha': ModPrimeElement, 'beta': ModPrimeElement}]
-
-        Public shares: list[ModPrimeElement] or list[{'public': ModPrimElement, 'proof': ...}]
-
-        Trustees factors: list[{
-            'public': ModPrimeElement or {'public': ModPrimeElement, 'proof': ...},
-            'factors': list[{'data': ModPrimeElement, 'proof': dict}]
-        }]
-
-        Zeus factors: list[{'data': ModPrimeElement, 'proof': dict}]
-
-        :type mixed_ballots: list[dict]
-        :type trustees_factors: list[list[dict]]
-        :type public_shares: list[ModPrimeElement]
-        :type zeus_factors: list[dict]
-        :type zeus_public_key: ModPrimeElement
-        :rtype: boolean
-        """
-        # Lengths check
-        if len(trustees_factors) is not len(public_shares):
-            err = 'Unequal number of public shares and trustees'
-            raise BallotDecryptionError(err)
-
-        # Remove proofs from trustees' public keys
-        aux_factors = {}
-        for trustee_factors in trustees_factors:
-            public, factors = self._extract_trustee_factors(trustee_factors)
-            public = self.get_key_value(public)
-            aux_factors[public] = factors
-        trustees_factors = aux_factors
-
-        # Verify trustees' factors
-        for share in public_shares:
-            trustee_public = self.get_key_value(share)
-            try:
-                trustee_factors = trustees_factors[trustee_public]
-            except KeyError:
-                err = 'Trustee mismatch with public shares'
-                raise BallotDecryptionError(err)
-
-            if not self.verify_decryption_factors(trustee_public, mixed_ballots, trustee_factors):
-                err = 'Trustee\'s factors could not be verified'
-                raise BallotDecryptionError(err)
-
-        # Verify zeus's factors
-        zeus_public_key = self.get_key_value(zeus_public_key)
-        if not self.verify_decryption_factors(zeus_public_key, mixed_ballots, zeus_factors):
-            err = 'Zeus\'s factors could not be verified'
-            raise BallotDecryptionError(err)
 
         return True
