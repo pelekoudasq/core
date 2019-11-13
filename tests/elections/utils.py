@@ -1,87 +1,10 @@
 import json
 from math import ceil
 from copy import deepcopy
-from zeus_core.elections import ZeusCoreElection
 from zeus_core.elections.stages import Uninitialized
 from tests.elections.config_samples import config_1
-
-class ZeusTestElection(ZeusCoreElection):
-    """
-    Provides a most minimal concrete implementation of the
-    ZeusCoreElection abstract class for testing purposes
-    """
-
-    def load_submitted_votes(self):
-        """
-        """
-        voters = mk_voters(self)
-        votes, audit_requests, audit_votes = mk_votes_from_voters(voters)
-        submitted_votes = iter(audit_requests + votes + audit_votes)
-        while 1:
-            try:
-                vote = next(submitted_votes)
-            except StopIteration:
-                break
-            yield vote
-
-    def get_trustee_keypair(self, public_key):
-        """
-        """
-        with open('tests/elections/trustee-publics.json') as f:
-            trustee_publics = json.load(f)
-        with open('tests/elections/trustee-privates.json') as f:
-            trustee_privates = json.load(f)
-        trustee_index = [i for i in range(len(trustee_publics)) if public_key.value == trustee_publics[i]['value']][0]
-
-        cryptosys = self.get_cryptosys()
-
-        proof = self.trustees[public_key]
-        private_key = cryptosys.int_to_exponent(trustee_privates[trustee_index])
-
-        return {
-            'private': private_key,
-            'public': {
-                'value': public_key,
-                'proof': proof
-            }
-        }
-
-    # Test utils (irrelevant to implementation of ZeusCoreElection abstract class)
-
-    def run_until_uninitialized_stage(self):
-        uninitialized = self._get_current_stage()
-        return uninitialized
-
-    def run_until_creating_stage(self):
-        uninitialized = self.run_until_uninitialized_stage()
-        uninitialized.run()
-        creating = uninitialized.next()
-        return creating
-
-    def run_until_voting_stage(self):
-        creating = self.run_until_creating_stage()
-        creating.run()
-        voting = creating.next()
-        return voting
-
-    def run_until_mixing_stage(self):
-        voting = self.run_until_voting_stage()
-        voting.run()
-        mixing = voting.next()
-        return mixing
-
-    def run_until_decrypting_stage(self):
-        mixing = self.run_until_mixing_stage()
-        mixing.run()
-        decrypting = mixing.next()
-        return decrypting
-
-    def run_until_finished_stage(self):
-        decrypting = self.run_until_decrypting_stage()
-        decrypting.run()
-        finished = decrypting.next()
-        return finished
-
+# from tests.elections.clients import Trustee
+# from tests.elections.clients import Voter
 
 def adapt_vote(cryptosys, vote, serialize=True):
     """
@@ -118,8 +41,52 @@ def adapt_vote(cryptosys, vote, serialize=True):
         if voter_secret else None
     return vote
 
+def mk_voters(election):
+    """
+    Emulates the electoral body (one voter for each stored voter key)
+    """
+    crypto = {}
+    crypto['cls'] = election.config['crypto_cls']
+    crypto['config'] = election.config['crypto_config']
+    voter_keys = election.get_voters()
+    nr_candidates = len(election.get_candidates())
+    voters = []
+    election_key = election.get_election_key()
+    for voter_key in voter_keys:
+        audit_codes = election.get_voter_audit_codes(voter_key)
+        voter = Voter(crypto, election_key, nr_candidates,
+            voter_key, audit_codes)
+        voters.append(voter)
+    return voters
 
-from tests.elections.clients import Voter   # Put here to avoid circular import error
+def mk_votes_from_voters(voters):
+    """
+    Emulates votes submitted by the totality of the electoral body:
+    about half of them will be genuine votes the rest half will be
+    audit-requests (accompanied by corresponding audit publications)
+    """
+    votes = []
+    audit_requests = []
+    audit_votes = []
+    nr_voters = len(voters)
+    for count, voter in enumerate(voters):
+        voter_key = voter.voter_key
+        audit_codes = voter.audit_codes
+        if count < ceil(nr_voters / 2):
+            vote = voter.mk_genuine_vote()
+            votes.append(vote)
+        else:
+            audit_vote = voter.mk_audit_vote()
+            audit_votes.append(audit_vote)
+            audit_request = deepcopy(audit_vote)
+            del audit_request['voter_secret']
+            audit_requests.append(audit_request)
+    return votes, audit_requests, audit_votes
+
+# Put here to avoid circular import error
+
+from tests.elections.clients import Voter
+from tests.elections.zeus import ZeusTestElection
 
 # Election and election contect emulation
 
@@ -172,48 +139,23 @@ def mk_voting_setup(config=config_1, candidates=None, dupl_candidates=False,
     return election, voters
 
 
-def mk_voters(election):
-    """
-    Emulates the electoral body (one voter for each stored voter key)
-    """
-    crypto = {}
-    crypto['cls'] = election.config['crypto_cls']
-    crypto['config'] = election.config['crypto_config']
-    voter_keys = election.get_voters()
-    nr_candidates = len(election.get_candidates())
-    voters = []
-    election_key = election.get_election_key()
-    for voter_key in voter_keys:
-        audit_codes = election.get_voter_audit_codes(voter_key)
-        voter = Voter(crypto, election_key, nr_candidates,
-            voter_key, audit_codes)
-        voters.append(voter)
-    return voters
-
-
-def mk_votes_from_voters(voters):
-    """
-    Emulates votes submitted by the totality of the electoral body:
-    about half of them will be genuine votes the rest half will be
-    audit-requests (accompanied by corresponding audit publications)
-    """
-    votes = []
-    audit_requests = []
-    audit_votes = []
-    nr_voters = len(voters)
-    for count, voter in enumerate(voters):
-        voter_key = voter.voter_key
-        audit_codes = voter.audit_codes
-        if count < ceil(nr_voters / 2):
-            vote = voter.mk_genuine_vote()
-            votes.append(vote)
-        else:
-            audit_vote = voter.mk_audit_vote()
-            audit_votes.append(audit_vote)
-            audit_request = deepcopy(audit_vote)
-            del audit_request['voter_secret']
-            audit_requests.append(audit_request)
-    return votes, audit_requests, audit_votes
+# def mk_voters(election):
+#     """
+#     Emulates the electoral body (one voter for each stored voter key)
+#     """
+#     crypto = {}
+#     crypto['cls'] = election.config['crypto_cls']
+#     crypto['config'] = election.config['crypto_config']
+#     voter_keys = election.get_voters()
+#     nr_candidates = len(election.get_candidates())
+#     voters = []
+#     election_key = election.get_election_key()
+#     for voter_key in voter_keys:
+#         audit_codes = election.get_voter_audit_codes(voter_key)
+#         voter = Voter(crypto, election_key, nr_candidates,
+#             voter_key, audit_codes)
+#         voters.append(voter)
+#     return voters
 
 
 # JSON utils

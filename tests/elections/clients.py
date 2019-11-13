@@ -1,6 +1,6 @@
 """
 """
-from json import dumps
+import json
 from copy import deepcopy
 
 from tests.elections.utils import adapt_vote
@@ -15,14 +15,138 @@ class Client(object):
     """
     General client reference (contains what is common to both voter and trustee)
     """
-    pass
+
+    def __init__(self, config_crypto):
+        self.cryptosys = self.retrieve_cryptosys(config_crypto)
+
+    @classmethod
+    def retrieve_cryptosys(cls, config_crypto):
+        cls = config_crypto['cls']
+        config = config_crypto['config']
+        cryptosys = mk_cryptosys(cls, config)
+        return cryptosys
 
 
 class Trustee(Client):
     """
-    Trustee reference
+    Trustee reference.
     """
-    pass
+
+    def __init__(self, config_crypto, keypair):
+        self.keypair = keypair
+        super().__init__(config_crypto)
+
+
+    def get_factors(self):
+        try:
+            factors = self.factors
+        except AttributeError:
+            return None
+        return factors
+
+
+    @classmethod
+    def get_from_public(cls, config_crypto, public_key, proof):
+        cryptosys = cls.retrieve_cryptosys(config_crypto)
+        keypair = cls.retrieve_keypair(public_key, proof, cryptosys)
+        return cls(config_crypto, keypair)
+
+
+    @classmethod
+    def retrieve_keypair(cls, public_key, proof, cryptosys):
+        """
+        Uses the included .json files
+        """
+        keypair = {}
+        keypair['public'] = {'value': public_key, 'proof': proof}
+
+        with open('tests/elections/trustee-publics.json') as f:
+            trustee_publics = json.load(f)
+        with open('tests/elections/trustee-privates.json') as f:
+            trustee_privates = json.load(f)
+        trustee_index = [i for i in range(len(trustee_publics)) \
+            if public_key.value == trustee_publics[i]['value']][0]
+        private_key = cryptosys.int_to_exponent(trustee_privates[trustee_index])
+
+        keypair['private'] = private_key
+        return keypair
+
+
+    def compute_trustee_factors(self, mixed_ballots):
+        # cryptosys = self.get_cryptosys()
+        cryptosys = self.cryptosys
+
+        private, public = cryptosys.extract_keypair(self.keypair)
+        factors = self.compute_decryption_factors(private, mixed_ballots)
+        trustee_factors = self.set_trustee_factors(public, factors)
+        self.factors = trustee_factors
+        
+
+    def compute_decryption_factors(self, secret, ciphers):
+        """
+        Use the provided secret x to construct an acclaimed DDH tuple for each
+        of the given ciphers and generate proof-of-knowledge that the produced
+        tuple is DDH. Returns a list of these proofs along with the last member
+        of the corresponding DDH.
+
+        For each ciphertext
+
+                            {'alpha': a, 'beta': ...}
+
+        from the provided ciphers, assuming that
+
+                                a = g ^ r (modp)
+
+        as the result of ElGamal-encryption, generate a Chaum-Pedersen
+        proof-of-knowledge s that the tuple
+
+                g ^ r (modp), g ^ x (modp), g ^ (r * x) modp
+
+        is DDH and return the list of pairs
+
+                    {'data': g ^ (r * x) (modp), 'proof': s}
+
+        :type secret: exponent
+        :type ciphers: list[dict{'alpha': GroupElement, 'beta': GroupElement}]
+        :rtype: list[dict{'data': GroupElement, 'proof': Chaum-Pedersen}]
+        """
+        # cryptosys = self.get_cryptosys()
+        cryptosys = self.cryptosys
+
+        public = cryptosys.group.generate(secret)                        # g ^ x         (mod p)
+
+        factors = []
+        append = factors.append
+        for cipher in ciphers:
+
+            alpha, _ = cryptosys.extract_ciphertext(cipher)              # g ^ r         (mod p)
+            data = alpha ** secret                                       # g ^ (x * r)   (mod p)
+
+            ddh = (alpha, public, data)
+
+            proof = cryptosys._chaum_pedersen_proof(ddh, secret)
+            factor = self.set_factor(data, proof)
+            append(factor)
+
+        return factors
+
+
+    def set_trustee_factors(self, public, factors):
+        """
+        """
+        trustee_factors = {}
+        trustee_factors['public'] = public
+        trustee_factors['factors'] = factors
+        return trustee_factors
+
+
+    def set_factor(self, element, proof):
+        """
+        """
+        factor = {}
+        factor['data'] = element
+        factor['proof'] = proof
+        return factor
 
 
 class Voter(Client):
@@ -34,23 +158,17 @@ class Voter(Client):
                     voter_key, audit_codes=None):
         """
         """
-        self.cryptosys = self.retrieve_cryptosys(config_crypto)
+        self.voter_key = voter_key
         self.election_key = election_key
         self.nr_candidates = nr_candidates
-        self.voter_key = voter_key
         self.audit_codes = audit_codes
+        super().__init__(config_crypto)
 
-    @classmethod
-    def retrieve_cryptosys(cls, config_crypto):
-        cls = config_crypto['cls']
-        config = config_crypto['config']
-        cryptosys = mk_cryptosys(cls, config)
-        return cryptosys
 
     def mk_genuine_vote(self, corrupt_proof=False, corrupt_fingerprint=False,
             election_mismatch=False):
         """
-        Audit code among the assigned ones. 's secret not advertised.
+        Audit code among the assigned ones. Voter's secret not advertised.
         """
         vote = self.mk_random_vote(selection=None,
             audit_code=None, publish=None)
@@ -63,8 +181,9 @@ class Voter(Client):
         if corrupt_fingerprint:
             vote['fingerprint'] += '__corrupt_part'
         if election_mismatch:
-            vote['encrypted_ballot']['public'] += 1 # Corrupt inscribed election key
+            vote['encrypted_ballot']['public'] += 1
         return vote
+
 
     def mk_audit_request(self, selection=None, election_mismatch=False):
         """
@@ -74,11 +193,12 @@ class Voter(Client):
             election_mismatch=election_mismatch)
         return audit_request
 
+
     def mk_audit_vote(self, publish=True, missing=False, corrupt_proof=False,
             corrupt_alpha=False, election_mismatch=False,
             corrupt_encoding=False, fake_nr_candidates=None):
         """
-        's secret by default advertised
+        Voter's secret by default advertised
         """
         random_hex = lambda: '%x' % random_integer(2, VOTER_SLOT_CEIL)
         audit_code = random_hex()
@@ -101,8 +221,9 @@ class Voter(Client):
                 beta = enc_ballot['beta']
                 enc_ballot['alpha'] = beta
             if election_mismatch:
-                enc_ballot['public'] += 1 # Corrupt inscribed election key
+                enc_ballot['public'] += 1
         return audit_vote
+
 
     def mk_corrupt_encoding(self, fake_nr_candidates, audit_code):
         """
@@ -148,6 +269,7 @@ class Voter(Client):
             del vote['voter_secret']
         return vote
 
+
     def mk_vote_from_encoded_selection(self, encoded_selection,
             audit_code, publish):
         """
@@ -157,6 +279,7 @@ class Voter(Client):
         vote = self.mk_vote_from_element(algebraized_selection,
                 audit_code, publish)
         return vote
+
 
     def mk_vote_from_element(self, group_element, audit_code, publish):
         """
@@ -179,6 +302,7 @@ class Voter(Client):
             publish, voter_secret)
         return vote
 
+
     def set_vote(self, encrypted_ballot, fingerprint, audit_code=None,
             publish=None, voter_secret=None, previous=None, index=None,
             status=None, plaintext=None):
@@ -188,12 +312,13 @@ class Voter(Client):
         vote = {}
         vote['voter'] = self.voter_key
         vote['encrypted_ballot'] = encrypted_ballot
-        vote['fingerprint'] = fingerprint # hexdigest
+        vote['fingerprint'] = fingerprint                            # hexdigest
         if audit_code:
             vote['audit_code'] = audit_code
         if publish:
             vote['voter_secret'] = voter_secret
         return vote
+
 
     def mk_encrypted_ballot(self, ciphertext, proof):
         """
@@ -222,6 +347,7 @@ class Voter(Client):
 
         return encrypted_ballot
 
+
     def mk_fingerprint(self, encrypted_ballot):
         """
         Accepts serialized, returns hexdigest
@@ -229,6 +355,7 @@ class Voter(Client):
         params = self.get_fingerprint_params(encrypted_ballot)
         fingerprint = hash_nums(*params).hex()
         return fingerprint
+
 
     def get_fingerprint_params(self, encrypted_ballot):
         """

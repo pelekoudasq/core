@@ -266,10 +266,11 @@ class ModPrimeSubgroup(Group):
         """
         :type generator: ModPrimeElement or mpz
         """
+        Element = self.__Element
         if isinstance(generator, Element):
             self.__generator = generator
         else:
-            self.__generator = self.__Element(generator, self.__modulus)
+            self.__generator = Element(generator, self.__modulus)
 
 
     def generate(self, exponent):

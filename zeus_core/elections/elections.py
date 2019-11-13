@@ -396,13 +396,22 @@ class ZeusCoreElection(StageController, *backend_apis,
         self.trustees_factors = {}
         self.results = []
 
-
-    # Stage controller implementation
+    @abstractmethod
+    def collect_votes(self):
+        """
+        """
 
     @abstractmethod
-    def load_submitted_votes(self):
+    def send_mixed_ballots(self):
         """
         """
+
+    @abstractmethod
+    def collect_factors(self):
+        """
+        """
+
+    # Stage controller implementation
 
     def load_data(self, stage):
         """
@@ -618,8 +627,3 @@ class ZeusCoreElection(StageController, *backend_apis,
         """
         """
         pass
-
-    @abstractmethod
-    def get_trustee_keypair(self, trustee):
-        """
-        """

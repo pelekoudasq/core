@@ -20,7 +20,7 @@ class Voting(Stage):
     def _generate(self, *data):
         election = self.get_controller()
         cast_vote = self.cast_vote
-        for vote in election.load_submitted_votes():
+        for vote in election.collect_votes():
             cast_vote(vote)
 
 
