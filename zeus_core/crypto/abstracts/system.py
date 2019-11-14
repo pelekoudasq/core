@@ -468,3 +468,95 @@ class ElGamalCrypto(KeyManager, metaclass=ABCMeta):
         serialized['ciphertext'] = self.serialize_ciphertext(ciphertext)
         serialized['proof'] = self.serialize_schnorr_proof(proof)
         return serialized
+
+    # ----------------------------- Key Management -----------------------------
+
+    @abstractmethod
+    def mk_keypair(self, private_key=None):
+        """
+        """
+
+    @abstractmethod
+    def validate_element(self, element):
+        """
+        """
+
+    ######################################################################
+    #                                                                    #
+    #    By keypair is meant a dictionary of the form                    #
+    #                                                                    #
+    #    {                                                               #
+    #        'private': mpz,                                             #
+    #        'public': {                                                 #
+    #            'value': ModPrimeElement,                               #
+    #            'proof': ...                                            #
+    #        }                                                           #
+    #    }                                                               #
+    #                                                                    #
+    #   where tha value of `proof` is either `None` or a Schnorr-proof   #
+    #                                                                    #
+    ######################################################################
+
+    def keygen(self, private_key=None, schnorr=True):
+        """
+        Generates and returns a keypair
+
+        If `shnorr` is left to its default value `True`, the public part
+        will include proof-of-knowledge of the private part
+
+        :type private_key: mpz or int
+        :type schnorr: bool
+        :rtype: dict
+        """
+        private_key, public_key = self.mk_keypair(private_key)
+        proof = None
+        if schnorr:
+            proof = self._schnorr_proof(private_key, public_key)
+        public_key = self._set_public_key(public_key, proof)
+        keypair = self._set_keypair(private_key, public_key)
+        return keypair
+
+
+    #####################################################################
+    #                                                                   #
+    #    By public-key is meant a dictionary of the form                #
+    #                                                                   #
+    #    {                                                              #
+    #        'value': ModPrimeElement,                                  #
+    #        'proof': ...                                               #
+    #    }                                                              #
+    #                                                                   #
+    #    where the value of 'proof' is either None or a Schnorr-proof   #
+    #                                                                   #
+    #####################################################################
+
+    def validate_public_key(self, public_key):
+        """
+        Verifies that the 'proof' field proves knowledge of the private counterpart
+
+        :type public_key: dict
+        :rtype: bool
+        """
+        try:
+            proof = public_key['proof']
+        except KeyError:
+            # No proof has been provided together with the public key
+            return False
+
+        public_key = public_key['value']
+
+        if not self.validate_element(public_key):
+            return False
+
+        return self._schnorr_verify(proof=proof, public=public_key)
+
+    def deserialize_public_key(self, value, proof=None):
+        """
+        :type value: int or mpz
+        :type proof: dict
+        :rtype: dict
+        """
+        deserialized = {}
+        deserialized['value'] = self.int_to_element(value)
+        deserialized['proof'] = self.deserialize_schnorr_proof(proof)
+        return deserialized

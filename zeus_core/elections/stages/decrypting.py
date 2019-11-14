@@ -15,8 +15,7 @@ class Decrypting(Stage):
         mixed_ballots = election.get_mixed_ballots()
 
         for trustee in election.trustees:
-            election.send_mixed_ballots(trustee, election.trustees[trustee])
-
+            election.send_mixed_ballots(trustee)
 
         # Compute zeus factors
         zeus_factors = election.compute_zeus_factors(mixed_ballots)

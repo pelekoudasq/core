@@ -8,33 +8,41 @@ from zeus_core.elections.utils import extract_vote
 from zeus_core.crypto import mk_cryptosys
 from zeus_core.utils import (random_integer, random_selection,
     gamma_encoding_max, random_party_selection, hash_nums, encode_selection)
+from zeus_core.elections.decryption import FactorGenerator
 from zeus_core.elections.constants import VOTER_SLOT_CEIL
 
 
 class Client(object):
     """
-    General client reference (contains what is common to both voter and trustee)
+    General client reference (for both voters and trustees)
     """
 
     def __init__(self, config_crypto):
-        self.cryptosys = self.retrieve_cryptosys(config_crypto)
+        self.cryptosys = self.__class__.mk_cryptosys(config_crypto)
 
     @classmethod
-    def retrieve_cryptosys(cls, config_crypto):
+    def mk_cryptosys(cls, config_crypto):
         cls = config_crypto['cls']
         config = config_crypto['config']
         cryptosys = mk_cryptosys(cls, config)
         return cryptosys
 
+    def get_cryptosys(self):
+        return self.cryptosys
 
-class Trustee(Client):
+
+class Trustee(Client, FactorGenerator):
     """
-    Trustee reference.
+    Trustee reference
     """
 
     def __init__(self, config_crypto, keypair):
         self.keypair = keypair
         super().__init__(config_crypto)
+
+
+    def _get_keypair(self):
+        return self.keypair
 
 
     def get_factors(self):
@@ -46,107 +54,27 @@ class Trustee(Client):
 
 
     @classmethod
-    def get_from_public(cls, config_crypto, public_key, proof):
-        cryptosys = cls.retrieve_cryptosys(config_crypto)
-        keypair = cls.retrieve_keypair(public_key, proof, cryptosys)
-        return cls(config_crypto, keypair)
+    def get_from_public(cls, config_crypto, public_key):
+        cryptosys = cls.mk_cryptosys(config_crypto)
 
-
-    @classmethod
-    def retrieve_keypair(cls, public_key, proof, cryptosys):
-        """
-        Uses the included .json files
-        """
-        keypair = {}
-        keypair['public'] = {'value': public_key, 'proof': proof}
-
+        # Locate public
         with open('tests/elections/trustee-publics.json') as f:
             trustee_publics = json.load(f)
-        with open('tests/elections/trustee-privates.json') as f:
-            trustee_privates = json.load(f)
         trustee_index = [i for i in range(len(trustee_publics)) \
             if public_key.value == trustee_publics[i]['value']][0]
+
+        # Retrieve proof
+        proof = cryptosys.deserialize_schnorr_proof(trustee_publics[trustee_index]['proof'])
+
+        # Retrieve keypair
+        keypair = {}
+        keypair['public'] = {'value': public_key, 'proof': proof}
+        with open('tests/elections/trustee-privates.json') as f:
+            trustee_privates = json.load(f)
         private_key = cryptosys.int_to_exponent(trustee_privates[trustee_index])
-
         keypair['private'] = private_key
-        return keypair
 
-
-    def compute_trustee_factors(self, mixed_ballots):
-        # cryptosys = self.get_cryptosys()
-        cryptosys = self.cryptosys
-
-        private, public = cryptosys.extract_keypair(self.keypair)
-        factors = self.compute_decryption_factors(private, mixed_ballots)
-        trustee_factors = self.set_trustee_factors(public, factors)
-        self.factors = trustee_factors
-        
-
-    def compute_decryption_factors(self, secret, ciphers):
-        """
-        Use the provided secret x to construct an acclaimed DDH tuple for each
-        of the given ciphers and generate proof-of-knowledge that the produced
-        tuple is DDH. Returns a list of these proofs along with the last member
-        of the corresponding DDH.
-
-        For each ciphertext
-
-                            {'alpha': a, 'beta': ...}
-
-        from the provided ciphers, assuming that
-
-                                a = g ^ r (modp)
-
-        as the result of ElGamal-encryption, generate a Chaum-Pedersen
-        proof-of-knowledge s that the tuple
-
-                g ^ r (modp), g ^ x (modp), g ^ (r * x) modp
-
-        is DDH and return the list of pairs
-
-                    {'data': g ^ (r * x) (modp), 'proof': s}
-
-        :type secret: exponent
-        :type ciphers: list[dict{'alpha': GroupElement, 'beta': GroupElement}]
-        :rtype: list[dict{'data': GroupElement, 'proof': Chaum-Pedersen}]
-        """
-        # cryptosys = self.get_cryptosys()
-        cryptosys = self.cryptosys
-
-        public = cryptosys.group.generate(secret)                        # g ^ x         (mod p)
-
-        factors = []
-        append = factors.append
-        for cipher in ciphers:
-
-            alpha, _ = cryptosys.extract_ciphertext(cipher)              # g ^ r         (mod p)
-            data = alpha ** secret                                       # g ^ (x * r)   (mod p)
-
-            ddh = (alpha, public, data)
-
-            proof = cryptosys._chaum_pedersen_proof(ddh, secret)
-            factor = self.set_factor(data, proof)
-            append(factor)
-
-        return factors
-
-
-    def set_trustee_factors(self, public, factors):
-        """
-        """
-        trustee_factors = {}
-        trustee_factors['public'] = public
-        trustee_factors['factors'] = factors
-        return trustee_factors
-
-
-    def set_factor(self, element, proof):
-        """
-        """
-        factor = {}
-        factor['data'] = element
-        factor['proof'] = proof
-        return factor
+        return cls(config_crypto, keypair)
 
 
 class Voter(Client):
@@ -312,7 +240,7 @@ class Voter(Client):
         vote = {}
         vote['voter'] = self.voter_key
         vote['encrypted_ballot'] = encrypted_ballot
-        vote['fingerprint'] = fingerprint                            # hexdigest
+        vote['fingerprint'] = fingerprint
         if audit_code:
             vote['audit_code'] = audit_code
         if publish:

@@ -5,9 +5,10 @@ import json
 
 from .abstracts import StageController, Aborted
 from .stages import (Uninitialized, Creating, Voting, Mixing, Decrypting, Finished,)
-from .validations import Validator
+from .validations import VoteValidator
 from .signatures import Signer
 from .decryption import Decryptor
+from .serializations import Serializer
 from .exceptions import Abortion
 
 
@@ -15,6 +16,12 @@ class GenericAPI(object):
 
     def get_cryptosys(self):
         return self.cryptosys
+
+    def get_crypto_config(self):
+        crypto_config = {}
+        crypto_config['cls'] = self.config['crypto_cls']
+        crypto_config['config'] = self.config['crypto_config']
+        return crypto_config
 
     def get_crypto_params(self):
         return self.crypto_params
@@ -27,6 +34,12 @@ class GenericAPI(object):
 
     def get_zeus_public_key(self):
         return self.zeus_public_key
+
+    def _get_keypair(self):
+        keypair = {}
+        keypair['private'] = self.zeus_private_key
+        keypair['public'] = self.zeus_public_key
+        return keypair
 
     def get_hex_zeus_public_key(self):
         return self.hex_zeus_public_key
@@ -308,8 +321,8 @@ class AbortedAPI(object): pass
 backend_apis = (GenericAPI, UninitializedAPI, CreatingAPI, VotingAPI,
     MixingAPI, DecryptingAPI, FinishedAPI, AbortedAPI,)
 
-class ZeusCoreElection(StageController, *backend_apis,
-            Validator, Signer, Decryptor, metaclass=ABCMeta):
+class ZeusCoreElection(StageController, *backend_apis, VoteValidator,
+            Signer, Decryptor, Serializer, metaclass=ABCMeta):
     """
     """
 
@@ -402,12 +415,12 @@ class ZeusCoreElection(StageController, *backend_apis,
         """
 
     @abstractmethod
-    def send_mixed_ballots(self):
+    def send_mixed_ballots(self, trustee):
         """
         """
 
     @abstractmethod
-    def collect_factors(self):
+    def collect_factors(self, trustee):
         """
         """
 

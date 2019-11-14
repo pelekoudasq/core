@@ -1,11 +1,7 @@
-import json
-from math import ceil
-from copy import deepcopy
 from zeus_core.elections import ZeusCoreElection
-from zeus_core.elections.stages import Uninitialized
-from tests.elections.config_samples import config_1
 from tests.elections.clients import Trustee
 from tests.elections.utils import mk_voters, mk_votes_from_voters
+
 
 class ZeusTestElection(ZeusCoreElection):
     """
@@ -16,10 +12,16 @@ class ZeusTestElection(ZeusCoreElection):
         """
         """
         super().__init__(config, **options)
-        self.real_trustees = []
+
+        # ~ Will hold trustee clients. Not to be confused with the
+        # ~ `trustees` attribute of ZeusCoreElection, referring to
+        # ~ the trustees's public keys and accompanying proofs
+        self.__trustees = []
+
 
     def collect_votes(self):
         """
+        Emulates collection of votes from poll
         """
         voters = mk_voters(self)
         votes, audit_requests, audit_votes = mk_votes_from_voters(voters)
@@ -31,52 +33,33 @@ class ZeusTestElection(ZeusCoreElection):
                 break
             yield vote
 
-    def send_mixed_ballots(self, trustee, proof):
+
+    def send_mixed_ballots(self, trustee):
         """
-        Will also trigger the trustee to compute
-        their factors for testing purposes
+        Emulates mixed ballots dispatch to trustee
+
+        Creates the trustee client from the provided public key value and proof
+        and triggers the trustee to compute their factors for testing purposes.
         """
         mixed_ballots = self.get_mixed_ballots()
 
-        crypto = {}
-        crypto['cls'] = self.config['crypto_cls']
-        crypto['config'] = self.config['crypto_config']
+        crypto = self.get_crypto_config()
+        __trustee = Trustee.get_from_public(crypto, trustee)
+        self.__trustees.append(__trustee)
+        __trustee.compute_trustee_factors(mixed_ballots, store=True)
 
-        trustee = Trustee.get_from_public(crypto, trustee, proof)
-        self.real_trustees.append(trustee)
-        trustee.compute_trustee_factors(mixed_ballots)
 
     def collect_factors(self, trustee):
         """
+        Emulates trustee-factors collection
         """
-        real_trustee = (real_trustee for real_trustee in self.real_trustees
-            if trustee.value == real_trustee.keypair['public']['value']).__next__()
-        trustee_factors = real_trustee.get_factors()
+        __trustee = (__trustee for __trustee in self.__trustees
+            if trustee.value == __trustee.keypair['public']['value']).__next__()
+        trustee_factors = __trustee.get_factors()
         return trustee_factors
-        # with open('tests/elections/trustee-publics.json') as f:
-        #     trustee_publics = json.load(f)
-        # with open('tests/elections/trustee-privates.json') as f:
-        #     trustee_privates = json.load(f)
-        #
-        # trustee_index = [i for i in range(len(trustee_publics)) if trustee.value == trustee_publics[i]['value']][0]
-        #
-        # cryptosys = self.get_cryptosys()
-        #
-        # proof = self.trustees[trustee]
-        # private_key = cryptosys.int_to_exponent(trustee_privates[trustee_index])
-        #
-        # keypair = {
-        #     'private': private_key,
-        #     'public': {
-        #         'value': trustee,
-        #         'proof': proof
-        #     }
-        # }
-        #
-        # trustee_factors = self.compute_trustee_factors(self.get_mixed_ballots(), keypair)
-        # return trustee_factors
 
-    # Test utils (irrelevant to implementation of ZeusCoreElection abstract class)
+
+    # Testing utilities (irrelevant to implementation of ZeusCoreElection abstract class)
 
     def run_until_uninitialized_stage(self):
         uninitialized = self._get_current_stage()

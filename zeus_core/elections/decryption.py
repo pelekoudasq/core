@@ -1,70 +1,90 @@
 """
-Contains standalone interface for mixed ballots decryption
+Contains standalone interfaces for factor management and ballot decryption
 """
 
 from abc import ABCMeta, abstractmethod
 
 
-class Decryptor(object, metaclass=ABCMeta):
+    #####################################################################
+    #                                                                   #
+    #       By factor is meant a dictionary of the form                 #
+    #                                                                   #
+    #       {                                                           #
+    #         'data': GroupElement,                                     #
+    #         'proof': dict                                             #
+    #       }                                                           #
+    #                                                                   #
+    #       where the value of 'proof' is a Chaum-Pedersen-proof        #
+    #                                                                   #
+    #####################################################################
+
+    #####################################################################
+    #                                                                   #
+    #       By trustee-factors is meant a dictionary of the form        #
+    #                                                                   #
+    #       {                                                           #
+    #           'public': GroupElement,                                 #
+    #           'factors': list[factor]                                 #
+    #       }                                                           #
+    #                                                                   #
+    #       where the value of 'public' is thought of as the            #
+    #       trustee's public key                                        #
+    #                                                                   #
+    #####################################################################
+
+
+class FactorGenerator(object, metaclass=ABCMeta):
     """
-    Mixed ballots decryption interface to election server
+    Factor generation interface (both for zeus and trustees)
     """
 
     @abstractmethod
-    def get_zeus_private_key(self):
+    def get_cryptosys():
         """
         """
 
-    def compute_zeus_factors(self, mixed_ballots):
+    @abstractmethod
+    def _get_keypair(self):
         """
         """
-        zeus_private = self.get_zeus_private_key()
-        zeus_public = self.get_zeus_public_key()
-        zeus_factors = self.compute_decryption_factors(zeus_private, mixed_ballots)
-        zeus_factors = self.set_trustee_factors(zeus_public, zeus_factors)
-        return zeus_factors
+
+    def set_factor(self, element, proof):
+        """
+        """
+        factor = {}
+        factor['data'] = element
+        factor['proof'] = proof
+        return factor
 
 
-    def compute_trustee_factors(self, mixed_ballots, trustee_keypair):
+    def set_trustee_factors(self, public, factors):
         """
         """
-        cryptosys = self.get_cryptosys()
-
-        private, public = cryptosys.extract_keypair(trustee_keypair)
-        factors = self.compute_decryption_factors(private, mixed_ballots)
-        trustee_factors = self.set_trustee_factors(public, factors)
+        trustee_factors = {}
+        trustee_factors['public'] = public
+        trustee_factors['factors'] = factors
         return trustee_factors
 
 
-    def decrypt_ballots(self, mixed_ballots, all_factors):
+    def store_trustee_factors(self, trustee_factors):
+        """
+        """
+        self.factors = trustee_factors
+
+
+    def compute_trustee_factors(self, mixed_ballots, store=True):
         """
         """
         cryptosys = self.get_cryptosys()
 
-        plaintexts = []
-        append = plaintexts.append
+        trustee_keypair = self._get_keypair()
+        private, public = cryptosys.extract_keypair(trustee_keypair)
+        factors = self.compute_decryption_factors(private, mixed_ballots)
+        trustee_factors = self.set_trustee_factors(public, factors)
+        if store:
+            self.store_trustee_factors(trustee_factors)
+        return trustee_factors
 
-        decryption_factors = self.combine_decryption_factors(all_factors)
-        for ballot, factor in zip(mixed_ballots, decryption_factors):
-            #
-            # decryption_factors:
-            #
-            #          |ballot_1   |ballot_2   |ballot_3   |.........
-            # ---------|-----------------------------------|---------
-            #     zeus |factor01   |factor02   |factor03   |.........
-            # trustee1 |factor11   |factor12   |factor13   |.........
-            # trustee2 |factor21   |factor22   |factor23   |.........
-            # trustee3 |factor31   |factor32   |factor33   |.........
-            # ---------|-----------------------------------|---------
-            #          |factor_1   |factor_2   |factor_3   |.........
-            #
-            encoded = cryptosys._decrypt_with_decryptor(ballot, factor)
-            append(encoded.to_int())
-
-        return plaintexts
-
-
-    # Internal crypto
 
     def compute_decryption_factors(self, secret, ciphers):
         """
@@ -114,61 +134,15 @@ class Decryptor(object, metaclass=ABCMeta):
         return factors
 
 
-    def combine_decryption_factors(self, trustees_factors):
-        """
-        Componentwise multiplication
+class FactorValidator(object, metaclass=ABCMeta):
+    """
+    Factor validation interface
+    """
 
-        Given a 2D structure
-
-                    [[f_11, ..., f_1n], ..., [f_m1, ... f_mn]]
-
-        of group elements, computes and returns the list
-
-                    [f_11 * ... * f_m1, ..., f_1n * ... * f_mn]
-
-        .. note:: Returns a non-sensical 0 if the provided collection comprises
-        of empty lists (including the case of the collection itself being empty)
-
-        :type trustees_factors: list[list[{'data': GroupElement, 'proof': ...}]]
-        :rtype: list[GroupElement]
-        """
-        if not trustees_factors or trustees_factors == [[]] * len(trustees_factors):
-            return 0
-        master_factors = []
-        append = master_factors.append
-        group = self.get_cryptosys().group
-        for factors_column in zip(*trustees_factors):
-            master_factor = group.unit
-            for trustee_factor in factors_column:
-                data, _ = self.extract_factor(trustee_factor)
-                master_factor *= data
-            append(master_factor)
-        return master_factors
-
-
-    # Formats
-
-    #####################################################################
-    #                                                                   #
-    #       By trustee-factors is meant a dictionary of the form        #
-    #                                                                   #
-    #       {                                                           #
-    #           'public': GroupElement,                                 #
-    #           'factors': list[factor]                                 #
-    #       }                                                           #
-    #                                                                   #
-    #       where the value of 'public' is thought of as the            #
-    #       trustee's public key                                        #
-    #                                                                   #
-    #####################################################################
-
-    def set_trustee_factors(self, public, factors):
+    @abstractmethod
+    def get_cryptosys():
         """
         """
-        trustee_factors = {}
-        trustee_factors['public'] = public
-        trustee_factors['factors'] = factors
-        return trustee_factors
 
     def extract_trustee_factors(self, trustee_factors):
         """
@@ -176,29 +150,6 @@ class Decryptor(object, metaclass=ABCMeta):
         public = trustee_factors['public']
         factors = trustee_factors['factors']
         return public, factors
-
-
-    #####################################################################
-    #                                                                   #
-    #       By factor is meant a dictionary of the form                 #
-    #                                                                   #
-    #       {                                                           #
-    #         'data': GroupElement,                                     #
-    #         'proof': dict                                             #
-    #       }                                                           #
-    #                                                                   #
-    #       where the value of 'proof' is a Chaum-Pedersen-proof        #
-    #                                                                   #
-    #####################################################################
-
-    def set_factor(self, element, proof):
-        """
-        """
-        factor = {}
-        factor['data'] = element
-        factor['proof'] = proof
-        return factor
-
 
     def extract_factor(self, factor):
         """
@@ -208,11 +159,8 @@ class Decryptor(object, metaclass=ABCMeta):
         return element, proof
 
 
-    # Validations
-
     def validate_trustee_factors(self, mixed_ballots, trustee_public, trustee_factors):
         """
-        OK
         """
         cryptosys = self.get_cryptosys()
 
@@ -274,3 +222,88 @@ class Decryptor(object, metaclass=ABCMeta):
                 return False
 
         return True
+
+
+class Decryptor(FactorGenerator, FactorValidator, metaclass=ABCMeta):
+    """
+    Mixed ballots decryption interface to election server
+    """
+
+    @abstractmethod
+    def get_zeus_private_key(self):
+        """
+        """
+
+    @abstractmethod
+    def get_zeus_public_key(self):
+        """
+        """
+
+    def compute_zeus_factors(self, mixed_ballots):
+        """
+        """
+        zeus_private = self.get_zeus_private_key()
+        zeus_public = self.get_zeus_public_key()
+        zeus_factors = self.compute_decryption_factors(zeus_private, mixed_ballots)
+        zeus_factors = self.set_trustee_factors(zeus_public, zeus_factors)
+        return zeus_factors
+
+
+    def decrypt_ballots(self, mixed_ballots, all_factors):
+        """
+        """
+        cryptosys = self.get_cryptosys()
+
+        plaintexts = []
+        append = plaintexts.append
+
+        decryption_factors = self.combine_decryption_factors(all_factors)
+        for ballot, factor in zip(mixed_ballots, decryption_factors):
+            #
+            # decryption_factors:
+            #
+            #          |ballot_1   |ballot_2   |ballot_3   |.........
+            # ---------|-----------------------------------|---------
+            #     zeus |factor01   |factor02   |factor03   |.........
+            # trustee1 |factor11   |factor12   |factor13   |.........
+            # trustee2 |factor21   |factor22   |factor23   |.........
+            # trustee3 |factor31   |factor32   |factor33   |.........
+            # ---------|-----------------------------------|---------
+            #          |factor_1   |factor_2   |factor_3   |.........
+            #
+            encoded = cryptosys._decrypt_with_decryptor(ballot, factor)
+            append(encoded.to_int())
+
+        return plaintexts
+
+
+    def combine_decryption_factors(self, trustees_factors):
+        """
+        Componentwise multiplication
+
+        Given a 2D iterable
+
+                    [[f_11, ..., f_1n], ..., [f_m1, ... f_mn]]
+
+        of group elements, computes and returns the 1D iterable
+
+                    [f_11 * ... * f_m1, ..., f_1n * ... * f_mn]
+
+        .. note:: Returns a non-sensical 0 if the provided collection comprises of
+        empty iterables (including the case of the collection itself being empty)
+
+        :type trustees_factors: list[list[{'data': GroupElement, 'proof': ...}]]
+        :rtype: list[GroupElement]
+        """
+        if not trustees_factors or trustees_factors == [[]] * len(trustees_factors):
+            return 0
+        master_factors = []
+        append = master_factors.append
+        group = self.get_cryptosys().group
+        for factors_column in zip(*trustees_factors):
+            master_factor = group.unit
+            for trustee_factor in factors_column:
+                data, _ = self.extract_factor(trustee_factor)
+                master_factor *= data
+            append(master_factor)
+        return master_factors

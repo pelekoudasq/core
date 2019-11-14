@@ -4,15 +4,16 @@ from gmpy2 import mpz, powmod, invert, mul
 from functools import partial
 from importlib import import_module
 
-from .algebra import ModPrimeElement, ModPrimeSubgroup
-
 from ..abstracts import ElGamalCrypto
+from .algebra import ModPrimeElement, ModPrimeSubgroup
 from ..exceptions import (AlgebraError, WrongCryptoError, WeakCryptoError,
     InvalidKeyError)
+
 
 V_MODULUS   = 'MODULUS: '
 V_ORDER     = 'ORDER: '
 V_GENERATOR = 'GENERATOR: '
+
 
 class ModPrimeCrypto(ElGamalCrypto):
     """
@@ -76,6 +77,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         self.__class__._validate_system(modulus, group.order, group.generator,
             root_order, prime_order, min_mod_size, min_gen_size, allow_weakness)
 
+
     @classmethod
     def _validate_system(cls, modulus, order, generator,
         root_order, prime_order, min_mod_size, min_gen_size, allow_weakness):
@@ -107,6 +109,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             if generator.bit_length < MIN_GEN_SIZE:
                 err = f'Generator is < {MIN_GEN_SIZE} bits long'
                 raise WeakCryptoError(err)
+
 
     @classmethod
     def _extract_config(cls, config):
@@ -143,6 +146,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return serialized
 
+
     def hex_crypto_params(self):
         """
         Returns a serialization of the cryptosystem's parameters (the modulus p,
@@ -157,6 +161,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return serialized
 
+
     def hex_labels(self):
         """
         """
@@ -166,6 +171,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return hex_p, hex_q, hex_g
 
+
     def hexify_crypto(self, crypto):
         """
         """
@@ -174,6 +180,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         hex_g = V_GENERATOR + '%x' % crypto['generator']
 
         return hex_p, hex_q, hex_g
+
 
     def unhexify_crypto(self, t08, t09, t10):
         """
@@ -188,6 +195,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return {'modulus': p, 'order': q, 'generator': g}
 
+
     def _parameters(self):
         """
         """
@@ -197,31 +205,37 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return __p, __q, __g
 
+
     def int_to_exponent(self, integer):
         """
         """
         return mpz(integer)
+
 
     def hex_to_exponent(self, hex_string):
         """
         """
         return mpz(hex_string, 16)
 
+
     def int_to_element(self, integer):
         """
         """
         return self.__GroupElement(integer, self.__modulus)
+
 
     def hex_to_element(self, hex_string):
         """
         """
         return self.__GroupElement(mpz(hex_string, 16), self.__modulus)
 
+
     def encode_integer(self, integer):
         """
         """
         element = self.__group.encode_integer(integer)
         return element
+
 
     def hexify_encrypted_ballot(self, encrypted_ballot):
         """
@@ -238,11 +252,13 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return alpha, beta, commitment, challenge, response
 
+
     def check_labels(self, t08, t09, t10):
         """
         """
         return t08.startswith(V_MODULUS) \
             and t09.startswith(V_ORDER) and t10.startswith(V_GENERATOR)
+
 
     def serialize_ciphertext(self, ciphertext):
         """
@@ -257,56 +273,33 @@ class ModPrimeCrypto(ElGamalCrypto):
     @property
     def group(self):
         """
-        Returns the underlying group of the cryptosystem
-
-        :rtype: ModPrimeSubgroup
         """
         return self.__group
+
 
     @property
     def GroupElement(self):
         """
-        Type of the cryptosystem's gorup objects
-
-        :rtype: class
+        Type of the cryptosystem's group objects
         """
         return self.__GroupElement
 
 
-    # ----------------------------- Key Management -----------------------------
-
-    ######################################################################
-    #                                                                    #
-    #    By keypair is meant a dictionary of the form                    #
-    #                                                                    #
-    #    {                                                               #
-    #        'private': mpz,                                             #
-    #        'public': {                                                 #
-    #            'value': ModPrimeElement,                               #
-    #            'proof': ...                                            #
-    #        }                                                           #
-    #    }                                                               #
-    #                                                                    #
-    #   where tha value of `proof` is either `None` or a Schnorr-proof   #
-    #                                                                    #
-    ######################################################################
-
-    def keygen(self, private_key=None, schnorr=True):
+    def validate_element(self, element):
         """
-        Generates and returns a keypair
+        """
+        return element.contained_in(self.__group)
 
-        If `shnorr` is left to its default value `True`, the public part
-        will include proof-of-knowledge of the private part
 
-        :type private_key: mpz or int
-        :type schnorr: bool
-        :rtype: dict
+    # ----------------------------- Key management -----------------------------
+
+    def mk_keypair(self, private_key=None):
+        """
         """
         __group = self.__group
 
         if private_key is None:
             private_key = __group.random_exponent(min=3)
-
         elif not 1 < private_key < self.__order:
             err = 'Provided private key exceeds the allowed range'
             raise InvalidKeyError(err)
@@ -315,63 +308,10 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         public_key = __group.generate(private_key)              # y = g ^ x modp
 
-        proof = None
-        if schnorr:
-            proof = self._schnorr_proof(private_key, public_key)
-
-        public_key = self._set_public_key(public_key, proof)
-        keypair = self._set_keypair(private_key, public_key)
-
-        return keypair
-
-
-    #####################################################################
-    #                                                                   #
-    #    By public-key is meant a dictionary of the form                #
-    #                                                                   #
-    #    {                                                              #
-    #        'value': ModPrimeElement,                                  #
-    #        'proof': ...                                               #
-    #    }                                                              #
-    #                                                                   #
-    #    where the value of 'proof' is either None or a Schnorr-proof   #
-    #                                                                   #
-    #####################################################################
-
-    def validate_public_key(self, public_key):
-        """
-        Verifies that the 'proof' field proves knowledge of the private counterpart
-
-        :type public_key: dict
-        :rtype: bool
-        """
-        try:
-            proof = public_key['proof']
-        except KeyError:
-            # No proof has been provided together with the public key
-            return False
-
-        public_key = public_key['value']
-
-        if not public_key.contained_in(self.__group):
-            return False
-
-        return self._schnorr_verify(proof=proof, public=public_key)
-
-    def deserialize_public_key(self, value, proof=None):
-        """
-        :type value: int or mpz
-        :type proof: dict
-        :rtype: dict
-        """
-        deserialized = {}
-        deserialized['value'] = self.__GroupElement(value, self.__modulus)
-        deserialized['proof'] = self.deserialize_schnorr_proof(proof)
-        return deserialized
+        return private_key, public_key
 
 
     # ------------------------------- Primitives -------------------------------
-
 
     # Schnorr protocol
 
@@ -386,6 +326,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     #    }                                                     #
     #                                                          #
     ############################################################
+
 
     def _schnorr_proof(self, secret, public, *extras):
         """
@@ -414,6 +355,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         proof = self.set_schnorr_proof(commitment, challenge, response)
         return proof
+
 
     def _schnorr_verify(self, proof, public, *extras):
         """
@@ -484,6 +426,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     #                                                                 #
     ###################################################################
 
+
     def _chaum_pedersen_proof(self, ddh, z):
         """
         Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
@@ -519,6 +462,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         proof = self._set_chaum_pedersen_proof(g_commitment, u_commitment, challenge, response)
         return proof
+
 
     def _chaum_pedersen_verify(self, ddh, proof):
         """
@@ -595,6 +539,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     # 	}                                                      #
     #                                                          #
     ############################################################
+
 
     def _dsa_signature(self, exponent, private_key):
         """
@@ -701,6 +646,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     #                                                                  #
     #####################################################################
 
+
     def sign_text_message(self, message, private_key):
         """
         Signs the provided `message` m with the provided `private_key` x,
@@ -731,6 +677,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         signed_message = self.set_signed_message(message, signature)
         return signed_message
+
 
     def verify_text_signature(self, signed_message, public_key):
         """
@@ -763,6 +710,7 @@ class ModPrimeCrypto(ElGamalCrypto):
     #    }                                                  #
     #                                                       #
     #########################################################
+
 
     def encrypt(self, element, public_key, randomness=None, get_secret=False):
         """
@@ -797,6 +745,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         if get_secret:
             return ciphertext, randomness
         return ciphertext
+
 
     def _reencrypt(self, ciphertext, public_key, randomness=None, get_secret=False):
         """
@@ -856,6 +805,7 @@ class ModPrimeCrypto(ElGamalCrypto):
             return ciphertext, randomness
         return ciphertext
 
+
     def prove_encryption(self, ciphertext, randomness):
         """
         Generates proof-of-knowledge of the `randomness` r involved in the
@@ -869,6 +819,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         proof = self._schnorr_proof(randomness, alpha, beta)
 
         return proof
+
 
     def verify_encryption(self, ciphertext_proof):
         """
@@ -887,6 +838,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         verified = self._schnorr_verify(proof, alpha, beta)
 
         return verified
+
 
     def _decrypt(self, ciphertext, private_key):
         """
@@ -913,6 +865,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         return original
 
+
     def _decrypt_with_decryptor(self, ciphertext, decryptor):
         """
         Given the ciphertext `ciphertext`
@@ -934,6 +887,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         encoded = decryptor.inverse * beta                      # decryptor ^ -1 * beta (modp)
 
         return encoded
+
 
     def decrypt_with_randomness(self, ciphertext, public, secret):
         """

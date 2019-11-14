@@ -1,5 +1,5 @@
 """
-Communicates with the Validator and Signer interface of the running election
+Communicates with the VoteValidator and Signer interface of the running election
 """
 
 from zeus_core.elections.abstracts import Stage

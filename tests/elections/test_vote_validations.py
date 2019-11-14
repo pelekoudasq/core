@@ -6,12 +6,12 @@ import pytest
 import unittest
 import json
 from copy import deepcopy
-from zeus_core.elections.validations import Validator
+from zeus_core.elections.validations import VoteValidator
 from zeus_core.elections.exceptions import Abortion, InvalidVoteError
 from tests.elections.utils import display_json, mk_voting_setup, adapt_vote
 
 
-class DummyValidator(Validator):
+class DummyVoteValidator(VoteValidator):
     """
     Minimal implementation of validations interface for testing purposes
     """
@@ -43,7 +43,7 @@ class TestValidations(unittest.TestCase):
 
         cls.election = election
         cls.cryptosys = election.get_cryptosys()
-        cls.validator = DummyValidator(election)
+        cls.validator = DummyVoteValidator(election)
         cls.voter = voters[0]
         cls.messages = []
 
