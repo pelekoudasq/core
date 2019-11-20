@@ -1,8 +1,9 @@
 import pytest
 from gmpy2 import mpz
 
-from zeus_core.crypto.constants import (_2048_PRIME, _2048_ORDER, _2048_GENERATOR, _2048_PRIMITIVE,
-                              _4096_PRIME, _4096_ORDER, _4096_GENERATOR, _4096_PRIMITIVE)
+from zeus_core.crypto.constants import (
+        _2048_PRIME, _2048_ORDER, _2048_GENERATOR, _2048_PRIMITIVE,
+        _4096_PRIME, _4096_ORDER, _4096_GENERATOR, _4096_PRIMITIVE)
 from zeus_core.crypto.exceptions import AlgebraError, WrongCryptoError, WeakCryptoError
 from zeus_core.crypto.modprime import ModPrimeSubgroup, ModPrimeElement, ModPrimeCrypto
 
@@ -20,7 +21,7 @@ __original__inverse__modulus = [
 ]
 
 @pytest.mark.parametrize('original, inverse, modulus', __original__inverse__modulus)
-def test_modular_inversion(original, inverse, modulus):
+def test_mod_inversion(original, inverse, modulus):
 
     original = ModPrimeElement(mpz(original), mpz(modulus))
     assert original.inverse.value == inverse
@@ -58,7 +59,7 @@ def test_ModPrimeSubgroup_Construction(modulus, root_order, order):
     assert (group.modulus, group.order) == (modulus, order)
 
 
-# Full testing of residue property in mod11 context
+# Full testing of residue property in mod 11 context
 
 RES11_GROUP.set_generator(3)
 
@@ -82,11 +83,13 @@ def test_contained_in(element):
 
 
 __element__decoded = [
+    #
     # # residues
     # (_01_, _00_), (_03_, _02_), (_04_, _03_), (_05_, _04_), (_09_, _08_),
     #
     # # non-residues
     # (_02_, _08_), (_06_, _04_), (_07_, _03_), (_08_, _02_), (_10_, _00_)
+    #
     (_00_, _10_), (_01_, _00_), (_02_, _01_), (_03_, _02_), (_04_, _03_),
     (_05_, _05_), (_06_, _04_), (_07_, _03_), (_08_, _02_), (_09_, _01_),
     (_10_, _00_)

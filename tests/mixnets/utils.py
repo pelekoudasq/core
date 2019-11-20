@@ -3,7 +3,7 @@ def mk_ciphers(mixnet, nr_ciphers=12):
     return [(random_element(), random_element()) for _ in range(nr_ciphers)]
 
 def mk_cipher_mix(mixnet, election_key, nr_ciphers=12):
-    params = mixnet.cryptosys.hex_crypto_params()
+    params = mixnet.cryptosys.hex_parameters()
     ciphers_to_mix = {
         'header': {
             'modulus': params['modulus'],

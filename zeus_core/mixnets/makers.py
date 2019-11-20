@@ -1,9 +1,13 @@
-from .exceptions import MixnetError
+from .exceptions import MixnetConstructionError
 from .zeus_sk import Zeus_sk
 
 supported_mixnets = (Zeus_sk,)
 
-def make_mixnet(cls, config, election_key=None):
+
+def mk_mixnet(mixnet_config, election_key=None):
+    """
+    """
+    cls = mixnet_config.pop('cls')
     if cls not in supported_mixnets:
-        raise MixnetError('Requested mixnet is not supported')
-    return cls(config, election_key)
+        raise MixnetConstructionError('Requested mixnet is not supported')
+    return cls(mixnet_config, election_key)

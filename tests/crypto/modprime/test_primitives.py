@@ -6,10 +6,9 @@ from zeus_core.crypto.modprime import ModPrimeElement
 from zeus_core.crypto.exceptions import InvalidKeyError
 from zeus_core.utils.random import random_integer
 
-from tests.constants import (MESSAGE,
-    RES11_SYSTEM, RES11_KEY, RES11_PUBLIC, RES11_DDH,
-    _2048_SYSTEM, _2048_SECRET, _2048_PUBLIC, _2048_DDH,
-    _4096_SYSTEM, _4096_SECRET, _4096_PUBLIC, _4096_DDH)
+from tests.constants import (MESSAGE, RES11_SYSTEM, RES11_SECRET, RES11_DDH,
+        _2048_SYSTEM, _2048_SECRET, _2048_DDH,
+        _4096_SYSTEM, _4096_SECRET, _4096_DDH)
 
 
 # Schnorr protocol
@@ -20,7 +19,7 @@ __system__proof__public__extras__verified = []
 
 for (system, secret) in (
     (_2048_SYSTEM, _2048_SECRET),
-    (_4096_SYSTEM, _4096_SECRET),
+    # (_4096_SYSTEM, _4096_SECRET),
 ):
     secret = mpz(secret)
     public = system.group.generate(secret)
@@ -72,7 +71,7 @@ __system__ddh__z__result = []
 
 for (system, DDH) in (
     (_2048_SYSTEM, _2048_DDH),
-    (_4096_SYSTEM, _4096_DDH),
+    # (_4096_SYSTEM, _4096_DDH),
 ):
     modulus = system.group.modulus
 
@@ -113,75 +112,22 @@ def test_chaum_pedersen_protocol(system, ddh, z, result):
 
 def test_keygen_with_InvalidKeyError():
     with pytest.raises(InvalidKeyError):
-        _2048_SYSTEM.keygen(_2048_SYSTEM.group.order)
-
-@pytest.mark.parametrize('system', [_2048_SYSTEM, _4096_SYSTEM,])
-def test_keygen_with_random_private(system):
-    keypair = system.keygen()
-    _, public_key = system.extract_keypair(keypair)
-    public_key, proof = system._extract_public_key(public_key)
-
-    assert system._schnorr_verify(proof, public_key)
-
-
-__system__secret__public = [
-    (_2048_SYSTEM, _2048_SECRET, _2048_PUBLIC),
-    (_4096_SYSTEM, _4096_SECRET, _4096_PUBLIC),
-]
-
-@pytest.mark.parametrize('system, secret, public', __system__secret__public)
-def test_keygen_with_non_random_private(system, secret, public):
-    keypair = system.keygen(secret)
-    _, public_key = system.extract_keypair(keypair)
-    public_key, proof = system._extract_public_key(public_key)
-
-    valid = system._schnorr_verify(proof, public_key)
-    assert secret == keypair['private'] and public_key.value == public and valid
-
-
-# Key validation
-
-__system__public_key__result = []
-
-for system in (
-    _2048_SYSTEM,
-    _4096_SYSTEM
-):
-    public_key = system.keygen()['public']
-    __system__public_key__result.append((system, public_key, True))
-
-    # Corrupt key value
-    corrupt_value = public_key['value'].clone()
-    corrupt_value.reduce_value()
-    corrupt_public_key = {'value': corrupt_value, 'proof': public_key['proof']}
-    __system__public_key__result.append((system, corrupt_public_key, False))
-
-    # Corrupt key proof
-    corrupt_proof = deepcopy(public_key['proof'])
-    corrupt_proof['challenge'] += 100
-    corrupt_public_key = {'value': public_key['value'], 'proof': corrupt_proof}
-    __system__public_key__result.append((system, corrupt_public_key, False))
-
-@pytest.mark.parametrize('system, public_key, result', __system__public_key__result)
-def test_validate_public_key(system, public_key, result):
-    assert system.validate_public_key(public_key) is result
+        _2048_SYSTEM.generate_keypair(_2048_SYSTEM.group.order)
 
 
 # Digital Signature Algorithm
 
-exponent = 919228301823987238476870928301982103978254287481928123817398172931839120
+exponent = mpz(919228301823987238476870928301982103978254287481928123817398172931839120)
 
 __system__exponent__signature__public_key__verified = []
 
 for (system, private_key) in (
     (_2048_SYSTEM, _2048_SECRET),
-    (_4096_SYSTEM, _4096_SECRET),
+    # (_4096_SYSTEM, _4096_SECRET),
 ):
-    keypair = system.keygen(mpz(private_key))
-    private_key, public_key = system.extract_keypair(keypair)
-    public_key = system.get_key_value(public_key)
+    private_key, public_key = system.generate_keypair(mpz(private_key))
 
-    exponent = mpz(exponent)
+    # exponent = mpz(exponent)
 
     # Valid case
     signature = system._dsa_signature(exponent, private_key)
@@ -217,12 +163,11 @@ __system__signed_message__public_key__verified = []
 
 for (system, private_key) in (
     (_2048_SYSTEM, _2048_SECRET),
-    (_4096_SYSTEM, _4096_SECRET),
+    # (_4096_SYSTEM, _4096_SECRET),
 ):
-    keypair = system.keygen(mpz(private_key))
+    private_key, public_key = system.generate_keypair(mpz(private_key))
 
     # Valid case
-    private_key, public_key = system.extract_keypair(keypair)
     message = MESSAGE
     signed_message = system.sign_text_message(message, private_key)
     __system__signed_message__public_key__verified.append(
@@ -254,12 +199,10 @@ __system__element__private_key__public_key = []
 
 for (system, private_key) in (
     (_2048_SYSTEM, _2048_SECRET),
-    (_4096_SYSTEM, _4096_SECRET),
+    # (_4096_SYSTEM, _4096_SECRET),
 ):
     element = ModPrimeElement(mpz(__element), system.group.modulus)
-    keypair = system.keygen(private_key)
-    private_key, public_key = system.extract_keypair(keypair)
-    public_key = system.get_key_value(public_key)
+    private_key, public_key = system.generate_keypair(private_key)
 
     __system__element__private_key__public_key.append(
         (system, element, private_key, public_key))
@@ -268,7 +211,7 @@ for (system, private_key) in (
     __system__element__private_key__public_key)
 def test_encryption(system, element, private_key, public_key):
     ciphertext = system.encrypt(element, public_key)
-    original = system._decrypt(ciphertext, private_key)
+    original = system.decrypt(ciphertext, private_key)
 
     assert element == original
 
@@ -286,8 +229,6 @@ __system__ciphertext_proof__verified = []
 __system__ciphertext__decryptor__element = []
 
 for (system, element, private_key, public_key) in __system__element__private_key__public_key:
-    print(type(element))
-    print(type(public_key))
     ciphertext, randomness = system.encrypt(element, public_key, get_secret=True)
     proof = system.prove_encryption(ciphertext, randomness)
     ciphertext_proof = system.set_ciphertext_proof(ciphertext, proof)
@@ -352,8 +293,8 @@ def testverify_encryption(system, ciphertext_proof, verified):
 
 @pytest.mark.parametrize('system, ciphertext, decryptor, element',
     __system__ciphertext__decryptor__element)
-def test_decrypt_with_decryptor(system, ciphertext, decryptor, element):
-    assert system._decrypt_with_decryptor(ciphertext, decryptor) == element
+def testdecrypt_with_decryptor(system, ciphertext, decryptor, element):
+    assert system.decrypt_with_decryptor(ciphertext, decryptor) == element
 
 
 __system__ciphertext__public__secret__decoded = []
@@ -361,7 +302,7 @@ __system__ciphertext__public__secret__decoded = []
 for system in (
     RES11_SYSTEM,
     _2048_SYSTEM,
-    _4096_SYSTEM
+    # _4096_SYSTEM
 ):
     group = system.group
     modulus = group.modulus
@@ -417,12 +358,12 @@ for system in (RES11_SYSTEM, _2048_SYSTEM, _4096_SYSTEM):
 
 @pytest.mark.parametrize('system, element, public_key, randoms',
     __system__element__public_key__randoms)
-def test__reencrypt(system, element, public_key, randoms):
+def test_reencrypt(system, element, public_key, randoms):
 
     final = system.encrypt(element, public_key, randomness=sum(randoms))
 
     __ciphertext = system.encrypt(element, public_key, randomness=randoms[0])
     for random in randoms[1:]:
-        __ciphertext = system._reencrypt(__ciphertext, public_key, randomness=random)
+        __ciphertext = system.reencrypt(__ciphertext, public_key, randomness=random)
 
     assert __ciphertext == final

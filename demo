@@ -6,7 +6,7 @@ Zeus Demo Election
 
 import sys
 import argparse
-from tests.elections.utils import mk_election
+from tests.election.makers import mk_election
 
 if __name__ == '__main__':
     prog = sys.argv[0]

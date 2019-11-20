@@ -1,5 +1,3 @@
-from zeus_core.elections import ZeusCoreElection
+from zeus_core.election import ZeusCoreElection
 
-__all__ = (
-    'ZeusCoreElection',
-)
+__all__ = ('ZeusCoreElection',)

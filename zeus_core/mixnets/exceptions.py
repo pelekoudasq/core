@@ -1,11 +1,15 @@
-class MixnetError(Exception):
+"""
+"""
+
+class MixnetConstructionError(Exception):
     """
+    Raised when invalid or insufficient config is provided at mixnet contruction
     """
     pass
 
 class InvalidMixError(BaseException):
     """
-    Raised when a cipher-mimx fails to be validated
+    Raised when a cipher-mix fails to be validated
     """
     pass
 

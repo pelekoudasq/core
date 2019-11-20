@@ -5,6 +5,7 @@ from zeus_core.utils import (int_from_bytes, hash_nums, hash_texts, random_integ
 from ..abstracts import Group, GroupElement
 from ..exceptions import AlgebraError
 
+
 class ModPrimeElement(GroupElement):
     """
     Element of the multiplicative group Z*_p = Z_p - {0}, p > 2 prime
@@ -28,28 +29,30 @@ class ModPrimeElement(GroupElement):
         """
         return self.__value
 
+
     def reset_value(self, value):
         """
         :type value: mpz
         """
         self.__value = value % self.__modulus
 
+
     def reduce_value(self, difference=1):
         """
-        Reduces modp the value of the element
-
-        :type difference: int
+        Reduces mod p the element's value
         """
         self.__value = (self.__value - difference) % self.__modulus
 
+
     def mirror_value(self):
         """
-        Reflects mod p the value of the element, i.e., if the element's
+        Reflects mod p the element's value, i.e., if the element's
         initial value is z, then after mirroring it is equal to
 
         -z (mod p)
         """
         self.__value = - self.__value % self.__modulus
+
 
     def to_int(self):
         """
@@ -57,12 +60,14 @@ class ModPrimeElement(GroupElement):
         """
         return int(self.__value)
 
+
     @property
     def modulus(self):
         """
         :rtype: mpz
         """
         return self.__modulus
+
 
     @property
     def inverse(self):
@@ -91,11 +96,13 @@ class ModPrimeElement(GroupElement):
         """
         return str(self.__value)
 
+
     def __hash__(self):
         """
         :rtype: int
         """
         return hash(repr(self))
+
 
     def __eq__(self, other):
         """
@@ -106,6 +113,7 @@ class ModPrimeElement(GroupElement):
         else:
             return self.__value == other
 
+
     def __mul__(self, other):
         """
         :type other: ModPrimeElement
@@ -113,6 +121,7 @@ class ModPrimeElement(GroupElement):
         __modulus = self.__modulus
         result = self.__value * other.value % __modulus
         return self.__class__(result, __modulus)
+
 
     def __pow__(self, exp):
         """
@@ -167,11 +176,9 @@ class ModPrimeSubgroup(Group):
 
     __slots__ = ('__modulus', '__order', '__generator', '__Element')
 
+
     def __init__(self, modulus, root_order=2):
         """
-        :type modulus: mpz
-        :type root_order: mpz
-        :generator: ModPrimeElement
         """
         modulus = modulus
         root_order = root_order
@@ -217,12 +224,14 @@ class ModPrimeSubgroup(Group):
         """
         return self.__modulus
 
+
     @property
     def order(self):
         """
         :rtype: mpz
         """
         return self.__order
+
 
     @property
     def generator(self):
@@ -234,6 +243,7 @@ class ModPrimeSubgroup(Group):
         except AttributeError:
             err = 'No generator has been yet specified for this group'
             raise AlgebraError(err)
+
 
     def parameters(self):
         """
@@ -250,6 +260,7 @@ class ModPrimeSubgroup(Group):
         :rtype: class
         """
         return self.__Element
+        
 
     @property
     def unit(self):

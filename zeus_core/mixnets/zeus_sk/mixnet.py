@@ -5,10 +5,11 @@ Sako-Killian mixnet
 from Crypto import Random
 from itertools import chain
 from hashlib import sha256
+
 from zeus_core.crypto.modprime import ModPrimeCrypto
 from zeus_core.utils import random_permutation, AsyncController, _teller, bit_iterator
 from ..abstracts import Mixnet
-from ..exceptions import MixnetError, MixNotVerifiedError, RoundNotVerifiedError
+from ..exceptions import MixnetConstructionError, MixNotVerifiedError, RoundNotVerifiedError
 
 ALPHA = 0
 BETA  = 1
@@ -21,9 +22,9 @@ class Zeus_sk(Mixnet):
 
     supported_crypto = (ModPrimeCrypto,)
 
-    def __init__(self, config, election_key=None):
+    def __init__(self, mixnet_config, election_key=None):
         """
-        Provided `config` should be a structure of the form
+        Provided `mixnet_config` should be a structure of the form
 
         {
             'cryptosys': ElGamalCrypto,
@@ -35,18 +36,18 @@ class Zeus_sk(Mixnet):
         'nr_rounds' is the number of rounds to be performed during mixing and
         'nr_mixes' is the fixed length of cipher-collections to mix.
 
-        ..raises MixnetError:: if the provided config is not as prescribed
+        ..raises MixnetConstructionError:: if the provided config is not as prescribed
         """
         try:
-            cryptosys = config['cryptosys']
-            nr_rounds = config['nr_rounds']
-            nr_mixes = config['nr_mixes']
+            cryptosys = mixnet_config['cryptosys']
+            nr_rounds = mixnet_config['nr_rounds']
+            nr_mixes = mixnet_config['nr_mixes']
         except KeyError:
             err = 'Malformed parameters for Zeus SK mixnet'
-            raise MixnetError(err)
+            raise MixnetConstructionError(err)
         if not self.supports_cryptosys(cryptosys):
             err = 'Provided crypto type is not supported by Zeus SK mixnet'
-            raise MixnetError(err)
+            raise MixnetConstructionError(err)
         super().__init__(cryptosys, election_key)
 
         self.__nr_rounds = nr_rounds
@@ -106,7 +107,7 @@ class Zeus_sk(Mixnet):
 
         teller.task('Mixing %d ciphers for %d rounds' % (nr_ciphers, nr_rounds))
 
-        encrypt_func = self._reencrypt
+        encrypt_func = self.reencrypt
         with teller.task('Producing final mixed ciphers'):
             mixed_ciphers, mixed_offsets, mixed_randoms = self.shuffle_ciphers(
                 original_ciphers, election_key, encrypt_func, teller=teller)
@@ -194,11 +195,11 @@ class Zeus_sk(Mixnet):
         mixed_ciphers = [None] * nr_ciphers
         mixed_randoms = [None] * nr_ciphers
         count = 0
-        _reencrypt = self._reencrypt
+        reencrypt = self.reencrypt
         for i in range(nr_ciphers):
 
             alpha, beta = ciphers[i]
-            alpha, beta, secret = _reencrypt(alpha, beta, election_key, get_secret=True)
+            alpha, beta, secret = reencrypt(alpha, beta, election_key, get_secret=True)
 
             mixed_randoms[i] = secret
             j = mixed_offsets[i]
@@ -287,7 +288,7 @@ class Zeus_sk(Mixnet):
                 append = channels.append
                 async_verify_mix_round = _async.make_async(verify_mix_round)
 
-            encrypt_func = self._reencrypt
+            encrypt_func = self.reencrypt
             verify_mix_round = self.verify_mix_round
             for i, bit in zip(range(nr_rounds), bit_iterator(int(challenge, 16))):
                 ciphers = cipher_collections[i]
@@ -348,7 +349,7 @@ class Zeus_sk(Mixnet):
             raise AssertionError(err)
 
         count = 0
-        _reencrypt = self._reencrypt
+        reencrypt = self.reencrypt
         for j in range(nr_ciphers):
             preimage = preimages[j]
             random = randoms[j]
@@ -356,7 +357,7 @@ class Zeus_sk(Mixnet):
 
             alpha = preimage[ALPHA]
             beta = preimage[BETA]
-            new_alpha, new_beta = _reencrypt(alpha, beta, election_key, randomness=random)
+            new_alpha, new_beta = reencrypt(alpha, beta, election_key, randomness=random)
 
             image = images[offset]
             if new_alpha != image[ALPHA] or new_beta != image[BETA]:

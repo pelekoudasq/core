@@ -17,36 +17,31 @@ V_GENERATOR = 'GENERATOR: '
 
 class ModPrimeCrypto(ElGamalCrypto):
     """
-    ElGamal cryptosystem over the group of r-residues mod p, p > 2 prime.
+    ElGamal cryptosystem over the group of r-residues mod p, p > 2 smooth prime.
     Defaults to r = 2, yielding the group of quadratic residues mod p
     """
 
-    MIN_MOD_SIZE = 2048
-    MIN_GEN_SIZE = 2000
+    MIN_MOD_SIZE = 2048     # minimum modulus bitlength
+    MIN_GEN_SIZE = 2000     # minimum generator bitlength
 
     __slots__ = ('__group', '__GroupElement',
-
-        # Group params included for mpz computations outside the group interface
+        #
+        # ~ Group params needed for mpz computations
+        # ~ outside the group interface
+        #
         '__modulus', '__order', '__generator')
 
 
     def __init__(self, modulus, primitive, root_order=2, prime_order=True,
             min_mod_size=None, min_gen_size=None, allow_weakness=False):
         """
-        Assumes the provided `primitive` g_0 to be a primitive mod p, i.e.,
+        Assumes the provided primitive g_0 to be a primitive mod p, i.e.,
         a generator of the multiplicative group Z*_p or, equivalently, a
-        primitive (p - 1)-root of 1, i.e.,
+        primitive (p - 1)-root of 1 or, equivalently,
 
         g_0 ^ (p - 1) = 1 and g_0 ^ k != 1 for all 0 < k < p - 1
-
-        :type modulus: int
-        :type primitive: int
-        :type root_order: int
-        :type prime_order: bool
-        :type min_mod_size: int
-        :type min_gen_size: int
-        :type allow_weakness: bool
         """
+
         modulus = mpz(modulus)                                   # p
         primitive = ModPrimeElement(mpz(primitive), modulus)     # g_0
         root_order = mpz(root_order)                             # r
@@ -61,10 +56,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         self.__order = group.order
         self.__GroupElement = ModPrimeElement
 
-        # Resolve generator
-
-        # Algebraic fact: given a primitive g_0 of Z*_p, p > 2 smooth, and 1 < r < p - 1
-        # with r | p - 1, then g_0 ^ r generates the q-subgroup of Z*_p, q = (p - 1)/r
+        #
+        # ~ Resolve generator: Algebraic fact: given a primitive g_0 of Z*_p,
+        # ~ where p > 2 smooth, and 1 < r < p - 1 with r | p - 1, then g_0 ^ r
+        # ~ generates the q-subgroup of Z*_p, q = (p - 1)/r
+        #
         generator = primitive ** root_order
         try:
             self.__group.set_generator(generator)
@@ -82,19 +78,13 @@ class ModPrimeCrypto(ElGamalCrypto):
     def _validate_system(cls, modulus, order, generator,
         root_order, prime_order, min_mod_size, min_gen_size, allow_weakness):
         """
-        :type modulus: mpz
-        :type order: mpz
-        :type generator: ModPrimElement
-        :type root_order: mpz
-        :type prime_order: bool
-        :type min_mod_size: int
-        :type min_gen_size: int
-        :allow_weakness: bool
         """
         if root_order==2 and modulus % 4 != 3:
-            # Algebraic fact: the condition p = 3 mod 4 guarantees direct
-            # solvability of the congruence x ^ 2 = a (mod p), a E Z*_p,
-            # allowing for efficient verification of quadratic residues
+            #
+            # ~ Algebraic fact: the condition p = 3 mod 4 guarantees direct
+            # ~ solvability of the congruence x ^ 2 = a (mod p), a E Z*_p,
+            # ~ allowing for efficient verification of quadratic residues
+            #
             err = 'Provided modulus is not 3 mod 4'
             raise WrongCryptoError(err)
         if prime_order and not is_prime(order):
@@ -129,17 +119,14 @@ class ModPrimeCrypto(ElGamalCrypto):
             min_gen_size, allow_weakness)
 
 
-    # ------------------------------ Cryptosystem ------------------------------
+    # --------------------------------- System ---------------------------------
 
 
     def parameters(self):
         """
-        Returns a serialization of the cryptosystem's parameters (a JSON entity
-        with the modulus p, order q and generator g)
-
-        :rtype: dict
         """
         serialized = {}
+
         serialized['modulus'] = int(self.__modulus)
         serialized['order'] = int(self.__order)
         serialized['generator'] = int(self.__generator)
@@ -147,53 +134,18 @@ class ModPrimeCrypto(ElGamalCrypto):
         return serialized
 
 
-    def hex_crypto_params(self):
+    def hex_parameters(self):
         """
         Returns a serialization of the cryptosystem's parameters (the modulus p,
         order q and generator g), where the values appear as hexstrings
-
-        :rtype: dict
         """
-        serialized = {}
-        serialized['modulus'] = '%x' % self.__modulus
-        serialized['order'] = '%x' % self.__order
-        serialized['generator'] = '%x' % self.__generator
+        hexified = {}
 
-        return serialized
+        hexified['modulus'] = '%x' % self.__modulus
+        hexified['order'] = '%x' % self.__order
+        hexified['generator'] = '%x' % self.__generator
 
-
-    def hex_labels(self):
-        """
-        """
-        hex_p = V_MODULUS + '%x' % self.__modulus
-        hex_q = V_ORDER + '%x' % self.__order
-        hex_g = V_GENERATOR + '%x' % self.__generator
-
-        return hex_p, hex_q, hex_g
-
-
-    def hexify_crypto(self, crypto):
-        """
-        """
-        hex_p = V_MODULUS + '%x' % crypto['modulus']
-        hex_q = V_ORDER + '%x' % crypto['order']
-        hex_g = V_GENERATOR + '%x' % crypto['generator']
-
-        return hex_p, hex_q, hex_g
-
-
-    def unhexify_crypto(self, t08, t09, t10):
-        """
-        """
-        hex_p = t08[len(V_MODULUS):]
-        hex_q = t09[len(V_ORDER):]
-        hex_g = t10[len(V_GENERATOR):]
-
-        p = mpz(hex_p, 16)
-        q = mpz(hex_q, 16)
-        g = mpz(hex_g, 16)
-
-        return {'modulus': p, 'order': q, 'generator': g}
+        return hexified
 
 
     def _parameters(self):
@@ -206,6 +158,47 @@ class ModPrimeCrypto(ElGamalCrypto):
         return __p, __q, __g
 
 
+    @property
+    def group(self):
+        """
+        """
+        return self.__group
+
+
+    @property
+    def GroupElement(self):
+        """
+        """
+        return self.__GroupElement
+
+
+    def validate_element(self, element):
+        """
+        """
+        return element.contained_in(self.__group)
+
+
+    def generate_keypair(self, private_key=None):
+        """
+        """
+        __group = self.__group
+
+        if private_key is None:
+            private_key = __group.random_exponent(min=3)
+        elif not 1 < private_key < self.__order:
+            err = 'Provided private key exceeds the allowed range'
+            raise InvalidKeyError(err)
+        else:
+            private_key = mpz(private_key)
+
+        public_key = __group.generate(private_key)              # y = g ^ x modp
+
+        return private_key, public_key
+
+
+    # ---------------- (De)serialization of algebraic entities -----------------
+
+
     def int_to_exponent(self, integer):
         """
         """
@@ -216,6 +209,18 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         """
         return mpz(hex_string, 16)
+
+
+    def exponent_to_int(self, exponent):
+        """
+        """
+        return int(exponent)
+
+
+    def exponent_to_hex(self, exponent):
+        """
+        """
+        return '%x' % exponent
 
 
     def int_to_element(self, integer):
@@ -237,103 +242,65 @@ class ModPrimeCrypto(ElGamalCrypto):
         return element
 
 
-    def hexify_encrypted_ballot(self, encrypted_ballot):
+    # ---------------------- Vote validation and signing -----------------------
+
+
+    def mk_hex_labels(self):
         """
         """
-        ciphertext, proof = self.extract_ciphertext_proof(encrypted_ballot)
-        alpha, beta = self.extract_ciphertext(ciphertext)
-        commitment, challenge, response = self.extract_schnorr_proof(proof)
+        hex_p = V_MODULUS + '%x' % self.__modulus
+        hex_q = V_ORDER + '%x' % self.__order
+        hex_g = V_GENERATOR + '%x' % self.__generator
 
-        alpha = alpha.to_hex()
-        beta = beta.to_hex()
-        commitment = commitment.to_hex()
-        challenge = '%x' % challenge
-        response = '%x' % response
-
-        return alpha, beta, commitment, challenge, response
+        return hex_p, hex_q, hex_g
 
 
     def check_labels(self, t08, t09, t10):
         """
         """
-        return t08.startswith(V_MODULUS) \
-            and t09.startswith(V_ORDER) and t10.startswith(V_GENERATOR)
+        return t08.startswith(V_MODULUS) and \
+               t09.startswith(V_ORDER) and \
+               t10.startswith(V_GENERATOR)
 
 
-    def serialize_ciphertext(self, ciphertext):
+    def hexify_crypto_params(self, params):
         """
         """
-        serialized = {}
-        alpha, beta = self.extract_ciphertext(ciphertext)
-        serialized['alpha'] = alpha.to_int()
-        serialized['beta'] = beta.to_int()
-        return serialized
+        hex_p = V_MODULUS + '%x' % params['modulus']
+        hex_q = V_ORDER + '%x' % params['order']
+        hex_g = V_GENERATOR + '%x' % params['generator']
+
+        return hex_p, hex_q, hex_g
 
 
-    @property
-    def group(self):
+    def unhexify_crypto_params(self, t08, t09, t10):
         """
         """
-        return self.__group
+        params = {}
 
+        hex_p = t08[len(V_MODULUS):]
+        hex_q = t09[len(V_ORDER):]
+        hex_g = t10[len(V_GENERATOR):]
 
-    @property
-    def GroupElement(self):
-        """
-        Type of the cryptosystem's group objects
-        """
-        return self.__GroupElement
+        params['modulus'] = mpz(hex_p, 16)
+        params['order'] = mpz(hex_q, 16)
+        params['generator'] = mpz(hex_g, 16)
 
-
-    def validate_element(self, element):
-        """
-        """
-        return element.contained_in(self.__group)
-
-
-    # ----------------------------- Key management -----------------------------
-
-    def mk_keypair(self, private_key=None):
-        """
-        """
-        __group = self.__group
-
-        if private_key is None:
-            private_key = __group.random_exponent(min=3)
-        elif not 1 < private_key < self.__order:
-            err = 'Provided private key exceeds the allowed range'
-            raise InvalidKeyError(err)
-        else:
-            private_key = mpz(private_key)               # in case int was given
-
-        public_key = __group.generate(private_key)              # y = g ^ x modp
-
-        return private_key, public_key
+        return params
 
 
     # ------------------------------- Primitives -------------------------------
 
+
     # Schnorr protocol
-
-    ############################################################
-    #                                                          #
-    #    By Schnorr-proof is meant a dictionary of the form    #
-    #                                                          #
-    #    {                                                     #
-    #       'commitment': ModPrimeElement                      #
-    #       'challenge': mpz                                   #
-    #       'response': mpz                                    #
-    #    }                                                     #
-    #                                                          #
-    ############################################################
-
 
     def _schnorr_proof(self, secret, public, *extras):
         """
-        Implementation of Schnorr protocol from the prover's side (non-interactive)
+        Schnorr protocol implementation from the prover's side (non-interactive)
 
-        Returns proof-of-knowldge (Schnorr-proof) of the discrete logarithm x (`secret`)
-        of y (`public`), with `*extras` being used in the Fiat-Shamir heuristic
+        Returns ZK (Schnorr) proof-of-knowldge of the discrete logarithm
+        x (`secret`) of y (`public`), with `*extras` to be used in the
+        Fiat-Shamir heuristic
 
         :type secret: mpz
         :type public: modPrimeElement
@@ -359,11 +326,11 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def _schnorr_verify(self, proof, public, *extras):
         """
-        Implementation of Schnorr protocol from the verifier's side (non-interactive)
+        Schnorr protocol implementation from the verifier's side (non-interactive)
 
-        Validates the demonstrated (Schnorr) proof-of-knowledge `proof` of the discrete
-        logarithm of y (`public`), with `*extras` assumed to have been used in the
-        Fiat-Shamir heuristic
+        Validates the demonstrated (Schnorr) proof-of-knowledge `proof` of the
+        discrete logarithm of y (`public`), with `*extras` assumed to have been
+        used in the Fiat-Shamir heuristic
 
         :type proof: dict
         :type public: modPrimeElement
@@ -388,48 +355,11 @@ class ModPrimeCrypto(ElGamalCrypto):
         return __group.generate(response) == commitment * (public ** challenge)
 
 
-    def serialize_scnorr_proof(self, proof):
-        """
-        """
-        serialized = {}
-        commitment, challenge, response = self.extract_schnorr_proof(proof)
-        serialized['commitment'] = commitment.to_int()
-        serialized['challenge'] = int(challenge)
-        serialized['response'] = int(response)
-        return serialized                           # TODO: Can use set_schnorr_proof
-
-
-    def deserialize_schnorr_proof(self, proof):
-        """
-        """
-        deserialized = {}
-        commitment, challenge, response = self.extract_schnorr_proof(proof)
-        deserialized['commitment'] = self.__GroupElement(commitment, self.__modulus)
-        deserialized['challenge'] = mpz(challenge)
-        deserialized['response'] = mpz(response)
-        return deserialized                         # TODO: Can use set_schnorr_proof
-
-
-
     # Chaum-Pedersen protocol
-
-    ###################################################################
-    #                                                                 #
-    #    By Chaum-Pedersen proof is meant a dictionary of the form    #
-    #                                                                 #
-    #    {                                                            #
-    #        'base_commitment': ModPrimeElement                       #
-    #        'message_commitment': ModPrimeElement                    #
-    #        'challenge': mpz                                         #
-    #        'response': mpz                                          #
-    #    }                                                            #
-    #                                                                 #
-    ###################################################################
-
 
     def _chaum_pedersen_proof(self, ddh, z):
         """
-        Implementation of Chaum-Pedersen protocol from the prover's side (non-interactive)
+        Chaum-Pedersen protocol implementation from the prover's side (non-interactive)
 
         Returns zero-knowledge proof (Chaum-Pedersen proof) that the provided 3-ple `ddh`
         is a DDH with respect to the generator g of the cryptosystem's underlying group,
@@ -466,11 +396,11 @@ class ModPrimeCrypto(ElGamalCrypto):
 
     def _chaum_pedersen_verify(self, ddh, proof):
         """
-        Implementation of Chaum-Pedersen protocol from the verifier's side (non-interactive)
+        Chaum-Pedersen protocol implementation from the verifier's side (non-interactive)
 
         Verifies that the demonstrated `proof` proves knowledge that the provided 3-ple `ddh`
-        is a DDH with respect to the generator g of the cryptosystem's underlying group, i.e., of
-        the form
+        is a DDH with respect to the generator g of the cryptosystem's underlying group, i.e.,
+        of the form
 
                                 (u, v, g ^ (x * z) modp)
 
@@ -501,7 +431,7 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         # g ^ r, u ^ r, c, s
         g_commitment, u_commitment, challenge, response =\
-            self._extract_chaum_pedersen_proof(proof)
+            self.extract_chaum_pedersen_proof(proof)
 
         # Check correctness of challenge:
         # c == g ^ ( H( p | g | q | u | v | w | g ^ r | u ^ r ) modq ) modp ?
@@ -524,34 +454,19 @@ class ModPrimeCrypto(ElGamalCrypto):
         return u ** response == u_commitment * (w ** challenge)
 
 
-    # Digital Signature Algorithm
-
-    ############################################################
-    #                                                          #
-    #    By DSA-signature is meant a dictionary of the form    #
-    #                                                          #
-    # 	{                                                      #
-    #       'exponent': mpz,                                   #
-    #       'commitments': {                                   #
-    #           'c_1': mpz,                                    #
-    #           'c_2': mpz                                     #
-    #       }                                                  #
-    # 	}                                                      #
-    #                                                          #
-    ############################################################
-
+    # Digital Signature Algorithm (low-level DSA)
 
     def _dsa_signature(self, exponent, private_key):
         """
         Returns and computes the DSA-signature
 
-        {
-            'exponent': e,
-            'commitments': {
-                'c_1': (g ^ r modp) modq
-                'c_2': (e + x * c_1)/r modq
-            }
-        }
+                {
+                    'exponent': e,
+                    'commitments': {
+                        'c_1': (g ^ r modp) modq
+                        'c_2': (e + x * c_1)/r modq
+                    }
+                }
 
         of the provided `exponent` e (assumed to be in the range {1, ..., q - 1})
         under the `private_key` x for a once used randmoness 1 < r < q
@@ -587,10 +502,10 @@ class ModPrimeCrypto(ElGamalCrypto):
         __group = self.__group
         __q = self.__order
 
-        # Extract data from signature
-        _, c_1, c_2 = self._extract_dsa_signature(signature)
+        _, c_1, c_2 = self.extract_dsa_signature(signature)
 
         # Commitments' validity check
+
         for c in (c_1, c_2):
             if not 0 < c < __q:
                 return False
@@ -608,60 +523,23 @@ class ModPrimeCrypto(ElGamalCrypto):
         return element % __q == c_1
 
 
-    def hexify_dsa_signature(self, signature):
-        """
-        """
-        exponent, c_1, c_2 = self._extract_dsa_signature(signature)
-        return '%x\n%x\n%x' % (exponent, c_1, c_2)
-
-
-    def unhexify_dsa_signature(self, hex_signature):
-        """
-        """
-        exponent, c_1, c_2 = hex_signature.split('\n')
-        exponent = mpz(exponent, 16)
-        c_1 = mpz(c_1, 16)
-        c_2 = mpz(c_2, 16)
-
-        unhexified = self.set_dsa_signature(exponent, c_1, c_2)
-        return unhexified
-
-
-    # Text-message signatures
-
-    #####################################################################
-    #                                                                   #
-    #    By signed message is meant a dictionary of the form            #
-    #                                                                   #
-    #    {                                                              #
-    #        'message': str,                                            #
-    #        'signature': {                                             #
-    #            'exponent': mpz,                                       #
-    #            'commitments': {                                       #
-    #               'c_1': mpz,                                         #
-    #               'c_2': mpz                                          #
-    #             }                                                     #
-    #         }                                                         #
-    #     }                                                             #
-    #                                                                  #
-    #####################################################################
-
+    # Text-message signatures (high-level DSA)
 
     def sign_text_message(self, message, private_key):
         """
         Signs the provided `message` m with the provided `private_key` x,
         returning the signed message
 
-        {
-            'message': m,
-            'signature': {
-                'exponent': H(m),
-                'commitments': {
-                    'c_1': (g ^ r modp) modq,
-                    'c_2': (H(m) + x * c_1)/r modq
+                {
+                    'message': m,
+                    'signature': {
+                        'exponent': H(m),
+                        'commitments': {
+                            'c_1': (g ^ r modp) modq,
+                            'c_2': (H(m) + x * c_1)/r modq
+                        }
+                    }
                 }
-            }
-        }
 
         for a once used randomness 1 < r < q.
 
@@ -685,11 +563,10 @@ class ModPrimeCrypto(ElGamalCrypto):
         under the provided public key `public_key`
 
         :type signed_message: dict
-        :type public_key: dict
+        :type public_key: GroupElement
         :rtype: bool
         """
-        message, signature = self._extract_message_signature(signed_message)
-        public_key = self.get_key_value(public_key)
+        message, signature = self.extract_signed_message(signed_message)
 
         # Verify signature
         hashed_message = self.__group.exponent_from_texts(message)              # H(m)
@@ -698,19 +575,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return verified
 
 
-    # El-Gamal encryption and decryption
-
-    #########################################################
-    #                                                       #
-    #    By ciphertext is meant a dictionary of the form    #
-    #                                                       #
-    #    {                                                  #
-    #        'alpha': ModPrimeElement                       #
-    #        'beta': ModPrimeElement                        #
-    #    }                                                  #
-    #                                                       #
-    #########################################################
-
+    # El-Gamal encryption/decryption
 
     def encrypt(self, element, public_key, randomness=None, get_secret=False):
         """
@@ -718,13 +583,13 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         Computes and returns the ciphertext
 
-        {
-            'alpha': g ^ r (modp)
-            'beta': m * y ^ r (mod p)
-        }
+                    {
+                        'alpha': g ^ r (modp)
+                        'beta': m * y ^ r (mod p)
+                    }
 
-        of the provided `element` m, where `public_key` is the receiver's
-        public key y and 1 < r < q a once used randomness
+        of the provided element m, where the provided public key is the
+        receiver's public key y and 1 < r < q a once used randomness
 
         :type element: ModPrimeElement
         :type public_key: ModPrimeElement
@@ -747,7 +612,33 @@ class ModPrimeCrypto(ElGamalCrypto):
         return ciphertext
 
 
-    def _reencrypt(self, ciphertext, public_key, randomness=None, get_secret=False):
+    def decrypt(self, ciphertext, private_key):
+        """
+        Standard ElGamal decryption
+
+        .. note:: this function is not used by zeus. It is here included
+        for completeness of the cryptossytem and testing purposes. For
+        actual use see the `.decrypt_with_decryptor()` method.
+
+        Decrypts the provided ciphertext
+
+                            {'alpha': a, 'beta': b}
+
+        under the provided private key x, returning the original element
+
+                                (a ^ x) ^ -1 * b
+
+        :type ciphertext: dict
+        :type private_key: mpz
+        :rtype: ModPrimeElement
+        """
+        alpha, beta = self.extract_ciphertext(ciphertext)
+        original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
+
+        return original
+
+
+    def reencrypt(self, ciphertext, public_key, randomness=None, get_secret=False):
         """
         Re-encryption of ciphertext
 
@@ -755,31 +646,34 @@ class ModPrimeCrypto(ElGamalCrypto):
         testing and explanatory purposes. For actual use see the homonymous
         mixnet method instead.
 
-        Given a ciphertext `ciphertext`
+        Given a ciphertext
 
-        {'alpha': a, 'beta': b}
+                    {
+                        'alpha': a,
+                        'beta': b
+                    }
 
         and an element `public_key` y, computes and returns the ciphertext
 
-        {
-            'alpha': a * g ^ r      (modp)
-            'beta': b * y ^ r       (modp)
-        }
+                    {
+                        'alpha': a * g ^ r      (modp)
+                        'beta': b * y ^ r       (modp)
+                    }
 
         .. note:: (Special case with fixed public key) Given the ElGamal encryption
 
-        {
-            'alpha': g ^ r_0        (modp)
-            'beta': m * y ^ r_0     (modp)
-        }
+                    {
+                        'alpha': g ^ r_0        (modp)
+                        'beta': m * y ^ r_0     (modp)
+                    }
 
         of an original message m under the public key y, re-encrypting n times under
         the same key y and successive randomnesses r_1, ..., r_n yields
 
-        {
-            'alpha': g ^ (r_0 + r_1 + ... + r_n)        (modp)
-            'beta': m * y ^ (r_0 + r_1 + ... + r_n)     (modp)
-        }
+                    {
+                        'alpha': g ^ (r_0 + r_1 + ... + r_n)        (modp)
+                        'beta': m * y ^ (r_0 + r_1 + ... + r_n)     (modp)
+                    }
 
         i.e., is equivalent to encrypting once with randomness r_0 + r_1 + ... + r_n
 
@@ -806,67 +700,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         return ciphertext
 
 
-    def prove_encryption(self, ciphertext, randomness):
-        """
-        Generates proof-of-knowledge of the `randomness` r involved in the
-        ElGamal encryption yielding the provided ciphertext `ciphertext`
-
-        :type ciphertext: dict
-        :type randomness: mpz
-        :rtype: dict
-        """
-        alpha, beta = self.extract_ciphertext(ciphertext)
-        proof = self._schnorr_proof(randomness, alpha, beta)
-
-        return proof
-
-
-    def verify_encryption(self, ciphertext_proof):
-        """
-        Assuming a dictionary
-
-        {'ciphertext': ..., 'proof': ...}
-
-        verifies that 'proof' proves knowledge of the randomness used in the
-        ElGamal encryption that yields 'ciphertext'
-
-        :type ciphertext_proof: dict
-        :rtype: bool
-        """
-        ciphertext, proof = self.extract_ciphertext_proof(ciphertext_proof)
-        alpha, beta = self.extract_ciphertext(ciphertext)
-        verified = self._schnorr_verify(proof, alpha, beta)
-
-        return verified
-
-
-    def _decrypt(self, ciphertext, private_key):
-        """
-        Standard ElGamal decryption
-
-        .. note:: this function is not used by zeus. It is here included
-        for completeness of the cryptossytem and testing purposes. For
-        actual use see the `.decrypt_with_decryptor()` method.
-
-        Decrypts the provided ciphertext `ciphertext`
-
-        {'alpha': a, 'beta': b}
-
-        under the provided `private_key` x, returning the original element
-
-        (a ^ x) ^ -1 * b
-
-        :type ciphertext: dict
-        :type private_key: mpz
-        :rtype: ModPrimeElement
-        """
-        alpha, beta = self.extract_ciphertext(ciphertext)
-        original = (alpha ** private_key).inverse * beta        # (alpha ^ x) ^ -1 * beta (modp)
-
-        return original
-
-
-    def _decrypt_with_decryptor(self, ciphertext, decryptor):
+    def decrypt_with_decryptor(self, ciphertext, decryptor):
         """
         Given the ciphertext `ciphertext`
 
@@ -893,19 +727,19 @@ class ModPrimeCrypto(ElGamalCrypto):
         """
         Given the ciphertext `ciphertext`
 
-        {'alpha': a, 'beta': b},
+                            {'alpha': a, 'beta': b},
 
         a group element `public` y and an exponent `secret` x, computes and
         returns the element
 
-        (y ^ x) ^ -1 * b - 1 (mod p)
+                          (y ^ x) ^ -1 * b - 1 (mod p)
 
         if (y ^ x) ^ -1 * b happens to be contained in the cryptosystem's
         underlying group; otherwise the element
 
-        (-(y ^ x) ^ -1 * b (mod p)) - 1 (mod p)
+                    (-(y ^ x) ^ -1 * b (mod p)) - 1 (mod p)
 
-        is returned
+        is returned.
 
         :type public: ModPrimeElement
         :type ciphertext: dict
