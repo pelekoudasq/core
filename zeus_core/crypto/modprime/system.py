@@ -70,7 +70,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         self.__generator = group.generator.value
 
         # Validate system
-        self.__class__._validate_system(modulus, group.order, group.generator,
+        __class__._validate_system(modulus, group.order, group.generator,
             root_order, prime_order, min_mod_size, min_gen_size, allow_weakness)
 
 
@@ -107,13 +107,15 @@ class ModPrimeCrypto(ElGamalCrypto):
         :type config: dict
         :rtype: tuple
         """
+        get = config.get
+
         modulus = config['modulus']
         primitive = config['primitive']
-        root_order = config.get('root_order', 2)
-        prime_order = config.get('prime_order', True)
-        min_mod_size = config.get('min_mod_size', None)
-        min_gen_size = config.get('min_gen_size', None)
-        allow_weakness = config.get('allow_weakness', None)
+        root_order = get('root_order', 2)
+        prime_order = get('prime_order', True)
+        min_mod_size = get('min_mod_size', None)
+        min_gen_size = get('min_gen_size', None)
+        allow_weakness = get('allow_weakness', None)
 
         return (modulus, primitive, root_order, prime_order, min_mod_size,
             min_gen_size, allow_weakness)

@@ -2,51 +2,132 @@
 """
 
 from math import ceil
+import json
 from copy import deepcopy
 
 from zeus_core.election import ZeusCoreElection
-from .client_emulators import TrusteeEmulator, VoterEmulator
+from .clients import TrusteeEmulator, VoterEmulator
 
 
 class ZeusTestElection(ZeusCoreElection):
     """
-    Provides a most minimal implementation of the ZeusCoreElection
-    abstract class for testing purposes
+    A minimal implementation of the ZeusCoreElection
+    abstract class for demo and testing purposes
     """
 
     def __init__(self, config, **options):
         """
         """
+        crypto = config['crypto']
+        voters = config['voters']
+        trustees = config['trustees']
+
         super().__init__(config, **options)
 
-        # trustees_file = config['trustees_file']
-        self.trustee_clients = self.mk_trustee_clients()
-        self.voter_clients = [] #self.mk_voter_clients()
-        # print(self.mk_voter_clients())
-        # print(self.mk_trustee_clients())
+        self.trustee_clients = self.mk_trustee_clients(crypto, trustees)
+        self.voter_clients = self.mk_voter_clients(crypto, voters)
 
 
     @staticmethod
-    def mk_trustee_clients():
+    def mk_trustee_clients(crypto_config, trustees_file):
         """
         """
-        return []
+        trustee_clients = []
+        with open(trustees_file) as __file:
+            trustees = json.load(__file)
+        for trustee in trustees:
+            client = TrusteeEmulator(public=trustee['value'])
+            trustee_clients.append(client)
+        return trustee_clients
 
 
     @staticmethod
-    def mk_voter_clients():
+    def mk_voter_clients(crypto_config, voters_file):
         """
         """
-        return []
+        voter_clients = []
+        with open(voters_file) as __file:
+            voters = json.load(__file)
+        for name, weight in voters:
+            client = VoterEmulator(name, weight)
+            voter_clients.append(client)
+        return voter_clients
 
 
     # ZeusCoreElection implementation
+
+    @staticmethod
+    def resolve_secret(config):
+        """
+        """
+        value = None
+        zeus_secret = config.get('zeus_secret', None)
+        if zeus_secret:
+            with open(zeus_secret) as __file:
+                value = json.load(__file)
+        return value
+
+
+    @staticmethod
+    def resolve_lists(config):
+        """
+        """
+        trustees = config['trustees']
+        candidates = config['candidates']
+        voters = config['voters']
+
+        resolved = []
+        for key, file in (('trustees', trustees),
+                          ('candidates', candidates),
+                          ('voters', voters)):
+            with open(file) as __file:
+                lst = json.load(__file)
+            resolved.append(lst)
+
+        return resolved
+
+
+    def broadcast_election(self):
+        """
+        """
+        #
+        # ~ Send zeus crypto params to trustees so that they can
+        # ~ configure their local cryptosystems appropriately
+        #
+        crypto_config = self.get_crypto_config()
+        send_crypto = self.send_crypto
+        trustees = self.get_trustees()
+        for trustee in trustees:
+            send_crypto(trustee, crypto_config)
+        #
+        # ~ Inform each voter about
+        #
+        # ~ (1) the election's public key
+        # ~ (2) candidates
+        # ~ (3) zeus crypto params (so that they can configure
+        # ~     their local cryptosystems appropriately)
+        # ~ (4) their assigned voter key
+        # ~ (5) their assigned audit codes
+        #
+        get_voter_audit_codes = self.get_voter_audit_codes
+        send_election_params = self.send_election_params
+        election_header = self._get_election_header()
+        voters = self.get_voters()
+        for voter_key in voters:
+            voter_params = {}
+            voter_params.update(election_header)
+            audit_codes = get_voter_audit_codes(voter_key)
+            voter_params.update({
+                'voter_key': voter_key,
+                'audit_codes': audit_codes
+            })
+            send_election_params(voter_key, voter_params)
+
 
     def collect_votes(self):
         """
         Emulates collection of votes from poll
         """
-        self.mk_voter_clients()
         votes, audit_requests, audit_votes = self.mk_votes_from_voters()
         votes_in_poll = iter(audit_requests + votes + audit_votes)
         while 1:
@@ -57,13 +138,60 @@ class ZeusTestElection(ZeusCoreElection):
             yield vote
 
 
+    def broadcast_mixed_ballots(self):
+        """
+        Emulates broadcasting of mixed ballots to trustees
+        (triggers each trustee-client to receive them)
+        """
+        send_mixed_ballots = self.send_mixed_ballots
+        for trustee in self.get_trustees():
+            send_mixed_ballots(trustee)
+
+
+    # Methods used for implementing ZeusCoreElection
+
+    def detect_trustee_client(self, trustee):
+        """
+        """
+        trustee_clients = self.trustee_clients
+        trustee_client = (client for client in trustee_clients if \
+                    trustee.value == client.public).__next__()
+        return trustee_client
+
+
+    def send_crypto(self, trustee, crypto_config):
+        """
+        Triggers the client to receive
+        """
+        trustee_client = self.detect_trustee_client(trustee)
+        trustee_client.recv_crypto(crypto_config)
+
+
+    def detect_voter_client(self, voter_name):
+        """
+        """
+        voter_clients = self.voter_clients
+        voter_client = (client for client in voter_clients if \
+                    client.get_name() == voter_name).__next__()
+        return voter_client
+
+
+    def send_election_params(self, voter, election_params):
+        """
+        Triggers the client to receive
+        """
+        voter_name = self.get_voter_name(voter)
+        voter_client = self.detect_voter_client(voter_name)
+        voter_client.recv_election_params(election_params)
+
+
     def send_mixed_ballots(self, trustee):
         """
         Emulates dispatch of mixed-ballots to trustee
         (triggers the trustee-client to receive them)
         """
-        trustee_client = self.mk_trustee_client(trustee)
         mixed_ballots = self.get_mixed_ballots()
+        trustee_client = self.detect_trustee_client(trustee)
         trustee_client.recv_mixed_ballots(mixed_ballots)
 
 
@@ -72,69 +200,11 @@ class ZeusTestElection(ZeusCoreElection):
         Emulates reception of factors from trustee
         (triggers the trustee-client to send them)
         """
-        trustee_client = self.get_trustee_client(trustee)
+        trustee_client = self.detect_trustee_client(trustee)
         election_server = self
         trustee_factors = trustee_client.send_trustee_factors(election_server)
         trustee_factors = self.deserialize_factor_collection(trustee_factors)
         return trustee_factors
-
-
-    # Makers
-
-    def mk_trustee_client(self, public_key):
-        """
-        """
-        crypto_config = self.get_crypto_config()
-        trustee_client = TrusteeEmulator.get_from_public(crypto_config, public_key)
-        self.store_trustee_client(trustee_client)
-        return trustee_client
-
-
-    def store_trustee_client(self, trustee_client):
-        """
-        """
-        self.trustee_clients.append(trustee_client)
-
-
-    def get_trustee_client(self, trustee):
-        """
-        """
-        trustee_clients = self.trustee_clients
-        trustee_client = (client for client in trustee_clients if \
-                        trustee.value == client.get_public_key()).__next__()
-        return trustee_client
-
-
-    def mk_voter_client(self, voter_key):
-        """
-        """
-        election_params = {}
-        election_params['crypto_config'] = self.get_crypto_config()
-        election_params['election_key'] = self.get_election_key()
-        election_params['candidates'] = self.get_candidates()
-
-        voter_params = {}
-        voter_params['voter_key'] = voter_key
-        voter_params['audit_codes'] = self.get_voter_audit_codes(voter_key)
-
-        voter_client = VoterEmulator(election_params, voter_params)
-        self.store_voter_client(voter_client)
-
-
-    def store_voter_client(self, voter_client):
-        """
-        """
-        self.voter_clients.append(voter_client)
-
-
-    def mk_voter_clients(self):
-        """
-        Emulates the electoral body (one voter for each stored voter key)
-        """
-        voter_keys = self.get_voters()
-        mk_voter_client = self.mk_voter_client
-        for key in voter_keys:
-            mk_voter_client(key)
 
 
     def get_voter_clients(self):
@@ -150,14 +220,12 @@ class ZeusTestElection(ZeusCoreElection):
         audit-requests (accompanied by corresponding audit publications)
         """
         voters = self.get_voter_clients()
+        nr_voters = len(voters)
 
         votes = []
         audit_requests = []
         audit_votes = []
-        nr_voters = len(voters)
         for count, voter in enumerate(voters):
-            voter_key = voter.voter_key
-            audit_codes = voter.audit_codes
             if count < ceil(nr_voters / 2):
                 vote = voter.mk_genuine_vote()
                 votes.append(vote)

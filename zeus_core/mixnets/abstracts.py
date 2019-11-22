@@ -16,7 +16,7 @@ class Mixnet(object, metaclass=ABCMeta):
         """
         if cryptosys is None:
             err = "No cryptosystem has been specified"
-            raise MixnetConstructionError(err)
+            raise WrongMixnetError(err)
         self.__cryptosys = cryptosys
         self.__group = cryptosys.group
 

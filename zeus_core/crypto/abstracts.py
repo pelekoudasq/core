@@ -234,17 +234,17 @@ class ElGamalCrypto(metaclass=ABCMeta):
         return commitment, challenge, response
 
 
-    def serialize_scnorr_proof(self, proof):
+    def serialize_schnorr_proof(self, proof):
         """
         """
         serialized = {}
-        commitment, challenge, response = self.extract_schnorr_proof(proof)
-
-        serialized['commitment'] = commitment.to_int()
-        serialized['challenge'] = self.exponent_to_int(challenge)
-        serialized['response'] = self.exponent_to_int(response)
-
+        if proof is not None:
+            commitment, challenge, response = self.extract_schnorr_proof(proof)
+            serialized['commitment'] = commitment.to_int()
+            serialized['challenge'] = self.exponent_to_int(challenge)
+            serialized['response'] = self.exponent_to_int(response)
         return serialized
+
 
 
     def deserialize_schnorr_proof(self, proof):

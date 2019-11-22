@@ -59,14 +59,14 @@ class Decryptor(object, metaclass=ABCMeta):
 
                     [f_11 * ... * f_m1, ..., f_1n * ... * f_mn]
 
-        .. note:: Returns a non-sensical 0 if the provided collection comprises of
-        empty iterables (including the case of the collection itself being empty)
-
-        :type all_factors: list[list[{'data': GroupElement, 'proof': ...}]]
-        :rtype: list[GroupElement]
+        .. note:: Returns a non-sensical [] if the provided collection
+        comprises of empty iterables (including the case of the
+        collection itself being empty)
         """
         if not all_factors or all_factors == [[]] * len(all_factors):
-            return 0
+            # ~ Return empty iterable for the case of zero many mixed
+            # ~ votes, so that zip in cipher decryption works well
+            return []
         master_factors = []
         append = master_factors.append
         extract_factor = self.extract_factor

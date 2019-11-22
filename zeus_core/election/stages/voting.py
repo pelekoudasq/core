@@ -12,7 +12,8 @@ class Voting(Stage):
     def __init__(self, controller):
         super().__init__(controller, next_stage_cls=Mixing)
 
-    def run(self, *data):
+    def run(self):
+        print(__class__.__name__)      # Remove this
         election = self.get_controller()
 
         cast_vote = election.cast_vote

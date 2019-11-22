@@ -3,170 +3,54 @@
 import json
 from copy import deepcopy
 
-from clients import Trustee, Voter
+from clients import Voter
 from tests.election.utils import adapt_vote, extract_vote, display_json
 from zeus_core.crypto import mk_cryptosys
 from zeus_core.utils import (random_integer, random_selection,
     gamma_encoding_max, random_party_selection, hash_nums, encode_selection)
-from zeus_core.election.interfaces.key_manager import KeyManager
-from zeus_core.election.interfaces.factor_managers import FactorGenerator
 from zeus_core.election.constants import VOTER_SLOT_CEIL
-
-
-class TrusteeEmulator(Trustee):
-    """
-    """
-    trustee_publics = 'tests/election/emulators/trustee-publics.json'
-    trustee_secrets = 'tests/election/emulators/trustee-secrets.json'
-
-
-    @classmethod
-    def get_from_public(cls, crypto_config, public_key):
-        """
-        """
-        public_key, proof, index = cls.locate_trustee(public_key)
-        private_key = cls.locate_secret(index)
-        keypair = cls.retrieve_keypair(crypto_config, private_key, public_key, proof)
-
-        trustee = cls(crypto_config, keypair)
-        return trustee
-
-
-    @classmethod
-    def locate_trustee(cls, public_key):
-        """
-        """
-        with open(cls.trustee_publics) as __file:
-            trustees = json.load(__file)
-        index = cls.get_trustee_index(trustees, public_key)
-        proof = trustees[index]['proof']
-        return public_key, proof, index
-
-
-    @classmethod
-    def locate_secret(cls, index):
-        """
-        """
-        with open(cls.trustee_secrets) as __file:
-            trustee_secrets = json.load(__file)
-        return trustee_secrets[index]
-
-
-    @classmethod
-    def retrieve_keypair(cls, crypto_config, private_key, public_key, proof):
-        """
-        """
-        cryptosys = mk_cryptosys(crypto_config)
-
-        keypair = {}
-        private = cryptosys.int_to_exponent(private_key)
-        keypair['private'] = private
-        public = {}
-        proof = cryptosys.deserialize_schnorr_proof(proof)
-        public.update({'value': public_key, 'proof': proof})
-        keypair['public'] = public
-        return keypair
-
-
-    @classmethod
-    def get_trustee_index(cls, trustees, public_key):
-        """
-        """
-        nr_trustees = len(trustees)
-        index = (i for i in range(nr_trustees) if public_key.value \
-                        == trustees[i]['value']).__next__()
-        return index
-
-
-    # Trustee implementation
-
-    def recv_mixed_ballots(self, mixed_ballots):
-        """
-        """
-        self.store_ciphers(mixed_ballots)
-        self.generate_factor_colletion()
-
-
-    def send_trustee_factors(self, election_server):
-        """
-        """
-        factor_collection = self.get_factor_collection()
-        serialized = self.serialize_factor_collection(factor_collection)
-        return serialized
 
 
 class VoterEmulator(Voter):
     """
     """
 
-    def __init__(self, election_params, voter_params):
+    def recv_election_params(self, params):
         """
         """
-        crypto_config, election_key, candidates = \
-            self.extract_election_params(election_params)
-        voter_key, audit_codes = self.extract_voter_params(voter_params)
-        super().__init__(crypto_config)
-        self.set_election_params(election_key, candidates)
-        self.set_voter_params(voter_key, audit_codes)
+        cryptosys, election_key, candidates, voter_key, audit_codes = \
+            self.extract_election_params(params)
+        self.store_election_params(cryptosys, election_key, candidates, voter_key, audit_codes)
 
 
-    @staticmethod
-    def extract_election_params(election_params):
+    def extract_election_params(self, params):
         """
         """
-        crypto_config = election_params['crypto_config']
-        election_key = election_params['election_key']
-        candidates = election_params['candidates']
+        crypto_config = params['crypto']
+        cryptosys = mk_cryptosys(crypto_config)
+        election_key = params['election_key']
+        election_key = cryptosys.int_to_element(election_key)
+        candidates = params['candidates']
+        voter_key = params['voter_key']
+        audit_codes = params['audit_codes']
 
-        return crypto_config, election_key, candidates
+        return cryptosys, election_key, candidates, voter_key, audit_codes
 
 
-    @staticmethod
-    def extract_voter_params(voter_params):
+    def store_election_params(self, cryptosys, election_key, candidates, voter_key, audit_codes):
         """
         """
-        voter_key = voter_params['voter_key']
-        audit_codes = voter_params.get('audit_codes', None)
-
-        return voter_key, audit_codes
-
-
-    def set_election_params(self, election_key, candidates):
-        """
-        """
-        self.election_key = election_key
-        self.candidates = candidates
-
-
-    def set_voter_params(self, voter_key, audit_codes):
-        """
-        """
-        self.voter_key = voter_key
-        self.audit_codes = audit_codes
-
-
-    def get_election_key(self):
-        """
-        """
-        return self.election_key
+        self.set_cryptosys(cryptosys)
+        self.store_election_key(election_key)
+        self.store_candidates(candidates)
+        self.store_voter_key(voter_key)
+        self.store_audit_codes(audit_codes)
 
 
     def get_nr_candidates(self):
         """
         """
         return len(self.candidates)
-
-
-    def get_voter_key(self):
-        """
-        """
-        return self.voter_key
-
-
-    def get_audit_codes(self):
-        """
-        """
-        return self.audit_codes
 
 
     def mk_genuine_vote(self, corrupt_proof=False, corrupt_fingerprint=False,
@@ -258,12 +142,10 @@ class VoterEmulator(Voter):
         return audit_vote
 
 
-    def mk_random_vote(self, selection, audit_code, publish,
-            nr_candidates=None):
+    def mk_random_vote(self, selection, audit_code, publish):
         """
         """
-        if nr_candidates is None:
-            nr_candidates = self.get_nr_candidates()
+        nr_candidates = self.get_nr_candidates()
         if selection is None:
             if random_integer(0, 4) & 1:
                 selection = random_selection(nr_candidates, full=False)
@@ -278,8 +160,8 @@ class VoterEmulator(Voter):
         return vote
 
 
-    def mk_vote_from_encoded_selection(self, encoded_selection,
-            audit_code, publish):
+    def mk_vote_from_encoded_selection(self, encoded_selection, audit_code,
+                                       publish):
         """
         """
         cryptosys = self.get_cryptosys()
@@ -341,7 +223,7 @@ class VoterEmulator(Voter):
             'beta': beta
         })
 
-        proof = cryptosys.serialize_scnorr_proof(proof)
+        proof = cryptosys.serialize_schnorr_proof(proof)
         commitment, challenge, response = cryptosys.extract_schnorr_proof(proof)
         encrypted_ballot.update({
             'commitment': commitment,

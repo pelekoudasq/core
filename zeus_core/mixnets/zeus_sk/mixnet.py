@@ -9,7 +9,7 @@ from hashlib import sha256
 from zeus_core.crypto.modprime import ModPrimeCrypto
 from zeus_core.utils import random_permutation, AsyncController, _teller, bit_iterator
 from ..abstracts import Mixnet
-from ..exceptions import MixnetConstructionError, MixNotVerifiedError, RoundNotVerifiedError
+from ..exceptions import WrongMixnetError, MixNotVerifiedError, RoundNotVerifiedError
 
 ALPHA = 0
 BETA  = 1
@@ -36,23 +36,23 @@ class Zeus_sk(Mixnet):
         'nr_rounds' is the number of rounds to be performed during mixing and
         'nr_mixes' is the fixed length of cipher-collections to mix.
 
-        ..raises MixnetConstructionError:: if the provided config is not as prescribed
+        ..raises WrongMixnetError:: if the provided config is not as prescribed
         """
         try:
             cryptosys = mixnet_config['cryptosys']
             nr_rounds = mixnet_config['nr_rounds']
             nr_mixes = mixnet_config['nr_mixes']
         except KeyError:
-            err = 'Malformed parameters for Zeus SK mixnet'
-            raise MixnetConstructionError(err)
+            err = "Malformed parameters for Zeus SK mixnet"
+            raise WrongMixnetError(err)
         if not self.supports_cryptosys(cryptosys):
-            err = 'Provided crypto type is not supported by Zeus SK mixnet'
-            raise MixnetConstructionError(err)
+            err = "Provided crypto type is not supported by Zeus SK mixnet"
+            raise WrongMixnetError(err)
         super().__init__(cryptosys, election_key)
 
         self.__nr_rounds = nr_rounds
         self.__nr_mixes = nr_mixes
-        self.substract = self.__class__.mk_substract_func(
+        self.substract = __class__.mk_substract_func(
             order=cryptosys.parameters()['order'])
 
     @classmethod

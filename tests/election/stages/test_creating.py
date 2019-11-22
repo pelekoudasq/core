@@ -6,7 +6,7 @@ import json
 
 from zeus_core.election.constants import VOTER_SLOT_CEIL
 from zeus_core.election.exceptions import (InvalidTrusteeError,
-        InvalidCandidatesError, InvalidVotersError)
+        InvalidCandidateError, InvalidVotersError)
 
 from tests.constants import _2048_SYSTEM, _2048_SECRET
 from tests.election.utils import trim_json
@@ -32,7 +32,7 @@ class TestCreating(StageTester, unittest.TestCase):
         election.create_zeus_keypair()
         zeus_keypair_1 = election.get_keypair()
         config = election.get_config()
-        _, zeus_keypair_2 = _2048_SYSTEM.generate_keypair(config['zeus_private_key'])
+        _, zeus_keypair_2 = _2048_SYSTEM.generate_keypair(config['zeus_secret'])
         assert election.get_public_value(zeus_keypair_1) == zeus_keypair_2
         proof =  zeus_keypair_1['public']['proof']
         to_display = trim_json({
@@ -56,7 +56,7 @@ class TestCreating(StageTester, unittest.TestCase):
         election, config, creating, messages = self.get_context()
 
         trustees = config['trustees']
-        deserialized_trustees = election.deserialize_trustees(trustees)
+        deserialized_trustees = election._deserialize_trustees(trustees)
         election.create_trustees()
         validated_trustees = election.get_trustees()
         expected_trustees = dict(((trustee['value'], trustee['proof'])
@@ -145,7 +145,7 @@ class TestCreating(StageTester, unittest.TestCase):
             message = abort_case['message']
             with self.subTest(message, candidates=candidates):
                 election.config['candidates'] = candidates
-                with self.assertRaises(InvalidCandidatesError):
+                with self.assertRaises(InvalidCandidateError):
                     election.create_candidates()
                 messages.append(f'[+] Successfully aborted: {message}')
 

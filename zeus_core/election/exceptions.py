@@ -29,7 +29,7 @@ class InvalidTrusteeError(BaseException):
     """
     pass
 
-class InvalidCandidatesError(BaseException):
+class InvalidCandidateError(BaseException):
     """
     Raised when the lists of cancdidates was founs to be invalid
     """

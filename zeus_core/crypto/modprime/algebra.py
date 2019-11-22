@@ -79,7 +79,7 @@ class ModPrimeElement(GroupElement):
             __inverse = invert(self.__value, __modulus)
         except ZeroDivisionError:
             return
-        return self.__class__(__inverse, __modulus)
+        return __class__(__inverse, __modulus)
 
 
     @property
@@ -108,7 +108,7 @@ class ModPrimeElement(GroupElement):
         """
         :type other: ModPrimeElement or mpz
         """
-        if isinstance(other, self.__class__):
+        if isinstance(other, __class__):
             return self.__value == other.value
         else:
             return self.__value == other
@@ -120,7 +120,7 @@ class ModPrimeElement(GroupElement):
         """
         __modulus = self.__modulus
         result = self.__value * other.value % __modulus
-        return self.__class__(result, __modulus)
+        return __class__(result, __modulus)
 
 
     def __pow__(self, exp):
@@ -129,11 +129,13 @@ class ModPrimeElement(GroupElement):
         :rtype: ModPrimeElement
         """
         __modulus = self.__modulus
-
-        # result = self.__value ** exp % __modulus ---> "...outrageous exponent"
-        # Use gmpy2.powmod instead in order to avoid overflow in mpz type
         result = powmod(self.__value, exp, __modulus)
-        return self.__class__(result, __modulus)
+        #
+        # ~ result = self.__value ** exp % __modulus
+        # ~ leads to overflow: "...outrageous exponent". Use gmpy2.powmod
+        # ~ instead in order to avoid overflow in mpz type
+        #
+        return __class__(result, __modulus)
 
 
     def to_hex(self):
@@ -147,7 +149,7 @@ class ModPrimeElement(GroupElement):
         """
         :rtype: ModPrimeElement
         """
-        return self.__class__(self.__value, self.__modulus)
+        return __class__(self.__value, self.__modulus)
 
 
     def contained_in(self, group):
@@ -158,8 +160,10 @@ class ModPrimeElement(GroupElement):
         :rtype: bool
         """
         if isinstance(group, ModPrimeSubgroup) and group.modulus == self.__modulus:
-            # Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
-            # a mod p element x is contained in C iff x ^ q = 1
+            #
+            # ~ Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
+            # ~ a mod p element x is contained in C iff x ^ q = 1
+            #
             return self ** group.order == 1
         return False
 
@@ -184,17 +188,17 @@ class ModPrimeSubgroup(Group):
         root_order = root_order
 
         if modulus <= 2 or not is_prime(modulus):
-            err = 'Provided modulus is not an odd prime'
+            err = "Provided modulus is not an odd prime"
             raise AlgebraError(err)
 
         if root_order <= 0 or root_order >= modulus:
-            err = 'Provided order of unit root is not in the allowed range'
+            err = "Provided order of unit root is not in the allowed range"
             raise AlgebraError(err)
 
         order, s = divmod(modulus - 1, root_order)
 
         if s != 0:
-            err = 'Provided order of unit root does not divide the group\'s order'
+            err = "Provided order of unit root does not divide the group\'s order"
             raise AlgebraError(err)
 
         self.__modulus = modulus
@@ -208,7 +212,7 @@ class ModPrimeSubgroup(Group):
         """
         :rtype: str
         """
-        return '%s (%d, %d)' % (self.__class__, self.__modulus, self.__order)
+        return '%s (%d, %d)' % (__class__, self.__modulus, self.__order)
 
     def __hash__(self):
         """
@@ -241,7 +245,7 @@ class ModPrimeSubgroup(Group):
         try:
             return self.__generator
         except AttributeError:
-            err = 'No generator has been yet specified for this group'
+            err = "No generator has been yet specified for this group"
             raise AlgebraError(err)
 
 
@@ -260,7 +264,7 @@ class ModPrimeSubgroup(Group):
         :rtype: class
         """
         return self.__Element
-        
+
 
     @property
     def unit(self):
@@ -351,7 +355,8 @@ class ModPrimeSubgroup(Group):
         """
         __p, __q, __g = self.parameters()
 
-        elements = (_.value if isinstance(_, ModPrimeElement) else _ for _ in elements)
+        elements = (_.value if isinstance(_, ModPrimeElement) else _ \
+            for _ in elements)
 
         digest = hash_nums(__p, __q, __g, *elements)
         reduced = int_from_bytes(digest)
@@ -368,8 +373,10 @@ class ModPrimeSubgroup(Group):
         :rtype: bool
         """
         if isinstance(element, ModPrimeElement) and element.modulus == self.__modulus:
-            # Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
-            # an mod p element x is contained in C iff x ^ q = 1
+            #
+            # ~ Algebraic fact: given the q-subgroup C of Z*_p, p > 2 prime,
+            # ~ a mod p element x is contained in C iff x ^ q = 1
+            #
             return element ** self.__order == 1
         return False
 

@@ -91,10 +91,15 @@ class GenericAPI(object):
         return self.hex_trustee_keys
 
     def set_election_key(self, election_key):
-        cryptosys = self.get_cryptosys()
-        self.election_key = self.get_key_value(election_key)
-        self.mixnet.set_election_key(self.election_key)
-        self.hex_election_key = self.get_hex_value(self.election_key)
+        # cryptosys = self.get_cryptosys()
+        # self.election_key = self.get_key_value(election_key)
+        # self.mixnet.set_election_key(self.election_key)
+        # self.hex_election_key = self.get_hex_value(self.election_key)
+        election_key_value = self.get_key_value(election_key)
+        self.election_key = election_key_value
+        # self.election_key = election_key#self.get_key_value(election_key)
+        self.mixnet.set_election_key(election_key_value)
+        self.hex_election_key = self.get_hex_value(election_key_value)
 
     def get_election_key(self):
         return self.election_key
@@ -116,14 +121,26 @@ class GenericAPI(object):
     def get_candidates_set(self):
         return self.candidates_set
 
+    def get_nr_candidates(self):
+        return len(self.candidates)
+
     def set_voters(self, voters):
         self.voters = voters
 
     def get_voters(self):
         return self.voters
 
+    def get_nr_voters(self):
+        return len(self.voters)
+
     def get_voter(self, voter_key):
         return self.voters.get(voter_key)
+
+    def get_voter_name(self, voter_key):
+        return self.voters[voter_key][0]
+
+    def get_voter_weight(self, voter_key):
+        return self.voters[voter_key][1]
 
     def set_audit_codes(self, audit_codes):
         self.audit_codes = audit_codes

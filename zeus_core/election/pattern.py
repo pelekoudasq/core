@@ -16,7 +16,7 @@ class StageController(object, metaclass=ABCMeta):
         """
         if not issubclass(initial_cls, Stage):
             err = "No initial state provided"
-            raise AssertionError(err)
+            raise TypeError(err)
         self.current_stage = initial_cls(self)
 
 
@@ -24,11 +24,9 @@ class StageController(object, metaclass=ABCMeta):
         """
         """
         current_stage = self.get_current_stage()
-        print(self.get_current_stage().__class__.__name__)      # Remove this
         current_stage.run()
         while not isinstance(current_stage, FinalStage):
             current_stage = current_stage.next()
-            print(self.get_current_stage().__class__.__name__)  # Remove this
             current_stage.run()
 
 
@@ -46,10 +44,9 @@ class Stage(object, metaclass=ABCMeta):
     def __init__(self, controller, **kwargs):
         """
         """
-        controller = self.forward_controller(controller)
+        self.forward_controller(controller)
         message, next_stage_cls, next_stage_message = self.validate_stage(**kwargs)
 
-        self.controller = controller
         self.message = message
         self.next_stage_cls = next_stage_cls
         self.next_stage_message = next_stage_message
@@ -59,7 +56,7 @@ class Stage(object, metaclass=ABCMeta):
         """
         """
         controller.current_stage = self
-        return controller
+        self.controller = controller
 
 
     @classmethod
@@ -74,7 +71,7 @@ class Stage(object, metaclass=ABCMeta):
             raise TypeError(err)
         if not issubclass(next_stage_cls, cls.__base__):
             err = "No valid next state specified"
-            raise AssertionError(err)
+            raise TypeError(err)
         next_stage_message = None
 
         return message, next_stage_cls, next_stage_message
@@ -149,7 +146,7 @@ class FinalStage(Stage, metaclass=ABCMeta):
     def __init__(self, controller, **kwargs):
         """
         """
-        super().__init__(controller, next_stage_cls=self.__class__, **kwargs)
+        super().__init__(controller, next_stage_cls=__class__, **kwargs)
 
 
     def next(self):

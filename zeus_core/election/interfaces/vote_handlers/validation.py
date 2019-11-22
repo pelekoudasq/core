@@ -109,6 +109,7 @@ class VoteValidator(object, metaclass=ABCMeta):
 
         # Check election key and reject in case of mismatch
         if cryptosys.int_to_element(public) != self.get_election_key():
+        # if cryptosys.int_to_element(public) != self.get_election_key():
             err = 'Invalid vote content: Election key mismatch'
             raise InvalidVoteError(err)
         vote['public'] = public

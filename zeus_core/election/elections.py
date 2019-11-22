@@ -9,16 +9,16 @@ from zeus_core.crypto import mk_cryptosys
 from zeus_core.mixnets import mk_mixnet
 from zeus_core.crypto.exceptions import (AlgebraError, WrongCryptoError,
                                         WeakCryptoError, InvalidKeyError)
-from zeus_core.mixnets.exceptions import MixnetConstructionError
+from zeus_core.mixnets.exceptions import WrongMixnetError
 from zeus_core.utils import random_integer
 
 from .pattern import StageController
 from .interfaces import (GenericAPI, KeyManager, VoteSubmitter, FactorGenerator,
                     FactorValidator, Decryptor)
 from .stages import Uninitialized, Creating, Voting, Mixing, Decrypting, Finished
-from .exceptions import (InvalidTrusteeError, InvalidCandidatesError,
+from .exceptions import (InvalidTrusteeError, InvalidCandidateError,
                     InvalidVotersError, InvalidVoteError, VoteRejectionError,
-                    InvalidFactorsError, Abortion)
+                    InvalidFactorsError,)
 from .constants import VOTER_KEY_CEIL, VOTER_SLOT_CEIL
 
 
@@ -38,23 +38,40 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         super().__init__(Uninitialized)
 
 
-    @staticmethod
-    def adapt_config(config):
+    def adapt_config(self, config):
+        """
+        """
+        try:
+            crypto, mixnet, trustees, candidates, voters = \
+                __class__.validate_config(config)
+        except KeyError as e:
+            err = f"Incomplete election config: missing {e}"
+            raise TypeError(err)
+
+        zeus_secret = self.resolve_secret(config)
+        trustees, candidates, voters = self.resolve_lists(config)
+
+        config['zeus_secret'] = zeus_secret
+        config['trustees'] = trustees
+        config['candidates'] = candidates
+        config['voters'] = voters
+
+        return config
+
+
+    @classmethod
+    def validate_config(cls, config):
         """
         """
         try:
             crypto = config['crypto']
             mixnet = config['mixnet']
-            trustees_file_path = config['trustees_file']
+            trustees   = config['trustees']
             candidates = config['candidates']
             voters = config['voters']
-        except KeyError as e:
-            err = f"Incomplete election config: missing {e}"
-            raise Abortion(err)
-        config['zeus_private_key'] = config.get('zeus_private_key')
-        with open(trustees_file_path) as trustees_file:
-            config['trustees'] = json.load(trustees_file)
-        return config
+        except KeyError:
+            raise
+        return crypto, mixnet, trustees, candidates, voters
 
 
     def initialize(self):
@@ -83,36 +100,65 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         self.results = []
 
 
+    @staticmethod
+    @abstractmethod
+    def resolve_secret(cls, config):
+        """
+        """
+
+    @staticmethod
+    @abstractmethod
+    def resolve_lists(cls, config):
+        """
+        """
+
+    @abstractmethod
+    def broadcast_election(self):
+        """
+        """
+
     @abstractmethod
     def collect_votes(self):
         """
         """
 
     @abstractmethod
-    def send_mixed_ballots(self, trustee):
-        """
-        """
-
-    @abstractmethod
-    def recv_factors(self, trustee):
+    def broadcast_mixed_ballots(self, trustee):
         """
         """
 
 
-    def extract_config(self):
+    def _extract_config(self):
         """
         """
-        config = self.config
+        config = self.get_config()
+        get = config.get
 
-        crypto_config = config.get('crypto')
-        mixnet_config = config.get('mixnet')
-        zeus_private_key = config.get('zeus_private_key')
-        trustees = config.get('trustees')
-        candidates = config.get('candidates')
-        voters = config.get('voters')
+        crypto_config = get('crypto', None)
+        mixnet_config = get('mixnet', None)
+        zeus_private_key = get('zeus_secret', None)
+        trustees   = get('trustees', None)
+        candidates = get('candidates', None)
+        voters     = get('voters', None)
 
-        return (crypto_config, mixnet_config,
-            zeus_private_key, trustees, candidates, voters)
+        return (crypto_config, mixnet_config, zeus_private_key,
+                trustees, candidates, voters)
+
+
+    def _get_election_header(self):
+        """
+        """
+        header = {}
+
+        election_key = self.get_election_key().to_int()
+        candidates = self.get_candidates()
+        crypto = self.get_crypto_config()
+
+        header['election_key'] = election_key
+        header['candidates'] = candidates
+        header['crypto'] = crypto
+
+        return header
 
 
     # Cryptosys and mixnet init
@@ -121,7 +167,6 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         """
         """
         crypto_config = self.get_crypto_config()
-
         try:
             cryptosys = mk_cryptosys(crypto_config)
         except (AlgebraError, WeakCryptoError, WrongCryptoError):
@@ -133,10 +178,9 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         """
         """
         mixnet_config = self.get_mixnet_config()
-
         try:
             mixnet = mk_mixnet(mixnet_config)
-        except MixnetConstructionError as err:
+        except WrongMixnetError as err:
             raise
         self.set_mixnet(mixnet)
 
@@ -146,7 +190,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
     def create_zeus_keypair(self):
         """
         """
-        _, _, zeus_private_key, _, _, _ = self.extract_config()
+        _, _, zeus_private_key, _, _, _ = self._extract_config()
 
         try:
             zeus_keypair = self.keygen(zeus_private_key)
@@ -160,26 +204,25 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
     def create_trustees(self):
         """
         """
-        _, _, _, trustees, _, _ = self.extract_config()
-        trustees = self.deserialize_trustees(trustees)
+        _, _, _, trustees, _, _ = self._extract_config()
+        trustees = self._deserialize_trustees(trustees)
 
-        validated_trustees = dict()
-        validate_trustee = self.validate_trustee
+        validated = dict()
+        update = validated.update
+        _validate_trustee = self._validate_trustee
         extract_public_key = self.extract_public_key
         for trustee in trustees:
             try:
-                validate_trustee(trustee)
+                _validate_trustee(trustee)
             except InvalidTrusteeError:
                 raise
             public_key, proof = extract_public_key(trustee)
-            validated_trustees.update({
-                public_key: proof
-            })
+            update({public_key: proof})
 
-        self.set_trustees(validated_trustees)
+        self.set_trustees(validated)
 
 
-    def validate_trustee(self, trustee):
+    def _validate_trustee(self, trustee):
         """
         """
         if not self.validate_public_key(trustee):
@@ -188,7 +231,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
             raise InvalidTrusteeError(err)
 
 
-    def deserialize_trustees(self, trustees):
+    def _deserialize_trustees(self, trustees):
         """
         """
         extract_public_key = self.extract_public_key
@@ -219,28 +262,29 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
     def create_election_key(self):
         """
         """
-        election_key = self.compute_election_key()
+        election_key = self._compute_election_key()
+        election_key = self.set_public_key(election_key, None)
         self.set_election_key(election_key)
 
 
-    def compute_election_key(self):
+    def _compute_election_key(self):
         """
         """
         zeus_public_key = self.get_zeus_public_key()
         zeus_public_key = self.get_key_value(zeus_public_key)   # Ignore proof
 
         trustees_keys = self.get_trustees()
-        public_shares = self.get_public_shares(trustees_keys)   # Ignore proofs
+        public_shares = self._get_public_shares(trustees_keys)   # Ignore proofs
 
         election_key = self.combine_public_keys(zeus_public_key, public_shares)
         return election_key
 
 
-    def get_public_shares(self, trustees):
+    def _get_public_shares(self, trustees):
         """
         """
         get_key_value = self.get_key_value
-        return (get_key_value(public_key) for public_key in trustees.keys())
+        return (get_key_value(public) for public in trustees.keys())
 
 
     # Validation and creation of candidates
@@ -248,37 +292,37 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
     def create_candidates(self):
         """
         """
-        _, _, _, _, candidates, _ = self.extract_config()
+        _, _, _, _, candidates, _ = self._extract_config()
 
         if not candidates:
             err = "Zero number of candidates provided"
-            raise InvalidCandidatesError(err)
+            raise InvalidCandidateError(err)
 
-        validate_candidate = self.validate_candidate
         validated_candidates = []
         append = validated_candidates.append
+        _validate_candidate = self._validate_candidate
         for candidate in candidates:
             try:
-                validate_candidate(candidate, validated_candidates)
-            except InvalidCandidatesError:
+                _validate_candidate(candidate, validated_candidates)
+            except InvalidCandidateError:
                 raise
             append(candidate)
 
         self.set_candidates(validated_candidates)
 
 
-    def validate_candidate(self, candidate, validated_candidates):
+    def _validate_candidate(self, candidate, validated_candidates):
         """
         """
         if candidate in validated_candidates:
             err = "Duplicate candidate detected"
-            raise InvalidCandidatesError(err)
+            raise InvalidCandidateError(err)
         if '%' in candidate:
             err = "Candidate name cannot contain character '%'"
-            raise InvalidCandidatesError(err)
+            raise InvalidCandidateError(err)
         if '\n' in candidate:
             err = "Candidate name cannot contain character '\\n'"
-            raise InvalidCandidatesError(err)
+            raise InvalidCandidateError(err)
 
 
     # Validation and creation of voters and audit-codes
@@ -286,7 +330,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
     def create_voters_and_audit_codes(self, voter_slot_ceil=VOTER_SLOT_CEIL):
         """
         """
-        _, _, _, _, _, voters = self.extract_config()
+        _, _, _, _, _, voters = self._extract_config()
 
         if not voters:
             err = "Zero number of voters provided"

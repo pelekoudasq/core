@@ -240,7 +240,7 @@ class Teller(object):
         kw['outstream'] = self.outstream
         kw['fail_parent'] = self.fail_parent
         kw['active'] = self.active
-        task = self.__class__(name=name, total=total, current=current,
+        task = __class__(name=name, total=total, current=current,
                               resume=resume, subtask=subtask, **kw)
         children[id(task)] = task
         task.check_tell(None)

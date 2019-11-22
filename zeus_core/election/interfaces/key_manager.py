@@ -49,6 +49,24 @@ class KeyManager(object, metaclass=ABCMeta):
         return cryptosys._schnorr_verify(key_proof, public_key)
 
 
+    def serialize_secret(self, secret):
+        """
+        """
+        cryptosys = self.get_cryptosys()
+
+        serialized = cryptosys.exponent_to_int(secret)
+        return serialized
+
+
+    def deserialize_secret(self, secret):
+        """
+        """
+        cryptosys = self.get_cryptosys()
+
+        deserialized = cryptosys.int_to_exponent(secret)
+        return deserialized
+
+
     # Keypair management
 
     ######################################################################
@@ -85,6 +103,30 @@ class KeyManager(object, metaclass=ABCMeta):
         public_key = keypair['public']
 
         return private_key, public_key
+
+
+    def serialize_keypair(self, keypair):
+        """
+        """
+        private, public = self.extract_keypair(keypair)
+
+        private = self.serialize_secret(private)
+        public = self.serialize_public_key(public)
+        serialized = self.set_keypair(private, public)
+
+        return serialized
+
+
+    def deserialize_keypair(self, keypair):
+        """
+        """
+        private, public = self.extract_keypair(keypair)
+
+        private = self.deserialize_secret(private)
+        public = self.deserialize_public_key(public)
+        serialized = self.set_keypair(private, public)
+
+        return serialized
 
 
     def get_private(self, keypair):
@@ -158,7 +200,7 @@ class KeyManager(object, metaclass=ABCMeta):
         serialized = {}
         value, proof = self.extract_public_key(public_key)
         serialized['value'] = value.to_int()
-        serialized['proof'] = cryptosys.serialize_scnorr_proof(proof)
+        serialized['proof'] = cryptosys.serialize_schnorr_proof(proof)
 
         return serialized
 

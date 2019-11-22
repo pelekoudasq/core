@@ -1,7 +1,7 @@
 """
 """
 
-class MixnetConstructionError(Exception):
+class WrongMixnetError(Exception):
     """
     Raised when invalid or insufficient config is provided at mixnet contruction
     """
