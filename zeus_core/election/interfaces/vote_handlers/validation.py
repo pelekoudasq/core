@@ -82,13 +82,13 @@ class VoteValidator(object, metaclass=ABCMeta):
         # Check that vote includes the minimum necessary fields
         for key in MIN_VOTE_JSON_KEYS:
             if key not in vote:
-                err = f'Invalid vote content: Field `{key}` missing from vote'
+                err = f"Invalid vote content: Field `{key}` missing from vote"
                 raise InvalidVoteError(err)
 
         # Check if encrypted ballot fields are correct
         encrypted_ballot = vote['encrypted_ballot']
         if set(encrypted_ballot.keys()) != crypto_param_keys.union(ENC_BALLOT_JSON_KEYS):
-            err = 'Invalid vote content: Malformed encrypted ballot'
+            err = "Invalid vote content: Malformed encrypted ballot"
             raise InvalidVoteError(err)
 
         # Extract isncribed election key and main body values
@@ -103,14 +103,14 @@ class VoteValidator(object, metaclass=ABCMeta):
         # Compare remaining content against server crypto; reject in case of mismatch
         vote_crypto = encrypted_ballot
         if vote_crypto != crypto_params:
-            err = 'Invalid vote content: Cryptosystem mismatch'
+            err = "Invalid vote content: Cryptosystem mismatch"
             raise InvalidVoteError(err)
         vote['crypto'] = vote_crypto
 
         # Check election key and reject in case of mismatch
         if cryptosys.int_to_element(public) != self.get_election_key():
         # if cryptosys.int_to_element(public) != self.get_election_key():
-            err = 'Invalid vote content: Election key mismatch'
+            err = "Invalid vote content: Election key mismatch"
             raise InvalidVoteError(err)
         vote['public'] = public
 
@@ -144,13 +144,13 @@ class VoteValidator(object, metaclass=ABCMeta):
 
         # Verify ballot-encryption proof
         if not cryptosys.verify_encryption(encrypted_ballot):
-            err = 'Ballot encryption could not be verified'
+            err = "Ballot encryption could not be verified"
             raise InvalidVoteError(err)
 
         # Check fingerprint match
         params = self.serialize_encrypted_ballot(encrypted_ballot)
         if fingerprint != hash_nums(*params).hex():
-            err = 'Fingerprint mismatch'
+            err = "Fingerprint mismatch"
             raise InvalidVoteError(err)
 
         return fingerprint

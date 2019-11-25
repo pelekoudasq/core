@@ -2,7 +2,7 @@
 """
 
 from zeus_core.election.pattern import Stage
-from zeus_core.election.exceptions import InvalidFactorsError, Abortion
+from zeus_core.election.exceptions import InvalidFactorError, Abortion
 from .finished import Finished
 
 
@@ -16,15 +16,17 @@ class Decrypting(Stage):
         election = self.get_controller()
         mixed_ballots = election.get_mixed_ballots()
 
-        election.generate_zeus_factors()
-        election.broadcast_mixed_ballots()
+        election.generate_zeus_factors(mixed_ballots)
+        election.broadcast_mixed_ballots(mixed_ballots)
 
-        # Collect trustee factors
-        for trustee in election.trustees:
-            trustee_factors = election.recv_factors(trustee)
+        factor_collections = election.collect_trustee_factors()
+
+        # Validate and store trustee factors
+        validate_trustee_factors = election.validate_trustee_factors
+        for trustee_factors in factor_collections:
             try:
-                election.validate_trustee_factors(trustee, trustee_factors)
-            except InvalidFactorsError as err:
+                validate_trustee_factors(trustee_factors)
+            except InvalidFactorError as err:
                 raise Abortion(err)
             election.store_trustee_factors(trustee_factors)
 

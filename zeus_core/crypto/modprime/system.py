@@ -75,8 +75,8 @@ class ModPrimeCrypto(ElGamalCrypto):
 
 
     @classmethod
-    def _validate_system(cls, modulus, order, generator,
-        root_order, prime_order, min_mod_size, min_gen_size, allow_weakness):
+    def _validate_system(cls, modulus, order, generator, root_order,
+            prime_order, min_mod_size, min_gen_size, allow_weakness):
         """
         """
         if root_order==2 and modulus % 4 != 3:
@@ -85,19 +85,19 @@ class ModPrimeCrypto(ElGamalCrypto):
             # ~ solvability of the congruence x ^ 2 = a (mod p), a E Z*_p,
             # ~ allowing for efficient verification of quadratic residues
             #
-            err = 'Provided modulus is not 3 mod 4'
+            err = "Provided modulus is not 3 mod 4"
             raise WrongCryptoError(err)
         if prime_order and not is_prime(order):
-            err = 'Order of the requested group is not prime'
+            err = "Order of the requested group is not prime"
             raise WrongCryptoError(err)
         if not allow_weakness:
             MIN_MOD_SIZE = min_mod_size or cls.MIN_MOD_SIZE
             if modulus.bit_length() < MIN_MOD_SIZE:
-                err = f'Provided modulus is < {MIN_MOD_SIZE} bits long'
+                err = f"Provided modulus is < {MIN_MOD_SIZE} bits long"
                 raise WeakCryptoError(err)
             MIN_GEN_SIZE = min_gen_size or cls.MIN_GEN_SIZE
             if generator.bit_length < MIN_GEN_SIZE:
-                err = f'Generator is < {MIN_GEN_SIZE} bits long'
+                err = f"Generator is < {MIN_GEN_SIZE} bits long"
                 raise WeakCryptoError(err)
 
 
@@ -188,7 +188,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         if private_key is None:
             private_key = __group.random_exponent(min=3)
         elif not 1 < private_key < self.__order:
-            err = 'Provided private key exceeds the allowed range'
+            err = "Provided private key exceeds the allowed range"
             raise InvalidKeyError(err)
         else:
             private_key = mpz(private_key)
@@ -445,7 +445,7 @@ class ModPrimeCrypto(ElGamalCrypto):
         if _challenge != challenge:
             return False
 
-        # Verify prover's commitment to presumed randomness:
+        # Verify prover's commitment to acclaimed randomness:
         # g ^ s == g ^ r * v ^ c  modp ?
         if __group.generate(response) != g_commitment * (v ** challenge):
             return False
@@ -507,7 +507,6 @@ class ModPrimeCrypto(ElGamalCrypto):
         _, c_1, c_2 = self.extract_dsa_signature(signature)
 
         # Commitments' validity check
-
         for c in (c_1, c_2):
             if not 0 < c < __q:
                 return False
@@ -545,8 +544,8 @@ class ModPrimeCrypto(ElGamalCrypto):
 
         for a once used randomness 1 < r < q.
 
-        .. note:: The original message m gets hashed as H(m) before being signed for
-        defence against existential forgery.
+        .. note:: The original message m gets hashed as H(m) before
+        being signed for defence against existential forgery.
 
         :type message: str
         :type private_key: mpz

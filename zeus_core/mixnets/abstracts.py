@@ -168,22 +168,20 @@ class Mixnet(object, metaclass=ABCMeta):
             mixed_ciphers = cipher_mix['mixed_ciphers']
             proof = cipher_mix['proof']
         except KeyError as error:
-            err = 'Invalid mix format: \'%s\' missing' % error.args[0]
+            err = "Invalid mix format: \'%s\' missing" % error.args[0]
             raise InvalidMixError(err)
         if hex_parameters != self.cryptosys.hex_parameters():
-            err = 'Cryptosystem mismatch'
+            err = "Cryptosystem mismatch"
             raise InvalidMixError(err)
         if last_mix and original_ciphers != last_mix['mixed_ciphers']:
-            err = 'Not a mix of latest ciphers'
+            err = "Not a mix of latest ciphers"
             raise InvalidMixError(err)
-
         if nr_parallel is None:
             nr_parallel = 0
         try:
             self.verify_mix(cipher_mix, nr_parallel=nr_parallel)
         except MixNotVerifiedError:
             raise
-
         return True
 
 

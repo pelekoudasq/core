@@ -18,7 +18,7 @@ from .interfaces import (GenericAPI, KeyManager, VoteSubmitter, FactorGenerator,
 from .stages import Uninitialized, Creating, Voting, Mixing, Decrypting, Finished
 from .exceptions import (InvalidTrusteeError, InvalidCandidateError,
                     InvalidVotersError, InvalidVoteError, VoteRejectionError,
-                    InvalidFactorsError,)
+                    InvalidFactorError,)
 from .constants import VOTER_KEY_CEIL, VOTER_SLOT_CEIL
 
 
@@ -111,22 +111,6 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
     def resolve_lists(cls, config):
         """
         """
-
-    @abstractmethod
-    def broadcast_election(self):
-        """
-        """
-
-    @abstractmethod
-    def collect_votes(self):
-        """
-        """
-
-    @abstractmethod
-    def broadcast_mixed_ballots(self, trustee):
-        """
-        """
-
 
     def _extract_config(self):
         """
@@ -257,6 +241,12 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         pass
 
 
+    @abstractmethod
+    def broadcast_election(self):
+        """
+        """
+
+
     # Election key generation
 
     def create_election_key(self):
@@ -361,6 +351,11 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
 
 
     # Vote casting
+
+    @abstractmethod
+    def collect_votes(self):
+        """
+        """
 
     def cast_vote(self, vote):
         """
@@ -494,19 +489,29 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
 
     # Decryption
 
-    def generate_zeus_factors(self):
+    @abstractmethod
+    def broadcast_mixed_ballots(self, mixed_ballots):
         """
         """
-        self.generate_factor_colletion()
+
+    @abstractmethod
+    def collect_trustee_factors(self):
+        """
+        """
+
+    def generate_zeus_factors(self, mixed_ballots):
+        """
+        """
+        self.generate_factor_colletion(mixed_ballots)
 
 
-    def validate_trustee_factors(self, trustee, factors):
+    def validate_trustee_factors(self, trustee_factors):
         """
         """
         mixed_ballots = self.get_mixed_ballots()
         try:
-            self.validate_factor_collection(mixed_ballots, trustee, factors)
-        except InvalidFactorsError:
+            self.validate_factor_collection(mixed_ballots, trustee_factors)
+        except InvalidFactorError:
             raise
 
 

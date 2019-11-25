@@ -22,47 +22,6 @@ class FactorGenerator(FactorManager, metaclass=ABCMeta):
         return self.ciphers
 
 
-    #####################################################################
-    #                                                                   #
-    #       By factor-collection is meant a dictionary of the form      #
-    #                                                                   #
-    #       {                                                           #
-    #           'public': GroupElement,                                 #
-    #           'factors': list[factor]                                 #
-    #       }                                                           #
-    #                                                                   #
-    #       where the value of 'public' is thought of as the            #
-    #       factor-manager's public key                                 #
-    #                                                                   #
-    #####################################################################
-
-
-    def set_factor_collection(self, public, factors):
-        """
-        """
-        factor_collection = {}
-        factor_collection['public'] = public
-        factor_collection['factors'] = factors
-
-        return factor_collection
-
-
-    def extract_factor_collection(self, factor_collection):
-        """
-        """
-        public = factor_collection['public']
-        factors = factor_collection['factors']
-
-        return public, factors
-
-
-    def store_factor_collection(self, public, factors):
-        """
-        """
-        factor_collection = self.set_factor_collection(public, factors)
-        self.factor_collection = factor_collection
-
-
     def get_factor_collection(self):
         """
         """
@@ -74,25 +33,20 @@ class FactorGenerator(FactorManager, metaclass=ABCMeta):
         return factor_collection
 
 
-    def serialize_factor_collection(self, factor_collection):
+    def store_factor_collection(self, public, factors):
         """
         """
-        public, factors = self.extract_factor_collection(factor_collection)
-
-        public = self.serialize_public_key(public)
-        serialize_factor = self.serialize_factor
-        factors = [serialize_factor(_) for _ in factors]
-
-        serialized = self.set_factor_collection(public, factors)
-        return serialized
+        factor_collection = self.set_factor_collection(public, factors)
+        self.factor_collection = factor_collection
 
 
-    def generate_factor_colletion(self):
+    def generate_factor_colletion(self, ciphers=None):
         """
         """
         keypair = self.get_keypair()
         private_key, public_key = self.extract_keypair(keypair)
-        ciphers = self.get_ciphers()
+        if ciphers is None:
+            ciphers = self.get_ciphers()
         decryption_factors = self.compute_decryption_factors(private_key, ciphers)
         self.store_factor_collection(public_key, decryption_factors)
 

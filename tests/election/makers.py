@@ -24,13 +24,12 @@ def mk_election(election_cls=ZeusTestElection, config=config_1,
 
 
 def mk_voting_setup(election_cls=ZeusTestElection, config=config_1,
-                    dupl_candidates=False, dupl_voters=False,
                     with_votes=False):
     """
     Emulates the situation exactly before casting votes (electoral body
-    and submitted votes) with failure options for testing
+    and submitted votes)
     """
-    election = mk_election(election_cls, config, dupl_candidates, dupl_voters)
+    election = mk_election(election_cls, config)
     election.run_until_voting_stage()
     if with_votes:
         votes, audit_requests, audit_votes = election.mk_votes_from_voters()

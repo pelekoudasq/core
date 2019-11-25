@@ -61,6 +61,8 @@ class TrusteeEmulator(Trustee):
         return trustee_secrets[index]
 
 
+    # Communication
+
     def recv_crypto(self, crypto_config):
         """
         """

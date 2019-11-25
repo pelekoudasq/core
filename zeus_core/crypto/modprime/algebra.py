@@ -404,7 +404,7 @@ class ModPrimeSubgroup(Group):
 
         integer += 1
         if not 0 < integer < __order:
-            err = 'Provided integer is not in the allowed range'
+            err = "Provided integer is not in the allowed range"
             raise AlgebraError(err)
 
         value = mpz(integer)

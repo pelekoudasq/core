@@ -169,9 +169,9 @@ class Zeus_sk(Mixnet):
                     offset_collections[i] = new_offsets
                     random_collections[i] = new_randoms
                     del offsets, randoms
-                else:
-                    err = 'This should be impossible. Something is broken'
-                    raise AssertionError(err)
+                # else:                                                         # Testing
+                #     err = "This should be impossible. Something is broken"
+                #     raise AssertionError(err)
                 teller.advance()
         teller.finish('Mixing')
         return cipher_mix
@@ -252,7 +252,7 @@ class Zeus_sk(Mixnet):
             random_collections = proof['random_collections']
             challenge = proof['challenge']
         except KeyError as error:
-            err = 'Malformed proof provided: \'%s\' missing' % error.args[0]
+            err = "Malformed proof provided: \'%s\' missing" % error.args[0]
             raise MixNotVerifiedError(err)
 
         nr_ciphers = len(original_ciphers)
@@ -260,7 +260,7 @@ class Zeus_sk(Mixnet):
 
         # Validate challenge
         if challenge != self.compute_mix_challenge(cipher_mix):
-            err = 'Invalid challenge'
+            err = "Invalid challenge"
             raise MixNotVerifiedError(err)
 
         teller.task('Verifying mixing of %d ciphers for %d rounds'
@@ -268,14 +268,14 @@ class Zeus_sk(Mixnet):
 
         # Check rounds lower boundary
         if min_rounds is not None and nr_rounds < min_rounds:
-            err = 'Invalid mix: rounds fewer than required: %d < %d' % (
+            err = "Invalid mix: rounds fewer than required: %d < %d" % (
                     nr_rounds, min_rounds)
             raise MixNotVerifiedError(err)
 
         # Check collections lengths
         if (len(offset_collections) != nr_rounds or
             len(random_collections) != nr_rounds):
-            err = 'Invalid mix format: collections not of the same size'
+            err = "Invalid mix format: collections not of the same size"
             raise MixNotVerifiedError(err)
 
         # Verify mix rounds
@@ -345,7 +345,7 @@ class Zeus_sk(Mixnet):
             preimages = ciphers
             images = mixed_ciphers
         else:
-            err = 'This should be impossible. Something is broken'
+            err = "This should be impossible. Something is broken"
             raise AssertionError(err)
 
         count = 0
@@ -361,7 +361,7 @@ class Zeus_sk(Mixnet):
 
             image = images[offset]
             if new_alpha != image[ALPHA] or new_beta != image[BETA]:
-                err = 'MIXING VERIFICATION FAILED AT ROUND %d CIPHER %d bit %d' % (
+                err = "MIXING VERIFICATION FAILED AT ROUND %d CIPHER %d bit %d" % (
                         round_nr, j, bit)
                 raise RoundNotVerifiedError(err)
 

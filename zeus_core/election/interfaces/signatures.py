@@ -194,7 +194,7 @@ class Verifier(object):
 
         if index is not NONE and not cryptosys.verify_encryption(
                 encrypted_ballot):
-            err = 'Invalid vote encryption'
+            err = "Invalid vote encryption"
             raise InvalidVoteSignature(err)
 
         # Essential signature validation
@@ -202,7 +202,7 @@ class Verifier(object):
         signed_message = \
             cryptosys.set_signed_message(textified_vote, signature)
         if not cryptosys.verify_text_signature(signed_message, zeus_public_key):
-            err = 'Invalid vote signature'
+            err = "Invalid vote signature"
             raise InvalidVoteSignature(err)
 
         return True
@@ -249,7 +249,7 @@ class Verifier(object):
                 not t14.startswith(V_CHALLENGE) or
                 not t15.startswith(V_RESPONSE) or
                 not t16.startswith(V_COMMENTS)):
-            err = 'Cannot verify vote signature: Malformed labels'
+            err = "Cannot verify vote signature: Malformed labels"
             raise MalformedVoteError(err)
 
         return (t00, t01, t02, t03, t04, t05, t06, t07, t08, t09,
@@ -276,7 +276,7 @@ class Verifier(object):
         fingerprint = t01[len(V_FINGERPRINT):]
         index = t02[len(V_INDEX):]
         if index != NONE and not index.isdigit():
-            err = f'Invalid vote index: {index}'
+            err = f"Invalid vote index: {index}"
             raise MalformedVoteError(err)
         previous = t03[len(V_PREVIOUS):]
         vote_election_key = t04[len(V_ELECTION):]   # will remain hexadecimal
@@ -305,7 +305,7 @@ class Verifier(object):
             vote_trustees, vote_candidates):
         """
         Raise ElectionMismatchError if the extracted election parameters
-        do not coincide with the current election
+        do not coincide with those of the running election
         """
         if vote_crypto != self.get_crypto_params():
             err = "Cannot verify vote signature: Cryptosystem mismatch"

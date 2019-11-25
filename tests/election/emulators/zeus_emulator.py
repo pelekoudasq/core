@@ -60,26 +60,24 @@ class ZeusTestElection(ZeusCoreElection):
     def resolve_secret(config):
         """
         """
-        value = None
+        resolved = None
         zeus_secret = config.get('zeus_secret', None)
         if zeus_secret:
             with open(zeus_secret) as __file:
-                value = json.load(__file)
-        return value
+                resolved = json.load(__file)
+        return resolved
 
 
     @staticmethod
     def resolve_lists(config):
         """
         """
+        resolved = []
+
         trustees = config['trustees']
         candidates = config['candidates']
         voters = config['voters']
-
-        resolved = []
-        for key, file in (('trustees', trustees),
-                          ('candidates', candidates),
-                          ('voters', voters)):
+        for file in (trustees, candidates, voters):
             with open(file) as __file:
                 lst = json.load(__file)
             resolved.append(lst)
@@ -117,10 +115,8 @@ class ZeusTestElection(ZeusCoreElection):
             voter_params = {}
             voter_params.update(election_header)
             audit_codes = get_voter_audit_codes(voter_key)
-            voter_params.update({
-                'voter_key': voter_key,
-                'audit_codes': audit_codes
-            })
+            voter_params['voter_key'] = voter_key
+            voter_params['audit_codes'] = audit_codes
             send_election_params(voter_key, voter_params)
 
 
@@ -138,80 +134,28 @@ class ZeusTestElection(ZeusCoreElection):
             yield vote
 
 
-    def broadcast_mixed_ballots(self):
+    def broadcast_mixed_ballots(self, mixed_ballots):
         """
         Emulates broadcasting of mixed ballots to trustees
         (triggers each trustee-client to receive them)
         """
         send_mixed_ballots = self.send_mixed_ballots
         for trustee in self.get_trustees():
-            send_mixed_ballots(trustee)
+            send_mixed_ballots(trustee, mixed_ballots)
 
 
-    # Methods used for implementing ZeusCoreElection
-
-    def detect_trustee_client(self, trustee):
+    def collect_trustee_factors(self):
         """
+        Emulates collection of factors from trustees
         """
-        trustee_clients = self.trustee_clients
-        trustee_client = (client for client in trustee_clients if \
-                    trustee.value == client.public).__next__()
-        return trustee_client
+        factor_collections = []
+        for trustee in self.trustees:
+            trustee_factors = self.recv_factors(trustee)
+            factor_collections.append(trustee_factors)
+        return factor_collections
 
 
-    def send_crypto(self, trustee, crypto_config):
-        """
-        Triggers the client to receive
-        """
-        trustee_client = self.detect_trustee_client(trustee)
-        trustee_client.recv_crypto(crypto_config)
-
-
-    def detect_voter_client(self, voter_name):
-        """
-        """
-        voter_clients = self.voter_clients
-        voter_client = (client for client in voter_clients if \
-                    client.get_name() == voter_name).__next__()
-        return voter_client
-
-
-    def send_election_params(self, voter, election_params):
-        """
-        Triggers the client to receive
-        """
-        voter_name = self.get_voter_name(voter)
-        voter_client = self.detect_voter_client(voter_name)
-        voter_client.recv_election_params(election_params)
-
-
-    def send_mixed_ballots(self, trustee):
-        """
-        Emulates dispatch of mixed-ballots to trustee
-        (triggers the trustee-client to receive them)
-        """
-        mixed_ballots = self.get_mixed_ballots()
-        trustee_client = self.detect_trustee_client(trustee)
-        trustee_client.recv_mixed_ballots(mixed_ballots)
-
-
-    def recv_factors(self, trustee):
-        """
-        Emulates reception of factors from trustee
-        (triggers the trustee-client to send them)
-        """
-        trustee_client = self.detect_trustee_client(trustee)
-        election_server = self
-        trustee_factors = trustee_client.send_trustee_factors(election_server)
-        trustee_factors = self.deserialize_factor_collection(trustee_factors)
-        return trustee_factors
-
-
-    def get_voter_clients(self):
-        """
-        """
-        return self.voter_clients
-
+    # Vote generation
 
     def mk_votes_from_voters(self):
         """
@@ -219,7 +163,7 @@ class ZeusTestElection(ZeusCoreElection):
         about half of them will be genuine votes, the rest half will be
         audit-requests (accompanied by corresponding audit publications)
         """
-        voters = self.get_voter_clients()
+        voters = self.voter_clients
         nr_voters = len(voters)
 
         votes = []
@@ -236,6 +180,69 @@ class ZeusTestElection(ZeusCoreElection):
                 del audit_request['voter_secret']
                 audit_requests.append(audit_request)
         return votes, audit_requests, audit_votes
+
+
+    def get_voter_clients(self):
+        clients = self.voter_clients
+        return clients
+
+
+    # Communication
+
+    def detect_trustee_client(self, trustee):
+        """
+        """
+        trustee_clients = self.trustee_clients
+        trustee_client = (client for client in trustee_clients if \
+                    trustee.value == client.public).__next__()
+        return trustee_client
+
+
+    def detect_voter_client(self, voter_name):
+        """
+        """
+        voter_clients = self.voter_clients
+        voter_client = (client for client in voter_clients if \
+                    client.get_name() == voter_name).__next__()
+        return voter_client
+
+
+    def send_crypto(self, trustee, crypto_config):
+        """
+        Triggers the client to receive
+        """
+        trustee_client = self.detect_trustee_client(trustee)
+        trustee_client.recv_crypto(crypto_config)
+
+
+    def send_election_params(self, voter, election_params):
+        """
+        Triggers the client to receive
+        """
+        voter_name = self.get_voter_name(voter)
+        voter_client = self.detect_voter_client(voter_name)
+        voter_client.recv_election_params(election_params)
+
+
+    def send_mixed_ballots(self, trustee, mixed_ballots):
+        """
+        Emulates dispatch of mixed-ballots to trustee
+        (triggers the trustee-client to receive them)
+        """
+        trustee_client = self.detect_trustee_client(trustee)
+        trustee_client.recv_mixed_ballots(mixed_ballots)
+
+
+    def recv_factors(self, trustee):
+        """
+        Emulates reception of factors from trustee
+        (triggers the trustee-client to send them)
+        """
+        trustee_client = self.detect_trustee_client(trustee)
+        election_server = self
+        trustee_factors = trustee_client.send_trustee_factors(election_server)
+        trustee_factors = self.deserialize_factor_collection(trustee_factors)
+        return trustee_factors
 
 
     # Partial election running

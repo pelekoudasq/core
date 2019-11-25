@@ -3,21 +3,22 @@
 
 # Vote handling
 
-def adapt_vote(cryptosys, vote, serialize=True):
+def adapt_vote(cryptosys, vote, deserialize=True):
     """
     Emulates vote adaptment from the server's side. No checks,
     only key rearrangement and values deserialization.
     """
-    cast_element = cryptosys.int_to_element if serialize else lambda x: x
-    cast_exponent = cryptosys.int_to_exponent if serialize else lambda x: x
+    cast_element = cryptosys.int_to_element if deserialize else lambda x: x
+    cast_exponent = cryptosys.int_to_exponent if deserialize else lambda x: x
 
     encrypted_ballot = vote['encrypted_ballot']
-    public = encrypted_ballot.pop('public')
-    alpha = encrypted_ballot.pop('alpha')
-    beta = encrypted_ballot.pop('beta')
-    commitment = encrypted_ballot.pop('commitment')
-    challenge = encrypted_ballot.pop('challenge')
-    response = encrypted_ballot.pop('response')
+    pop = encrypted_ballot.pop
+    public = pop('public')
+    alpha = pop('alpha')
+    beta = pop('beta')
+    commitment = pop('commitment')
+    challenge = pop('challenge')
+    response = pop('response')
     vote['crypto'] = encrypted_ballot
     vote['public'] = public
     vote['encrypted_ballot'] = {

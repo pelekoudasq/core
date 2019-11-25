@@ -20,6 +20,7 @@ class TestMixing(StageTester, unittest.TestCase):
         election.run_until_mixing_stage()
         cls.stage = election.get_current_stage()
 
+
     def get_mixing_context(self):
         election, config, stage, messages = self.get_context()
         mixnet = election.get_mixnet()
@@ -27,7 +28,6 @@ class TestMixing(StageTester, unittest.TestCase):
         election.store_mix(votes_for_mixing)
         return (election, config, stage, mixnet, votes_for_mixing, messages)
 
-    # ------------------------ Isolated functionalities ------------------------
 
     def test_valid_mixing(self):
         (election, config, stage, mixnet,
@@ -44,6 +44,7 @@ class TestMixing(StageTester, unittest.TestCase):
                 messages.append('[+] Mix successfully validated')
             election.store_mix(mixed_ciphers)
             mix_count += 1
+
 
     def test_invalid_mixing(self):
         (election, config, stage, mixnet,
@@ -83,8 +84,6 @@ class TestMixing(StageTester, unittest.TestCase):
                 mixnet.validate_mix(mixed_ciphers, last_mix)
             messages.append('[+] Invalid mix proof successfully detected: Wrong proof')
 
-
-    # ------------------------- Overall stage testing --------------------------
 
 if __name__ == '__main__':
     print('\n=================== Testing election stage: Mixing ===================')
