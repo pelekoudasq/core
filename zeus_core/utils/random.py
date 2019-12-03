@@ -1,35 +1,28 @@
-from Crypto import Random
-from gmpy2 import mpz
-
+from secrets import token_bytes
 from .utils import int_from_bytes
 
-_random_generator_file = Random.new()
 
 def random_integer(min, max):
     """
     Inclusive resp. exclusive lower resp. upper bound
-
-    :type min: int or mpz
-    :type max: int or mpz
-    rtype: mpz
     """
     range = max - min
     nr_bits = max.bit_length()
     nr_bytes = int((nr_bits - 1) / 8) + 1
-    random_bytes = _random_generator_file.read(nr_bytes)
+    random_bytes = token_bytes(nr_bytes)
     num = int_from_bytes(random_bytes)
     shift = num.bit_length() - nr_bits
     if shift > 0:
         num >>= shift
     if num >= max:
         num -= max
-    return mpz(num) + min
+    return num + min
 
 
 def random_permutation(nr_elements):
     """
     :type nr_elements: int
-    :type: list[mpz]
+    :type: list[int]
     """
     return _selection_to_permutation(random_selection(nr_elements, full=True))
 
@@ -45,7 +38,7 @@ def random_selection(nr_elements, full=True):
 
     :type nr_elements: int
     :type full: bool
-    :rtype: list[mpz]
+    :rtype: list[int]
 
     .. note:: if the provided `nr_elements` is <=0 then the list [0] is returned
     """
@@ -61,7 +54,7 @@ def random_selection(nr_elements, full=True):
     else:
         # ~ Needed for the case full=1: guarantees that the last element
         # ~ is equal to 0 if the above loop did not happen to break
-        append(mpz(0))
+        append(0)
     return selection
 
 
@@ -163,6 +156,7 @@ def random_party_selection(nr_elements, nr_parties):
             continue
         append(i)
     return to_relative_answers(choices, nr_elements)
+
 
 def to_relative_answers(choices, nr_candidates):
 	"""

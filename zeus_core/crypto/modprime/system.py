@@ -1,4 +1,3 @@
-import Crypto
 from Crypto.Util.number import isPrime as is_prime
 from gmpy2 import mpz, powmod, invert, mul
 from functools import partial
