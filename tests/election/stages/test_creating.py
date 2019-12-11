@@ -6,7 +6,7 @@ import json
 
 from zeus_core.election.constants import VOTER_SLOT_CEIL
 from zeus_core.election.exceptions import (InvalidTrusteeError,
-        InvalidCandidateError, InvalidVotersError)
+        InvalidCandidateError, InvalidVoterError)
 
 from tests.constants import _2048_SYSTEM, _2048_SECRET
 from tests.election.utils import trim_json
@@ -21,7 +21,7 @@ class TestCreating(StageTester, unittest.TestCase):
         election = mk_election()
         cls.election = election
         election.run_until_creating_stage()
-        cls.stage = election.get_current_stage()
+        cls.stage = election._get_current_stage()
 
 
     # Zeus keypair creation
@@ -187,7 +187,7 @@ class TestCreating(StageTester, unittest.TestCase):
             message = abort_case['message']
             with self.subTest(message, voters=voters, voter_slot_ceil=voter_slot_ceil):
                 election.config['voters'] = voters
-                with self.assertRaises(InvalidVotersError):
+                with self.assertRaises(InvalidVoterError):
                     election.create_voters_and_audit_codes(voter_slot_ceil)
                 messages.append(f'[+] Successfully aborted: {message}')
 

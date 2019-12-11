@@ -15,7 +15,7 @@ ALPHA = 0
 BETA  = 1
 
 
-class Zeus_sk(Mixnet):
+class Zeus_SK(Mixnet):
     """
     Implementation of Sako-Killian mixnet
     """
@@ -55,11 +55,13 @@ class Zeus_sk(Mixnet):
         self.substract = __class__.mk_substract_func(
             order=cryptosys.parameters()['order'])
 
+
     @classmethod
     def mk_substract_func(cls, order):
         def substract(a, b):
             return (a - b) % order
         return substract
+
 
     def get_config(self):
         config = {}
@@ -328,6 +330,7 @@ class Zeus_sk(Mixnet):
 
         teller.finish('Verifying mixing')
         return True
+
 
     def verify_mix_round(self, round_nr, bit, original_ciphers, mixed_ciphers,
             ciphers, offsets, randoms, encrypt_func, election_key,

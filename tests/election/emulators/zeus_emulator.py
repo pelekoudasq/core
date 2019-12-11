@@ -248,7 +248,7 @@ class ZeusTestElection(ZeusCoreElection):
     # Partial election running
 
     def run_until_uninitialized_stage(self):
-        uninitialized = self.get_current_stage()
+        uninitialized = self._get_current_stage()
         return uninitialized
 
     def run_until_creating_stage(self):

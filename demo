@@ -27,3 +27,14 @@ if __name__ == '__main__':
     nr_mixes = args.nr_mixes
 
     mk_election(nr_mixes=nr_mixes).run()
+
+    #
+    # # Abortions
+    #
+    # from tests.election.emulators.election_configs import (
+    #     config_1, config_2, config_3, config_4, config_5, config_6)
+    # mk_election(config=config_2, nr_mixes=nr_mixes).run()
+    # mk_election(config=config_3, nr_mixes=nr_mixes).run()
+    # mk_election(config=config_4, nr_mixes=nr_mixes).run()
+    # mk_election(config=config_5, nr_mixes=nr_mixes).run()
+    # mk_election(config=config_6, nr_mixes=nr_mixes).run()

@@ -7,7 +7,7 @@ from zeus_core.crypto.modprime import (
 from zeus_core.crypto.constants import (
                         _2048_PRIME, _2048_PRIMITIVE,
                         _4096_PRIME, _4096_PRIMITIVE)
-from zeus_core.mixnets import Zeus_sk
+from zeus_core.mixnets import Zeus_SK
 
 
 # -- mod 11 elements --
@@ -64,19 +64,19 @@ _4096_ELECTION_KEY = _4096_SYSTEM.group.random_element()
 
 # -- Sako-Killian Mixnets --
 
-RES11_ZEUS_SK = Zeus_sk({
+RES11_ZEUS_SK = Zeus_SK({
     'cryptosys': RES11_SYSTEM,
     'nr_rounds': 100,
     'nr_mixes': 24
 }, election_key=RES11_ELECTION_KEY)
 
-_2048_ZEUS_SK = Zeus_sk({
+_2048_ZEUS_SK = Zeus_SK({
     'cryptosys': _2048_SYSTEM,
     'nr_rounds': 20,
     'nr_mixes': 24
 }, election_key=_2048_ELECTION_KEY)
 
-_4096_ZEUS_SK = Zeus_sk({
+_4096_ZEUS_SK = Zeus_SK({
     'cryptosys': _4096_SYSTEM,
     'nr_rounds': 7,
     'nr_mixes': 24

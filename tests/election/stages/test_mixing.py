@@ -18,7 +18,7 @@ class TestMixing(StageTester, unittest.TestCase):
         election = mk_election(nr_mixes=7)
         cls.election = election
         election.run_until_mixing_stage()
-        cls.stage = election.get_current_stage()
+        cls.stage = election._get_current_stage()
 
 
     def get_mixing_context(self):

@@ -19,7 +19,7 @@ class TestVoting(StageTester, unittest.TestCase):
         election, votes, audit_requests, audit_votes = \
             mk_voting_setup(with_votes=True)
         cls.election = election
-        cls.stage = election.get_current_stage()
+        cls.stage = election._get_current_stage()
         cls.votes = votes
         cls.audit_requests = audit_requests
         cls.audit_votes = audit_votes

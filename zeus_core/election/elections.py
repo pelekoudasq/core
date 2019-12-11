@@ -7,8 +7,8 @@ import json
 
 from zeus_core.crypto import mk_cryptosys
 from zeus_core.mixnets import mk_mixnet
-from zeus_core.crypto.exceptions import (AlgebraError, WrongCryptoError,
-                                        WeakCryptoError, InvalidKeyError)
+from zeus_core.crypto.exceptions import (WrongCryptoError, WeakCryptoError,
+                                InvalidKeyError)
 from zeus_core.mixnets.exceptions import WrongMixnetError
 from zeus_core.utils import random_integer
 
@@ -17,7 +17,7 @@ from .interfaces import (GenericAPI, KeyManager, VoteSubmitter, FactorGenerator,
                     FactorValidator, Decryptor)
 from .stages import Uninitialized, Creating, Voting, Mixing, Decrypting, Finished
 from .exceptions import (InvalidTrusteeError, InvalidCandidateError,
-                    InvalidVotersError, InvalidVoteError, VoteRejectionError,
+                    InvalidVoterError, InvalidVoteError, VoteRejectionError,
                     InvalidFactorError,)
 from .constants import VOTER_KEY_CEIL, VOTER_SLOT_CEIL
 
@@ -98,6 +98,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         self.zeus_factors    = None
         self.trustees_factors = dict()
         self.results = []
+        self.report  = dict()
 
 
     @staticmethod
@@ -153,7 +154,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         crypto_config = self.get_crypto_config()
         try:
             cryptosys = mk_cryptosys(crypto_config)
-        except (AlgebraError, WeakCryptoError, WrongCryptoError):
+        except (WrongCryptoError, WeakCryptoError):
             raise
         self.set_cryptosys(cryptosys)
 
@@ -324,11 +325,11 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
 
         if not voters:
             err = "Zero number of voters provided"
-            raise InvalidVotersError(err)
+            raise InvalidVoterError(err)
         nr_voter_names = len(set(_[0] for _ in voters))
         if nr_voter_names != len(voters):
             err = "Duplicate voter names"
-            raise InvalidVotersError(err)
+            raise InvalidVoterError(err)
         new_voters = {}
         audit_codes = {}
         random_hex = lambda ceil: '%x' % random_integer(2, ceil)
@@ -345,7 +346,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         audit_code_set = set(tuple(values) for values in audit_codes.values())
         if len(audit_code_set) < 0.5 * len(new_voters):
             err = "Insufficient slot variation attained"
-            raise InvalidVotersError(err)
+            raise InvalidVoterError(err)
         self.set_voters(new_voters)
         self.set_audit_codes(audit_codes)
 
@@ -520,3 +521,13 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         """
         decrypted_ballots = self.decrypt_ciphers(mixed_ballots, all_factors)
         return decrypted_ballots
+
+
+    # Report
+
+    def mk_report(self):
+        """
+        """
+        pass
+        # report = {}
+        # results = self.get_results()

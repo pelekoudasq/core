@@ -1,8 +1,7 @@
 """
 """
 
-from zeus_core.crypto.exceptions import (AlgebraError, WeakCryptoError,
-                                        WrongCryptoError)
+from zeus_core.crypto.exceptions import WrongCryptoError, WeakCryptoError
 from zeus_core.mixnets.exceptions import WrongMixnetError
 from zeus_core.election.pattern import Stage
 from zeus_core.election.exceptions import Abortion
@@ -21,6 +20,6 @@ class Uninitialized(Stage):
         try:
             election.init_cryptosys()
             election.init_mixnet()
-        except (AlgebraError, WeakCryptoError, WrongCryptoError,
+        except (WrongCryptoError, WeakCryptoError,
             WrongMixnetError) as err:
             raise Abortion(err)

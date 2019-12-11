@@ -17,7 +17,7 @@ class TestFinished(StageTester, unittest.TestCase):
         election = mk_election()
         cls.election = election
         election.run_until_finished_stage()
-        cls.stage = election.get_current_stage()
+        cls.stage = election._get_current_stage()
 
     # ------------------------ Isolated functionalities ------------------------
 

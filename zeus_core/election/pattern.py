@@ -23,14 +23,23 @@ class StageController(object, metaclass=ABCMeta):
     def run(self):
         """
         """
-        current_stage = self.get_current_stage()
-        current_stage.run()
+        current_stage = self._get_current_stage()
+        self._run(current_stage)
         while not isinstance(current_stage, FinalStage):
             current_stage = current_stage.next()
-            current_stage.run()
+            self._run(current_stage)
 
 
-    def get_current_stage(self):
+    def _run(self, stage):
+        """
+        """
+        try:
+            stage.run()
+        except Abortion as err:
+            stage.abort(err)
+
+
+    def _get_current_stage(self):
         """
         """
         return self.current_stage
@@ -38,21 +47,21 @@ class StageController(object, metaclass=ABCMeta):
 
 class Stage(object, metaclass=ABCMeta):
     """
-    Abstract class for the machine's states
+    Abstract class for the state-machine's states
     """
 
     def __init__(self, controller, **kwargs):
         """
         """
-        self.forward_controller(controller)
-        message, next_stage_cls, next_stage_message = self.validate_stage(**kwargs)
+        self._forward_controller(controller)
+        message, next_stage_cls, next_stage_msg = self._validate_stage(**kwargs)
 
         self.message = message
         self.next_stage_cls = next_stage_cls
-        self.next_stage_message = next_stage_message
+        self.next_stage_msg = next_stage_msg
 
 
-    def forward_controller(self, controller):
+    def _forward_controller(self, controller):
         """
         """
         controller.current_stage = self
@@ -60,7 +69,7 @@ class Stage(object, metaclass=ABCMeta):
 
 
     @classmethod
-    def validate_stage(cls, **kwargs):
+    def _validate_stage(cls, **kwargs):
         """
         """
         message = kwargs.get('message')
@@ -72,9 +81,9 @@ class Stage(object, metaclass=ABCMeta):
         if not issubclass(next_stage_cls, cls.__base__):
             err = "No valid next state specified"
             raise TypeError(err)
-        next_stage_message = None
+        next_stage_msg = None
 
-        return message, next_stage_cls, next_stage_message
+        return message, next_stage_cls, next_stage_msg
 
 
     def get_controller(self):
@@ -101,16 +110,16 @@ class Stage(object, metaclass=ABCMeta):
         self.next_stage_cls = next_stage_cls
 
 
-    def _set_next_stage_message(self, message):
+    def _set_next_stage_msg(self, message):
         """
         """
-        self.next_stage_message = message
+        self.next_stage_msg = message
 
 
-    def _get_next_stage_message(self):
+    def _get_next_stage_msg(self):
         """
         """
-        return self.next_stage_message
+        return self.next_stage_msg
 
 
     @abstractmethod
@@ -123,24 +132,26 @@ class Stage(object, metaclass=ABCMeta):
         """
         controller = self.get_controller()
         kwargs = {}
-        message = self._get_next_stage_message()
+        message = self._get_next_stage_msg()
         if message is not None:
             kwargs.update({'message': message})
         NextStage = self._get_next_stage_cls()
         return NextStage(controller, **kwargs)
 
 
-    def abort(self, abort_message):
+    def abort(self, message):
         """
         """
         self._set_next_stage_cls(Aborted)
-        self._set_next_stage_message(abort_message)
+        self._set_next_stage_msg(message)
 
 
 class FinalStage(Stage, metaclass=ABCMeta):
     """
-    Abstract class to the machine's final states. Final stages are
-    characterized by the fact that their next stage is the stage itself.
+    Abstract class to the machine's final states.
+
+    Final stages are conceptually characterized by the fact
+    that their next stage coincides with the stage itself.
     """
 
     def __init__(self, controller, **kwargs):
@@ -168,4 +179,8 @@ class Aborted(FinalStage):
     def run(self):
         """
         """
-        pass
+        abort_message = self._get_message()
+        #
+        # TODO: Generate abortion report?
+        #
+        print('Election aborted:', abort_message)

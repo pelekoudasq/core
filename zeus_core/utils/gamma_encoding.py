@@ -137,7 +137,7 @@ def gamma_encode(choices, nr_candidates=None, max_choices=None):
     except AssertionError:
         raise
 
-    if not nr_choices:
+    if nr_choices == 0:
         return 0
 
     offsets = _get_offsets(nr_candidates)

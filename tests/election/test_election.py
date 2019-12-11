@@ -1,6 +1,7 @@
 import unittest
 
 from tests.election.makers import mk_election
+from zeus_core.election.exceptions import Abortion
 
 class TestElection__Success(unittest.TestCase):
     """
@@ -12,9 +13,7 @@ class TestElection__Success(unittest.TestCase):
         cls.election = election
 
     def get_election(self):
-        cls = self.__class__
-        election = cls.election
-        return election
+        return __class__.election
 
     def test_0_uninitialized(self):
         assert self.get_election() is not None
@@ -35,7 +34,7 @@ class TestElection__Success(unittest.TestCase):
         pass
 
 
-class TestElection__Abortions():
+class TestElection__Abortions(unittest.TestCase):
     """
     """
 
@@ -45,9 +44,7 @@ class TestElection__Abortions():
         cls.election = election
 
     def get_election(self):
-        cls = self.__class__
-        election = cls.election
-        return election
+        return __class__.election
 
 
 if __name__ == '__main__':

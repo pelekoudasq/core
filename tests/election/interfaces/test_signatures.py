@@ -203,19 +203,18 @@ class TestSignatures(unittest.TestCase):
 
 
     def get_context(self):
-        cls = self.__class__
-        election = cls.election
-        cryptosys = cls.cryptosys
-        signer = cls.signer
-        verifier = cls.verifier
-        voter = cls.voter
-        messages = cls.messages
+        election  = __class__.election
+        cryptosys = __class__.cryptosys
+        signer    = __class__.signer
+        verifier  = __class__.verifier
+        voter     = __class__.voter
+        messages  = __class__.messages
 
         return election, cryptosys, signer, verifier, voter, messages
 
 
     def __fail(self, err):
-        self.__class__.messages.append(f'[-] {err}')
+        __class__.messages.append(f'[-] {err}')
         self.fail(err)
 
 

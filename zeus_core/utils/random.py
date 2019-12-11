@@ -58,6 +58,27 @@ def random_selection(nr_elements, full=True):
     return selection
 
 
+def random_party_selection(nr_elements, nr_parties):
+    """
+    """
+    party = random_integer(0, nr_parties)
+    per_party = nr_elements // nr_parties
+    low = party * per_party
+    high = (party + 1) * per_party
+    if nr_elements - high < per_party:
+        high = nr_elements
+    choices = []
+    append = choices.append
+    r = random_integer(0, 2 ** (high - low))
+    for i in range(low, high):
+        skip = r & 1
+        r >>= 1
+        if skip:
+            continue
+        append(i)
+    return to_relative_answers(choices, nr_elements)
+
+
 def _selection_to_permutation(selection):
 	"""
     Returns a permutation of the first n non-negative integers, where n is
@@ -135,27 +156,6 @@ def _selection_to_permutation(selection):
 			append(left)
 
 	return permutation
-
-
-def random_party_selection(nr_elements, nr_parties):
-    """
-    """
-    party = random_integer(0, nr_parties)
-    per_party = nr_elements // nr_parties
-    low = party * per_party
-    high = (party + 1) * per_party
-    if nr_elements - high < per_party:
-        high = nr_elements
-    choices = []
-    append = choices.append
-    r = random_integer(0, 2 ** (high - low))
-    for i in range(low, high):
-        skip = r & 1
-        r >>= 1
-        if skip:
-            continue
-        append(i)
-    return to_relative_answers(choices, nr_elements)
 
 
 def to_relative_answers(choices, nr_candidates):

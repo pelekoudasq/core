@@ -48,8 +48,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         # Resolve group
         try:
             group = ModPrimeSubgroup(modulus, root_order)
-        except AlgebraError:
-            raise
+        except AlgebraError as err:
+            raise WrongCryptoError(err)
         self.__group = group
         self.__modulus = group.modulus
         self.__order = group.order
@@ -63,8 +63,8 @@ class ModPrimeCrypto(ElGamalCrypto):
         generator = primitive ** root_order
         try:
             self.__group.set_generator(generator)
-        except AlgebraError:
-            raise
+        except AlgebraError as err:
+            raise WrongCryptoError(err)
         group = self.__group
         self.__generator = group.generator.value
 

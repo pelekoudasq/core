@@ -4,7 +4,7 @@
 from zeus_core.election.pattern import Stage
 from zeus_core.crypto.exceptions import InvalidKeyError
 from zeus_core.election.exceptions import (InvalidTrusteeError,
-        InvalidCandidateError, InvalidVotersError, Abortion)
+        InvalidCandidateError, InvalidVoterError, Abortion)
 from .voting import Voting
 
 
@@ -24,7 +24,7 @@ class Creating(Stage):
             election.create_candidates()
             election.create_voters_and_audit_codes()
         except (InvalidKeyError, InvalidTrusteeError,
-                InvalidCandidateError, InvalidVotersError) as err:
+                InvalidCandidateError, InvalidVoterError) as err:
             raise Abortion(err)
 
         election.broadcast_election()

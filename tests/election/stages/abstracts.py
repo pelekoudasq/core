@@ -35,7 +35,7 @@ class StageTester(metaclass=ABCMeta):
         # election = mk_election()
         # cls.election = election
         # # Run here successive stages until the stage to be tested
-        # cls.stage = election.get_current_stage()
+        # cls.stage = election._get_current_stage()
         #
 
     @classmethod
@@ -55,8 +55,8 @@ class StageTester(metaclass=ABCMeta):
         """
         cls = self.__class__
         election = cls.election
-        config = cls.election.config
-        stage = cls.stage
+        config   = cls.election.config
+        stage    = cls.stage
         messages = cls.messages
 
         return election, config, stage, messages

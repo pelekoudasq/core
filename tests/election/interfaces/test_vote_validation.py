@@ -73,18 +73,17 @@ class TestValidations(unittest.TestCase):
 
 
     def get_context(self):
-        cls = self.__class__
-        election = cls.election
-        cryptosys = cls.cryptosys
-        validator = cls.validator
-        voter = cls.voter
-        messages = cls.messages
+        election  = __class__.election
+        cryptosys = __class__.cryptosys
+        validator = __class__.validator
+        voter     = __class__.voter
+        messages  = __class__.messages
 
         return election, cryptosys, validator, voter, messages
 
 
     def __fail(self, err):
-        self.__class__.messages.append(f'[-] {err}')
+        __class__.messages.append(f'[-] {err}')
         self.fail(err)
 
 
