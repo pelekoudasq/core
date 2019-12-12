@@ -1,6 +1,5 @@
 """
-Tests in standalone fashion the vote-signing and
-vote-signature-verification interface
+Tests in standalone fashion the decryption interface
 """
 
 import pytest
@@ -29,12 +28,9 @@ class TestDecryption(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        messages = cls.messages
-        for i, message in enumerate(messages):
-            if i == 0:
-                print('\n' + message)
-            else:
-                print(message)
+        print('\n')
+        for message in cls.messages:
+            print(message)
 
     def get_context(self):
         pass

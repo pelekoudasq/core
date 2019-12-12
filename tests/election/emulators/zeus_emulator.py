@@ -24,19 +24,32 @@ class ZeusTestElection(ZeusCoreElection):
 
         super().__init__(config, **options)
 
-        self.trustee_clients = self.mk_trustee_clients(crypto, trustees)
         self.voter_clients = self.mk_voter_clients(crypto, voters)
+
+        # ~ If value of this parameter is truly, some trustee will send
+        # ~ invalid decryption factors. To be used for testing
+        # ~ election abortion upon InvalidFactorError
+        dishonest_trustee = options.get('dishonest_trustee')
+        self.trustee_clients = self.mk_trustee_clients(crypto, trustees,
+            dishonest_trustee)
 
 
     @staticmethod
-    def mk_trustee_clients(crypto_config, trustees_file):
+    def mk_trustee_clients(crypto_config, trustees_file, dishonest_trustee):
         """
         """
         trustee_clients = []
         with open(trustees_file) as __file:
             trustees = json.load(__file)
-        for trustee in trustees:
-            client = TrusteeEmulator(public=trustee['value'])
+        for index, trustee in enumerate(trustees):
+            dishonest = False
+            if index == 0 and dishonest_trustee:
+                # ~ Make the first trustee dishonest: will generate invalid
+                # ~ decryption factors and cause the election to abort at
+                # ~ stage Decrypting
+                client = TrusteeEmulator(public=trustee['value'], dishonest=True)
+            else:
+                client = TrusteeEmulator(public=trustee['value'])
             trustee_clients.append(client)
         return trustee_clients
 

@@ -1,6 +1,6 @@
 # zeus core
 
-## Requirements
+### Requirements
 
 You need to have installed `python>=3.5`
 
@@ -8,13 +8,14 @@ You need to have installed `python>=3.5`
 pip install -r requirements
 ```
 
-## Demo election
+### Run demo election
 
 ```shell
-./demo
+./demo [--mixes ...][--abortions]
 ```
 
-## Tests
+### Tests
 
 ```shell
 pytest tests
+```

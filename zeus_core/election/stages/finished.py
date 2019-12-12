@@ -12,4 +12,7 @@ class Finished(FinalStage):
         election = self.get_controller()
 
         results = election.get_results()
+        #
+        # TODO: Create finalization report
+        #
         print('\n', results, sep='')

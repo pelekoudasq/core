@@ -161,7 +161,7 @@ class TestCreating(StageTester, unittest.TestCase):
         get_audit_codes = lambda voter: audit_codes[inverse_voters[voter]]
         assert all(audit_codes[voter_key] == get_audit_codes(new_voters[voter_key])
             for voter_key in new_voters.keys())
-        messages.append('[+] Successfully created: s and audit codes')
+        messages.append('[+] Successfully created: voters and audit codes')
 
 
     def mk_create_voters_and_audit_codes_invalid_cases(self):

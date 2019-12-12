@@ -14,7 +14,7 @@ from tests.election.makers import mk_voting_setup
 
 class DummyVoteValidator(VoteValidator):
     """
-    Minimal implementation of validations interface for testing purposes
+    Minimal implementation of vote validation interface for testing purposes
     """
     def __init__(self, election):
         self.election = election
@@ -61,15 +61,11 @@ class TestValidations(unittest.TestCase):
         cls.voter = election.get_voter_clients()[0]
         cls.messages = []
 
-
     @classmethod
     def tearDownClass(cls):
-        messages = cls.messages
-        for i, message in enumerate(messages):
-            if i == 0:
-                print('\n' + message)
-            else:
-                print(message)
+        print('\n')
+        for message in cls.messages:
+            print(message)
 
 
     def get_context(self):

@@ -183,4 +183,4 @@ class Aborted(FinalStage):
         #
         # TODO: Generate abortion report?
         #
-        print('Election aborted:', abort_message)
+        print(__class__.__name__ + ':', abort_message, '\n')

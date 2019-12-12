@@ -306,7 +306,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         """
         """
         if candidate in validated_candidates:
-            err = "Duplicate candidate detected"
+            err = f"Duplicate candidate detected: {candidate}"
             raise InvalidCandidateError(err)
         if '%' in candidate:
             err = "Candidate name cannot contain character '%'"

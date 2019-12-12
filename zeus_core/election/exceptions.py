@@ -15,19 +15,11 @@ class Abortion(BaseException):
     """
     Raised when any predictable fatal event happends during the running election
     (e.g., invalid trustee detection, duplicate voter names etc.), prohibiting
-    the election's normal process.
+    the election's normal progress.
 
     .. note:: The election's underlying state-machine (``StageController``) has
         been designed so that raising of this exception forces the election
         to terminate gently at stage ``Aborted``.
-    """
-    pass
-
-
-class InvalidTrusteeError(BaseException):
-    """
-    Raised when a trustee fails to validate their public key.
-    Leads to election abortion.
     """
     pass
 
@@ -45,6 +37,14 @@ class InvalidVoterError(BaseException):
     """
     Raised when the list of voters was found to be empty or duplicate voter
     name was detected or insufficient slot variation among voters was attained.
+    Leads to election abortion.
+    """
+    pass
+
+
+class InvalidTrusteeError(BaseException):
+    """
+    Raised when a trustee fails to validate their public key.
     Leads to election abortion.
     """
     pass
@@ -74,6 +74,7 @@ class MalformedVoteError(BaseException):
     Raised before vote-signature verification, whenever the corresponding
     vote-text does not have the expected format.
     """
+    pass
 
 
 class ElectionMismatchError(BaseException):

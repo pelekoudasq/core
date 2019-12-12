@@ -13,7 +13,6 @@ from tests.election.makers import mk_voting_setup
 
 class TestVoting(StageTester, unittest.TestCase):
 
-
     @classmethod
     def run_until_stage(cls):
         election, votes, audit_requests, audit_votes = \

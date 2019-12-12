@@ -402,9 +402,10 @@ class ElGamalCrypto(metaclass=ABCMeta):
         """
         exp, c_1, c_2 = self.extract_dsa_signature(signature)
 
-        exp = self.exponent_to_hex(exp)
-        c_1 = self.exponent_to_hex(c_1)
-        c_2 = self.exponent_to_hex(c_2)
+        exponent_to_hex = self.exponent_to_hex
+        exp = exponent_to_hex(exp)
+        c_1 = exponent_to_hex(c_1)
+        c_2 = exponent_to_hex(c_2)
 
         return f'{exp}\n{c_1}\n{c_2}'
 
@@ -414,9 +415,10 @@ class ElGamalCrypto(metaclass=ABCMeta):
         """
         exp, c_1, c_2 = hex_signature.split('\n')
 
-        exp = self.hex_to_exponent(exp)
-        c_1 = self.hex_to_exponent(c_1)
-        c_2 = self.hex_to_exponent(c_2)
+        hex_to_exponent = self.hex_to_exponent
+        exp = hex_to_exponent(exp)
+        c_1 = hex_to_exponent(c_1)
+        c_2 = hex_to_exponent(c_2)
 
         unhexified = self.set_dsa_signature(exp, c_1, c_2)
         return unhexified

@@ -13,10 +13,14 @@ class TrusteeEmulator(Trustee):
     trustee_publics = 'tests/election/emulators/trustees.json'
 
 
-    def __init__(self, public):
+    def __init__(self, public, dishonest=False):
         """
+        If dishonest is set to True, the trustee will send
+        invalid decryption factors: to be used for testing
+        election abortion upon InvalidFactorError
         """
         self.public = public
+        self.is_dishonest = dishonest
 
 
     def load_keypair_from_public(self):
@@ -83,4 +87,8 @@ class TrusteeEmulator(Trustee):
         """
         factor_collection = self.get_factor_collection()
         serialized = self.serialize_factor_collection(factor_collection)
+        if self.is_dishonest:
+            # ~ Invalidate first decryption factor before sending so
+            # ~ that running election aborts at stage Decrypting
+            serialized['factors'][0]['data'] += 1
         return serialized

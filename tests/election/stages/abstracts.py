@@ -40,12 +40,9 @@ class StageTester(metaclass=ABCMeta):
 
     @classmethod
     def tearDownClass(cls):
-        messages = cls.messages
-        for i, message in enumerate(messages):
-            if i == 0:
-                print('\n' + message)
-            else:
-                print(message)
+        print('\n')
+        for message in cls.messages:
+            print(message)
 
 
     def get_context(self):
