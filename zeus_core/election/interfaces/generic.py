@@ -44,6 +44,15 @@ class GenericAPI(object):
     def get_crypto_params(self):
         return self.crypto_params
 
+    def get_crypto_hex(self):
+        cryptosys = self.get_cryptosys()
+        crypto_hex_params = cryptosys.hex_parameters()
+        return list(crypto_hex_params.values())
+
+    def get_mixnet_type(self):
+        mixnet_cls = self.mixnet.__class__
+        return mixnet_cls.__name__
+
     def set_zeus_keypair(self, zeus_keypair):
         zeus_private_key, zeus_public_key = self.extract_keypair(zeus_keypair)
         self.zeus_private_key = zeus_private_key
@@ -67,8 +76,19 @@ class GenericAPI(object):
     def get_zeus_public_key(self):
         return self.zeus_public_key
 
+    def get_zeus_key_proof(self):
+        zeus_key = self.get_zeus_public_key()
+        _, proof = self.extract_public_key(zeus_key)
+        return proof
+
     def get_hex_zeus_public_key(self):
         return self.hex_zeus_public_key
+
+    def get_hex_zeus_key_proof(self):
+        zeus_key_proof = self.get_zeus_key_proof()
+        cryptosys = self.get_cryptosys()
+        hex_proof = cryptosys.hexify_schnorr_proof(zeus_key_proof)
+        return hex_proof
 
     def set_trustees(self, trustees):
         self.trustees = trustees
@@ -78,6 +98,16 @@ class GenericAPI(object):
 
     def get_trustees(self):
         return self.trustees
+
+    def get_trustees_serialized(self):
+        serialized_trustees = dict()
+        serialize_proof = self.get_cryptosys().serialize_schnorr_proof
+        update = serialized_trustees.update
+        for key, proof in self.trustees.items():
+            key = key.to_int()
+            proof = serialize_proof(proof)
+            update({key: proof})
+        return serialized_trustees
 
     def store_trustee(self, trustee):
         public_key = trustee['value']
@@ -103,6 +133,9 @@ class GenericAPI(object):
 
     def get_election_key(self):
         return self.election_key
+
+    def get_election_key_serialized(self):
+        return self.election_key.to_int()
 
     def get_hex_election_key(self):
         return self.hex_election_key
@@ -179,9 +212,10 @@ class GenericAPI(object):
         cast_votes[voter_key].append(fingerprint)
 
     def store_votes(self, votes):
+        stored_votes = self.votes
         for vote in votes:
             fingerprint = vote['fingerprint']
-            self.votes[fingerprint] = vote
+            stored_votes[fingerprint] = vote
 
     def get_votes(self):
         return self.votes
@@ -224,6 +258,9 @@ class GenericAPI(object):
 
     def store_mix(self, mix):
         self.mixes.append(mix)
+
+    def do_get_all_mixes(self):
+        return self.mixes
 
     def do_get_last_mix(self):
         mixes = self.mixes

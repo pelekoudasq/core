@@ -12,7 +12,19 @@ class Finished(FinalStage):
         election = self.get_controller()
 
         results = election.get_results()
-        #
-        # TODO: Create finalization report
-        #
-        print('\n', results, sep='')
+        election._update({'results': results})
+        fingerprint = election.generate_fingerprint()
+        election._update({'election_fingerprint': fingerprint})
+
+
+    def export_updates(self):
+        """
+        """
+        election = self.get_controller()
+
+        updates = dict()
+        updates['election_report'] = election.generate_report()
+
+        # print(election.exports)                           # Remove this
+        print('\n' + updates['election_report'])          # Remove this
+        return updates

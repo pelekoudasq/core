@@ -23,3 +23,15 @@ class Uninitialized(Stage):
         except (WrongCryptoError, WeakCryptoError,
             WrongMixnetError) as err:
             raise Abortion(err)
+
+
+    def export_updates(self):
+        """
+        """
+        election = self.get_controller()
+
+        updates = dict()
+        updates['cryptosystem'] = election.get_crypto_hex()
+        updates['mixnet'] = election.get_mixnet_type() # TODO: Include mixnet parameters?
+
+        return updates

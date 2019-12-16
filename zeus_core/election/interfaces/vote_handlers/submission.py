@@ -39,7 +39,7 @@ class VoteSubmitter(VoteSerializer, VoteValidator, Signer):
         self.store_audit_request(fingerprint, voter_key)
         self.store_votes((vote,))
 
-        return signature
+        return V_AUDIT_REQUEST, signature
 
 
     def submit_audit_vote(self, vote, voter_key, fingerprint,
@@ -82,7 +82,7 @@ class VoteSubmitter(VoteSerializer, VoteValidator, Signer):
         self.store_audit_publication(fingerprint)
         self.store_votes((vote,))
 
-        return signature
+        return V_PUBLIC_AUDIT, signature
 
 
     def submit_genuine_vote(self, fingerprint, voter_key, vote):
@@ -121,7 +121,7 @@ class VoteSubmitter(VoteSerializer, VoteValidator, Signer):
         ##################################################################
         # DANGER: commit all data to disk before giving a signature out! #
         ##################################################################
-        return signature
+        return V_CAST_VOTE, signature
 
 
     #  Voter fixation

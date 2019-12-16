@@ -56,7 +56,7 @@ class TestCreating(StageTester, unittest.TestCase):
         election, config, creating, messages = self.get_context()
 
         trustees = config['trustees']
-        deserialized_trustees = election._deserialize_trustees(trustees)
+        deserialized_trustees = election.deserialize_trustees(trustees)
         election.create_trustees()
         validated_trustees = election.get_trustees()
         expected_trustees = dict(((trustee['value'], trustee['proof'])

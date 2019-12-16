@@ -246,7 +246,6 @@ class ElGamalCrypto(metaclass=ABCMeta):
         return serialized
 
 
-
     def deserialize_schnorr_proof(self, proof):
         """
         """
@@ -258,6 +257,19 @@ class ElGamalCrypto(metaclass=ABCMeta):
         deserialized['response'] = self.int_to_exponent(response)
 
         return deserialized
+
+
+    def hexify_schnorr_proof(self, proof):
+        """
+        """
+        hexified = {}
+        commitment, challenge, response = self.extract_schnorr_proof(proof)
+
+        hexified['commitment'] = commitment.to_hex()
+        hexified['challenge'] = self.exponent_to_hex(challenge)
+        hexified['response'] = self.exponent_to_hex(response)
+
+        return hexified
 
 
     @abstractmethod

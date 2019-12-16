@@ -3,6 +3,8 @@
 
 from abc import ABCMeta, abstractmethod
 from itertools import repeat
+from hashlib import sha256
+from copy import deepcopy
 import json
 
 from zeus_core.crypto import mk_cryptosys
@@ -10,7 +12,7 @@ from zeus_core.mixnets import mk_mixnet
 from zeus_core.crypto.exceptions import (WrongCryptoError, WeakCryptoError,
                                 InvalidKeyError)
 from zeus_core.mixnets.exceptions import WrongMixnetError
-from zeus_core.utils import random_integer
+from zeus_core.utils import random_integer, to_canonical
 
 from .pattern import StageController
 from .interfaces import (GenericAPI, KeyManager, VoteSubmitter, FactorGenerator,
@@ -98,7 +100,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         self.zeus_factors    = None
         self.trustees_factors = dict()
         self.results = []
-        self.report  = dict()
+        self.exports  = dict()
 
 
     @staticmethod
@@ -190,7 +192,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         """
         """
         _, _, _, trustees, _, _ = self._extract_config()
-        trustees = self._deserialize_trustees(trustees)
+        trustees = self.deserialize_trustees(trustees)
 
         validated = dict()
         update = validated.update
@@ -216,7 +218,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
             raise InvalidTrusteeError(err)
 
 
-    def _deserialize_trustees(self, trustees):
+    def deserialize_trustees(self, trustees):
         """
         """
         extract_public_key = self.extract_public_key
@@ -361,6 +363,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
     def cast_vote(self, vote):
         """
         """
+        _vote = deepcopy(vote)
         try:
             vote = self.adapt_vote(vote)
         except InvalidVoteError as err:
@@ -382,7 +385,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
 
         if voter_secret:
             try:
-                signature = self.submit_audit_vote(vote, voter_key, fingerprint,
+                type, signature = self.submit_audit_vote(vote, voter_key, fingerprint,
                     voter_audit_code, voter_audit_codes)
             except VoteRejectionError:
                 # (1) No audit-code has been provided, or
@@ -396,19 +399,19 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
             voter_audit_code = self.fix_audit_code(voter_audit_code, voter_audit_codes)
             if voter_audit_code not in voter_audit_codes:
                 try:
-                    signature = self.submit_audit_request(fingerprint, voter_key, vote)
+                    type, signature = self.submit_audit_request(fingerprint, voter_key, vote)
                 except VoteRejectionError:
                     # Audit-request already submitted for the provided fingerprint
                     raise
             else:
                 try:
-                    signature = self.submit_genuine_vote(fingerprint, voter_key, vote)
+                    type, signature = self.submit_genuine_vote(fingerprint, voter_key, vote)
                 except VoteRejectionError:
                     # (1) Vote already cast, or
                     # (2) Vote limit reached, or
                     # (3) Vote failed to be validated
                     raise
-        return signature
+        return _vote, type, signature
 
 
     # Mixing preparations
@@ -523,11 +526,43 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         return decrypted_ballots
 
 
-    # Report
+    # Exports and election report
 
-    def mk_report(self):
+    def get_exports(self):
+        return self.exports
+
+
+    def _update(self, updates):
+        self.exports.update(updates)
+
+
+    def generate_fingerprint(self):
         """
         """
-        pass
-        # report = {}
-        # results = self.get_results()
+        exports = self.get_exports()
+        #
+        # TODO: Implement to_canonical
+        #
+        fingerprint = sha256(to_canonical(exports).encode('utf-8')).hexdigest()
+        return fingerprint
+
+
+    def generate_report(self):
+        """
+        """
+        report = ''
+        trustees = self.get_hex_trustee_keys()
+        for i, trustee in enumerate(trustees):
+            report += 'TRUSTEE %d: %s\n' % (i, trustee)
+        report += '\n'
+        candidates = self.get_candidates()
+        for i, candidate in enumerate(candidates):
+            report += 'CANDIDATE %d: %s\n' % (i, candidate)
+        report += '\n'
+        excluded = self.get_excluded_voters()
+        for i, (voter, reason) in enumerate(excluded.items()):
+            report += 'EXCLUDED VOTER %d: %s (%s)\n' % (i, voter, reason)
+        report += '\n'
+        fingerprint = self.get_exports()['election_fingerprint']
+        report += 'ZEUS ELECTION FINGERPRINT: %s\n' % fingerprint
+        return report

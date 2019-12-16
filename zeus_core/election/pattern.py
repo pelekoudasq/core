@@ -37,6 +37,15 @@ class StageController(object, metaclass=ABCMeta):
             stage.run()
         except Abortion as err:
             stage.abort(err)
+        else:
+            updates = stage.export_updates()
+            self._update(updates)
+
+
+    @abstractmethod
+    def _update(self):
+        """
+        """
 
 
     def _get_current_stage(self):
@@ -127,6 +136,12 @@ class Stage(object, metaclass=ABCMeta):
         """
         """
 
+    @abstractmethod
+    def export_updates(self):
+        """
+        """
+
+
     def next(self):
         """
         """
@@ -181,6 +196,15 @@ class Aborted(FinalStage):
         """
         abort_message = self._get_message()
         #
-        # TODO: Generate abortion report?
+        # TODO: Generate abortion exports?
         #
         print(__class__.__name__ + ':', abort_message, '\n')
+
+
+    def export_updates(self):
+        """
+        """
+        #
+        # TODO: Implement
+        #
+        return {}

@@ -13,9 +13,7 @@ from tests.election.emulators.election_configs import (
 
 if __name__ == '__main__':
     prog = sys.argv[0]
-
     usage = '%s [--mixes ...][--abortions]' % prog
-    description = 'Zeus Demo Election'
     epilog = '\n'
     parser = argparse.ArgumentParser(prog=prog,
                         usage=usage,

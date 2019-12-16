@@ -28,3 +28,20 @@ class Creating(Stage):
             raise Abortion(err)
 
         election.broadcast_election()
+
+
+    def export_updates(self):
+        """
+        """
+        election = self.get_controller()
+
+        updates = dict()
+        updates['zeus_public'] = election.get_hex_zeus_public_key()
+        updates['zeus_key_proof'] = election.get_hex_zeus_key_proof()
+        updates['trustees'] = election.get_trustees_serialized()
+        updates['election_key'] = election.get_election_key_serialized()
+        updates['candidates'] = election.get_candidates()
+        updates['voters'] = election.get_voters()
+        updates['audit_codes'] = election.get_audit_codes()
+
+        return updates

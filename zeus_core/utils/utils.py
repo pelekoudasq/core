@@ -30,3 +30,11 @@ def directory_to_binary(directory):
 
 def binary_to_directory(output_dir, data):
     pass
+
+
+def to_canonical(obj, out=None):
+    return "Not yet implemented..."
+
+
+def from_canonical(inp, unicode_strings=0, s=''):
+    return "Not yet implemented..."

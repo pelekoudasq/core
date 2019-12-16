@@ -23,14 +23,33 @@ class Decrypting(Stage):
 
         # Validate and store trustee factors
         validate_trustee_factors = election.validate_trustee_factors
+        store_trustee_factors = election.store_trustee_factors
         for trustee_factors in factor_collections:
             try:
                 validate_trustee_factors(trustee_factors)
             except InvalidFactorError as err:
                 raise Abortion(err)
-            election.store_trustee_factors(trustee_factors)
+            store_trustee_factors(trustee_factors)
 
         # Decrypt ballots
         all_factors = election.get_all_factors()
         results = election.decrypt_ballots(mixed_ballots, all_factors)
         election.store_results(results)
+
+
+    def export_updates(self):
+        """
+        """
+        election = self.get_controller()
+
+        updates = dict()
+        #
+        # TODO: separate trustees from zeus and serialize
+        #
+        updates['trustee_factors'] = election.get_all_factors()
+        # print(type(all_factors[0][0]))
+        # print(all_factors[0][0])
+        # print(type(all_factors[0][0]['data']))
+        # print(type(all_factors[-1][-1]))
+        # print(all_factors[-1][-1])
+        return updates
