@@ -45,7 +45,7 @@ class Voting(Stage):
         """
         election = self.get_controller()
 
-        updates = dict()
+        updates = {}
         updates['votes'] = self.serialized_votes
         updates['cast_vote_index'] = election.get_cast_vote_index()
         updates['cast_votes'] = election.get_cast_votes()

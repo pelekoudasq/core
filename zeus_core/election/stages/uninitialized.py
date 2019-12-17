@@ -30,7 +30,7 @@ class Uninitialized(Stage):
         """
         election = self.get_controller()
 
-        updates = dict()
+        updates = {}
         updates['cryptosystem'] = election.get_crypto_hex()
         updates['mixnet'] = election.get_mixnet_type() # TODO: Include mixnet parameters?
 

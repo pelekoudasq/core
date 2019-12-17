@@ -36,7 +36,7 @@ class Mixing(Stage):
         """
         election = self.get_controller()
 
-        updates = dict()
+        updates = {}
         #
         # TODO: serialize
         #

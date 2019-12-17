@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+
+"""
+Run election against several abortion cases
+"""
+
+import sys
+import argparse
+# from zeus_core.utils import to_canonical
+from tests.election.makers import mk_election
+from tests.election.emulators.election_configs import (
+    config_2, config_3, config_4, config_5, config_6, config_7)
+
+
+if __name__ == '__main__':
+    prog = sys.argv[0]
+    # usage = '%s [--mixes ...][--report][--save [...]]' % prog
+    usage = '%s [--mixes ...]' % prog
+    epilog = '\n'
+    parser = argparse.ArgumentParser(prog=prog,
+                        usage=usage,
+                        description=__doc__,
+                        epilog=epilog)
+
+    parser.add_argument('--mixes',
+                        type=int, default=3, dest='nr_mixes',
+                        help="Number of times to mix")
+
+    # parser.add_argument('--report', action='store_true', default=False,
+    #                     help="Display election report")
+    #
+    # parser.add_argument('--save', nargs='*', metavar='outfile',
+    #                     help="Save election exports in file")
+
+
+    args = parser.parse_args()
+
+    nr_mixes = args.nr_mixes
+    # report = args.report
+    # save = args.save
+
+
+    mk_election(config=config_2, nr_mixes=nr_mixes).run()
+    mk_election(config=config_3, nr_mixes=nr_mixes).run()
+    mk_election(config=config_4, nr_mixes=nr_mixes).run()
+    mk_election(config=config_5, nr_mixes=nr_mixes).run()
+    mk_election(config=config_6, nr_mixes=nr_mixes).run()
+    mk_election(config=config_7, nr_mixes=nr_mixes).run()
+    mk_election(nr_mixes=nr_mixes, dishonest_trustee=True).run()

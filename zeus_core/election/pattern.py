@@ -3,6 +3,9 @@ Defines design pattern to core election object: state-machine (without table)
 """
 
 from abc import ABCMeta, abstractmethod
+from hashlib import sha256
+
+from zeus_core.utils import to_canonical
 from .exceptions import Abortion
 
 
@@ -39,11 +42,42 @@ class StageController(object, metaclass=ABCMeta):
             stage.abort(err)
         else:
             updates = stage.export_updates()
-            self._update(updates)
+            self._update_exports(updates)
+
+
+    def _get_exports(self):
+        """
+        """
+        return self.exports
+
+
+    def _update_exports(self, updates):
+        """
+        """
+        self.exports.update(updates)
+
+
+    def _generate_fingerprint(self):
+        """
+        """
+        exports = self._get_exports()
+        #
+        # TODO: Implement to_canonical
+        #
+        fingerprint = sha256(to_canonical(exports).encode('utf-8')).hexdigest()
+        return fingerprint
+
+    def update_final_status(self):
+        """
+        """
+        current_stage = self._get_current_stage()
+        self._update_exports({'status': current_stage.__class__.__name__})
+        fingerprint = self._generate_fingerprint()
+        self._update_exports({'fingerprint': fingerprint})
 
 
     @abstractmethod
-    def _update(self):
+    def _generate_report(self):
         """
         """
 
@@ -52,6 +86,14 @@ class StageController(object, metaclass=ABCMeta):
         """
         """
         return self.current_stage
+
+
+    def get_status(self):
+        """
+        """
+        current_stage = self._get_current_stage
+        status = current_stage.__class__.__name__
+        return status
 
 
 class Stage(object, metaclass=ABCMeta):
@@ -181,6 +223,22 @@ class FinalStage(Stage, metaclass=ABCMeta):
         return self
 
 
+    def export_updates(self):
+        """
+        """
+        controller = self.get_controller()
+        #
+        # ~ Compute and store final status and
+        # ~ fingerprint before report generation
+        #
+        controller.update_final_status()
+
+        updates = {}
+        updates['report'] = controller._generate_report()
+        
+        return updates
+
+
 class Aborted(FinalStage):
     """
     """
@@ -195,16 +253,4 @@ class Aborted(FinalStage):
         """
         """
         abort_message = self._get_message()
-        #
-        # TODO: Generate abortion exports?
-        #
-        print(__class__.__name__ + ':', abort_message, '\n')
-
-
-    def export_updates(self):
-        """
-        """
-        #
-        # TODO: Implement
-        #
-        return {}
+        print(__class__.__name__ + ':', abort_message, '\n')    # Remove this

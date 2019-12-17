@@ -6,14 +6,14 @@ Zeus Demo Election
 
 import sys
 import argparse
+from tests.election.emulators.election_configs import config_1
+from zeus_core.utils import to_canonical
 from tests.election.makers import mk_election
-from tests.election.emulators.election_configs import (
-    config_1, config_2, config_3, config_4, config_5, config_6, config_7)
 
 
 if __name__ == '__main__':
     prog = sys.argv[0]
-    usage = '%s [--mixes ...][--abortions]' % prog
+    usage = '%s [--mixes ...][--abortions][--report][--save [...]]' % prog
     epilog = '\n'
     parser = argparse.ArgumentParser(prog=prog,
                         usage=usage,
@@ -24,21 +24,31 @@ if __name__ == '__main__':
                         type=int, default=3, dest='nr_mixes',
                         help="Number of times to mix")
 
-    parser.add_argument('--abortions', action='store_true',
-                        dest='show_abortions',
-                        help="Run election against several abortion cases")
+    parser.add_argument('--report', action='store_true', default=False,
+                        help="Display election report")
+
+    parser.add_argument('--save', nargs='*', metavar='outfile',
+                        help="Save election exports in file")
+
 
     args = parser.parse_args()
-    nr_mixes = args.nr_mixes
-    show_abortions = args.show_abortions
 
-    if not show_abortions:
-        mk_election(config=config_1, nr_mixes=nr_mixes).run()
-    else:
-        mk_election(config=config_2, nr_mixes=nr_mixes).run()
-        mk_election(config=config_3, nr_mixes=nr_mixes).run()
-        mk_election(config=config_4, nr_mixes=nr_mixes).run()
-        mk_election(config=config_5, nr_mixes=nr_mixes).run()
-        mk_election(config=config_6, nr_mixes=nr_mixes).run()
-        mk_election(config=config_7, nr_mixes=nr_mixes).run()
-        mk_election(nr_mixes=nr_mixes, dishonest_trustee=True).run()
+    nr_mixes = args.nr_mixes
+    report = args.report
+    save = args.save
+
+    election = mk_election(config=config_1, nr_mixes=nr_mixes)
+    election.run()
+    if report:
+        print('\n' + election.get_report())
+    if save is not None:
+        filename = save[0] if save else None
+        if not filename:
+            name = election.get_hex_election_key()[:16]
+            status = election.get_status().upper()
+            filename = 'election-%s-%s.zeus' % (name, status)
+            print(name)
+        sys.stdout.write("Writing out to '%s'\n\n" % (filename,))
+        exports = election._get_exports()
+        with open(filename, "w") as f:
+            f.write(to_canonical(exports))

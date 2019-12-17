@@ -300,3 +300,6 @@ class GenericAPI(object):
 
     def get_results(self):
         return self.results
+
+    def get_report(self):
+        return self.report

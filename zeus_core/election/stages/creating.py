@@ -35,7 +35,7 @@ class Creating(Stage):
         """
         election = self.get_controller()
 
-        updates = dict()
+        updates = {}
         updates['zeus_public'] = election.get_hex_zeus_public_key()
         updates['zeus_key_proof'] = election.get_hex_zeus_key_proof()
         updates['trustees'] = election.get_trustees_serialized()

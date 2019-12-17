@@ -42,7 +42,7 @@ class Decrypting(Stage):
         """
         election = self.get_controller()
 
-        updates = dict()
+        updates = {}
         #
         # TODO: separate trustees from zeus and serialize
         #

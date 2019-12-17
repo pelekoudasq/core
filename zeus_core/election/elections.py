@@ -3,7 +3,6 @@
 
 from abc import ABCMeta, abstractmethod
 from itertools import repeat
-from hashlib import sha256
 from copy import deepcopy
 import json
 
@@ -12,7 +11,7 @@ from zeus_core.mixnets import mk_mixnet
 from zeus_core.crypto.exceptions import (WrongCryptoError, WeakCryptoError,
                                 InvalidKeyError)
 from zeus_core.mixnets.exceptions import WrongMixnetError
-from zeus_core.utils import random_integer, to_canonical
+from zeus_core.utils import random_integer
 
 from .pattern import StageController
 from .interfaces import (GenericAPI, KeyManager, VoteSubmitter, FactorGenerator,
@@ -85,6 +84,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         self.zeus_private_key = None
         self.zeus_public_key  = None
         self.trustees     = dict()
+        self.hex_trustee_keys = []
         self.election_key = None
         self.candidates   = []
         self.voters       = dict()
@@ -101,6 +101,7 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         self.trustees_factors = dict()
         self.results = []
         self.exports  = dict()
+        self.report = ''
 
 
     @staticmethod
@@ -526,43 +527,36 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         return decrypted_ballots
 
 
-    # Exports and election report
-
-    def get_exports(self):
-        return self.exports
+    # Report generation
 
 
-    def _update(self, updates):
-        self.exports.update(updates)
-
-
-    def generate_fingerprint(self):
-        """
-        """
-        exports = self.get_exports()
-        #
-        # TODO: Implement to_canonical
-        #
-        fingerprint = sha256(to_canonical(exports).encode('utf-8')).hexdigest()
-        return fingerprint
-
-
-    def generate_report(self):
+    def _generate_report(self):
         """
         """
         report = ''
         trustees = self.get_hex_trustee_keys()
-        for i, trustee in enumerate(trustees):
-            report += 'TRUSTEE %d: %s\n' % (i, trustee)
-        report += '\n'
+        if trustees:
+            for i, trustee in enumerate(trustees):
+                report += 'TRUSTEE %d: %s\n' % (i, trustee)
+            report += '\n'
         candidates = self.get_candidates()
-        for i, candidate in enumerate(candidates):
-            report += 'CANDIDATE %d: %s\n' % (i, candidate)
-        report += '\n'
+        if candidates:
+            for i, candidate in enumerate(candidates):
+                report += 'CANDIDATE %d: %s\n' % (i, candidate)
+            report += '\n'
         excluded = self.get_excluded_voters()
-        for i, (voter, reason) in enumerate(excluded.items()):
-            report += 'EXCLUDED VOTER %d: %s (%s)\n' % (i, voter, reason)
-        report += '\n'
-        fingerprint = self.get_exports()['election_fingerprint']
+        if excluded:
+            for i, (voter, reason) in enumerate(excluded.items()):
+                report += 'EXCLUDED VOTER %d: %s (%s)\n' % (i, voter, reason)
+            report += '\n'
+        exports = self._get_exports()
+        status = exports['status']
+        report += 'STATUS: %s' % status
+        if status == 'Aborted':
+            aborted = self._get_current_stage()
+            report += ': %s' % aborted._get_message()
+        report += 2 * '\n'
+        fingerprint = exports['fingerprint']
         report += 'ZEUS ELECTION FINGERPRINT: %s\n' % fingerprint
+        self.report = report
         return report

@@ -8,10 +8,14 @@ You need to have installed `python>=3.5`
 pip install -r requirements
 ```
 
-### Run demo election
+### Run demo elections
 
 ```shell
-./demo [--mixes ...][--abortions]
+./demo [--mixes ...][--report][--save [...]]
+```
+
+```shell
+./demo-abortions [--mixes ...]
 ```
 
 ### Tests
