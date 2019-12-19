@@ -266,30 +266,30 @@ class ZeusTestElection(ZeusCoreElection):
 
     def run_until_creating_stage(self):
         uninitialized = self.run_until_uninitialized_stage()
-        uninitialized.run()
+        self._run(uninitialized)
         creating = uninitialized.next()
         return creating
 
     def run_until_voting_stage(self):
         creating = self.run_until_creating_stage()
-        creating.run()
+        self._run(creating)
         voting = creating.next()
         return voting
 
     def run_until_mixing_stage(self):
         voting = self.run_until_voting_stage()
-        voting.run()
+        self._run(voting)
         mixing = voting.next()
         return mixing
 
     def run_until_decrypting_stage(self):
         mixing = self.run_until_mixing_stage()
-        mixing.run()
+        self._run(mixing)
         decrypting = mixing.next()
         return decrypting
 
     def run_until_finished_stage(self):
         decrypting = self.run_until_decrypting_stage()
-        decrypting.run()
+        self._run(decrypting)
         finished = decrypting.next()
         return finished

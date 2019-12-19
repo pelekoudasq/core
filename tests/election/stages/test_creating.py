@@ -35,7 +35,7 @@ class TestCreating(StageTester, unittest.TestCase):
         _, zeus_keypair_2 = _2048_SYSTEM.generate_keypair(config['zeus_secret'])
         assert election.get_public_value(zeus_keypair_1) == zeus_keypair_2
         proof =  zeus_keypair_1['public']['proof']
-        to_display = trim_json({
+        to_display = {
             'private': zeus_keypair_1['private'],
             'public': {
                 'value': zeus_keypair_1['public']['value'].to_int(),
@@ -45,9 +45,9 @@ class TestCreating(StageTester, unittest.TestCase):
                     'response': int(proof['response']),
                 }
             }
-        })
+        }
         messages.append('[+] Successfully created: zeus_keypair: %s' %
-            json.dumps(to_display, sort_keys=False, indent=4))
+            json.dumps(trim_json(to_display), sort_keys=False, indent=4))
 
 
     # Trustees' validation
@@ -72,6 +72,7 @@ class TestCreating(StageTester, unittest.TestCase):
         } for public_key, proof in validated_trustees.items()])
         messages.append('[+] Successfully created: trustees: %s' %
             json.dumps(to_display, sort_keys=False, indent=4))
+
 
     def test_validate_trustees_invalid_cases(self):
         election, config, creating, messages = self.get_context()
@@ -122,7 +123,7 @@ class TestCreating(StageTester, unittest.TestCase):
             json.dumps(candidates, sort_keys=False, indent=4))
 
 
-    def mk_validate_candidates_abort_cases(self):
+    def mk_validate_candidates_invalid_cases(self):
         election, config, _, _ = self.get_context()
         invalid_cases = [{
             'case': deepcopy(config['candidates']),
@@ -136,10 +137,11 @@ class TestCreating(StageTester, unittest.TestCase):
         invalid_cases[2]['message'] = "Invalid candidate name: '\\n' detected"
         return invalid_cases
 
+
     def test_validate_candidates_invalid_cases(self):
         election, _, creating, messages = self.get_context()
 
-        invalid_cases = self.mk_validate_candidates_abort_cases()
+        invalid_cases = self.mk_validate_candidates_invalid_cases()
         for abort_case in invalid_cases:
             candidates = abort_case['case']
             message = abort_case['message']
@@ -148,6 +150,7 @@ class TestCreating(StageTester, unittest.TestCase):
                 with self.assertRaises(InvalidCandidateError):
                     election.create_candidates()
                 messages.append(f'[+] Successfully aborted: {message}')
+
 
     # Votes and audit codes creation
 
@@ -177,6 +180,7 @@ class TestCreating(StageTester, unittest.TestCase):
         invalid_cases[2]['case'][1] = 1
         invalid_cases[2]['message'] = 'Insufficient slot variation'
         return invalid_cases
+        
 
     def test_create_voters_and_audit_codes_invalid_cases(self):
         election, _, creating, messages = self.get_context()

@@ -13,7 +13,7 @@ from tests.election.makers import mk_election
 
 if __name__ == '__main__':
     prog = sys.argv[0]
-    usage = '%s [--mixes ...][--abortions][--report][--save [...]]' % prog
+    usage = '%s [--mixes ...][--report][--save [...]]' % prog
     epilog = '\n'
     parser = argparse.ArgumentParser(prog=prog,
                         usage=usage,

@@ -107,6 +107,7 @@ class TestVoting(StageTester, unittest.TestCase):
             vote_0,
             '[+] Missing audit-code: Successfully rejected',
         ))
+        
         # Invalid audit-code provided
         vote_1 = deepcopy(audit_votes[1])
         voter_key = vote_1['voter']
@@ -116,6 +117,7 @@ class TestVoting(StageTester, unittest.TestCase):
             vote_1,
             '[+] Invalid audit-code: Successfully rejected',
         ))
+        
         # No prior audit-requst
         vote_2 = deepcopy(audit_votes[2])
         vote_2['fingerprint'] += '0'
@@ -123,6 +125,7 @@ class TestVoting(StageTester, unittest.TestCase):
             vote_2,
             '[+] No prior request: Successfully rejected',
         ))
+        
         # Missing voter's secret
         vote_3 = deepcopy(audit_votes[3])
         del vote_3['voter_secret']

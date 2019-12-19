@@ -20,7 +20,6 @@ class TestMixing(StageTester, unittest.TestCase):
         election.run_until_mixing_stage()
         cls.stage = election._get_current_stage()
 
-
     def get_mixing_context(self):
         election, config, stage, messages = self.get_context()
         mixnet = election.get_mixnet()
@@ -59,14 +58,17 @@ class TestMixing(StageTester, unittest.TestCase):
                 mixnet.validate_mix(mixed_ciphers, last_mix)
             messages.append('[+] Invalid mix successfully detected: Malformed')
 
-        # last_mix = deepcopy(election.do_get_last_mix())
-        # with self.subTest(last_mix=last_mix):
-        #     mixed_ciphers = mixnet.mix_ciphers(last_mix)
-        #     with self.assertRaises(InvalidMixError):
-        #         hex_parameters, _ = mixnet.extract_header(mixed_ciphers)
-        #         del mixed_ciphers['header']['modulus']
-        #         mixnet.validate_mix(mixed_ciphers, last_mix)
-        #     messages.append('[+] Invalid mix successfully detected: Cryptosystem mismatch')
+        last_mix = deepcopy(election.do_get_last_mix())
+        with self.subTest(last_mix=last_mix):
+            mixed_ciphers = mixnet.mix_ciphers(last_mix)
+            with self.assertRaises(InvalidMixError):
+                hex_parameters, _ = mixnet.extract_header(mixed_ciphers)
+                corrupt = mixed_ciphers['header']['modulus']
+                mixed_ciphers['header']['modulus'] = corrupt[:-1]
+                mixnet.validate_mix(mixed_ciphers, last_mix)
+            messages.append('[+] Invalid mix successfully detected: Cryptosystem mismatch')
+        mixed_ciphers['header']['modulus'] = corrupt # Restore for later use
+
 
         last_mix = deepcopy(election.do_get_last_mix())
         with self.subTest(last_mix=last_mix):

@@ -40,9 +40,9 @@ class StageController(object, metaclass=ABCMeta):
             stage.run()
         except Abortion as err:
             stage.abort(err)
-        else:
-            updates = stage.export_updates()
-            self._update_exports(updates)
+            return
+        updates = stage.export_updates()
+        self._update_exports(updates)
 
 
     def _get_exports(self):
@@ -66,6 +66,7 @@ class StageController(object, metaclass=ABCMeta):
         #
         fingerprint = sha256(to_canonical(exports).encode('utf-8')).hexdigest()
         return fingerprint
+        
 
     def update_final_status(self):
         """
@@ -81,7 +82,6 @@ class StageController(object, metaclass=ABCMeta):
         """
         """
 
-
     def _get_current_stage(self):
         """
         """
@@ -91,9 +91,14 @@ class StageController(object, metaclass=ABCMeta):
     def get_status(self):
         """
         """
-        current_stage = self._get_current_stage
+        current_stage = self._get_current_stage()
         status = current_stage.__class__.__name__
         return status
+
+
+    def get_fingerprint(self):
+        fingerprint = self._get_exports().get('fingerprint', None)
+        return fingerprint
 
 
 class Stage(object, metaclass=ABCMeta):
@@ -235,7 +240,7 @@ class FinalStage(Stage, metaclass=ABCMeta):
 
         updates = {}
         updates['report'] = controller._generate_report()
-        
+
         return updates
 
 
