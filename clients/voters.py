@@ -1,11 +1,11 @@
 """
 """
+
 from abc import ABCMeta, abstractmethod
 from zeus_core.election.interfaces.signatures import Verifier
 from zeus_core.crypto import mk_cryptosys
 from zeus_core.utils import hash_nums
 from .generic import Client
-
 
 
 class Voter(Client, Verifier, metaclass=ABCMeta):

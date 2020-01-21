@@ -30,19 +30,19 @@ class TestSuccess(unittest.TestCase):
 
     def test_0_uninitialized(self):
         election = self.get_election()
-        
+
         uninitialized = election._get_current_stage()
         election._run(uninitialized)
-        
+
         assert election._get_exports() == {
                 'cryptosystem': election.get_crypto_hex(),
                 'mixnet': election.get_mixnet_type(),
             }
 
-    
+
     def test_1_creating(self):
         election = self.get_election()
-        
+
         uninitialized = election._get_current_stage()
         creating = uninitialized.next()
         election._run(creating)
@@ -62,7 +62,7 @@ class TestSuccess(unittest.TestCase):
 
     def test_2_voting(self):
         election = self.get_election()
-        
+
         creating = election._get_current_stage()
         voting = creating.next()
         election._run(voting)
@@ -84,16 +84,16 @@ class TestSuccess(unittest.TestCase):
                 'audit_publications': voting.serialized_audit_publications,
                 'excluded_voters': election.get_excluded_voters()
             }
-    
+
 
     def test_3_mixing(self):
         election = self.get_election()
-        
+
         voting = election._get_current_stage()
         mixing = voting.next()
         election._run(mixing)
 
-        # Store here so that subsequent tests have 
+        # Store here so that subsequent tests have
         # access to the current stage's attributes
         __class__.voting = voting
 
@@ -113,13 +113,13 @@ class TestSuccess(unittest.TestCase):
                 'audit_requests': voting.serialized_audit_requests,
                 'audit_publications': voting.serialized_audit_publications,
                 'excluded_voters': election.get_excluded_voters(),
-                'mixes': election.do_get_all_mixes()[1:]
+                'mixes': election.get_mixes_serialized()
             }
-    
+
 
     def test_4_decrypting(self):
         election = self.get_election()
-        
+
         mixing = election._get_current_stage()
         decrypting = mixing.next()
         election._run(decrypting)
@@ -142,14 +142,14 @@ class TestSuccess(unittest.TestCase):
                 'audit_requests': voting.serialized_audit_requests,
                 'audit_publications': voting.serialized_audit_publications,
                 'excluded_voters': election.get_excluded_voters(),
-                'mixes': election.do_get_all_mixes()[1:],
-                'trustee_factors': election.get_all_factors()
+                'mixes': election.get_mixes_serialized(),
+                'decryption_factors': election.get_all_factors_serialized()
             }
-    
+
 
     def test_5_finished(self):
         election = self.get_election()
-        
+
         decrypting = election._get_current_stage()
         finished = decrypting.next()
         election._run(finished)
@@ -172,8 +172,8 @@ class TestSuccess(unittest.TestCase):
                 'audit_requests': voting.serialized_audit_requests,
                 'audit_publications': voting.serialized_audit_publications,
                 'excluded_voters': election.get_excluded_voters(),
-                'mixes': election.do_get_all_mixes()[1:],
-                'trustee_factors': election.get_all_factors(),
+                'mixes': election.get_mixes_serialized(),
+                'decryption_factors': election.get_all_factors_serialized(),
                 'results': election.get_results(),
                 'status': election.get_status(),
                 'fingerprint': election.get_fingerprint(),

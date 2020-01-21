@@ -6,6 +6,7 @@ import json
 from copy import deepcopy
 
 from zeus_core.election import ZeusCoreElection
+from zeus_core.election.exceptions import InvalidVoteError, VoteRejectionError
 from .clients import TrusteeEmulator, VoterEmulator
 
 
@@ -145,6 +146,46 @@ class ZeusTestElection(ZeusCoreElection):
             except StopIteration:
                 break
             yield vote
+
+    def cast_vote(self, vote):
+        """
+        Emulates vote casting (see main loop in voting
+        stage to understand the details)
+        """
+        _vote = deepcopy(vote)
+
+        try:
+            vote = self.adapt_vote(vote)
+        except InvalidVoteError as err:
+            raise VoteRejectionError(err)
+
+        (_, _, voter_key, _, fingerprint, voter_audit_code, voter_secret,
+            _, _, _, _) = self.extract_vote(vote)
+        try:
+            voter, voter_audit_codes = self.detect_voter(voter_key)
+        except VoteRejectionError:
+            raise
+
+        if voter_secret:
+            try:
+                signature = self.submit_audit_vote(vote, voter_key, fingerprint,
+                    voter_audit_code, voter_audit_codes)
+            except VoteRejectionError:
+                raise
+        else:
+            voter_audit_code = self.fix_audit_code(voter_audit_code, voter_audit_codes)
+            if voter_audit_code not in voter_audit_codes:
+                try:
+                    signature = self.submit_audit_request(fingerprint, voter_key, vote)
+                except VoteRejectionError:
+                    raise
+            else:
+                try:
+                    signature = self.submit_genuine_vote(fingerprint, voter_key, vote)
+                except VoteRejectionError:
+                    raise
+        _vote['signature'] = signature
+        return _vote
 
 
     def broadcast_mixed_ballots(self, mixed_ballots):

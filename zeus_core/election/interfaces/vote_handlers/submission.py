@@ -1,5 +1,6 @@
 """
 """
+
 from zeus_core.election.constants import (V_CAST_VOTE, V_AUDIT_REQUEST,
     V_PUBLIC_AUDIT, V_PUBLIC_AUDIT_FAILED,)
 from zeus_core.election.exceptions import InvalidVoteError, VoteRejectionError
@@ -19,8 +20,6 @@ class VoteSubmitter(VoteSerializer, VoteValidator, Signer):
         and attach to it the signature, stores the audit-request, audit-vote
         and vote, and returns the signature
         """
-        # election = self.get_controller()
-        #
         if self.get_audit_request(fingerprint):
             err = "Audit-request for vote [%s] already submitted" % (fingerprint,)
             raise VoteRejectionError(err)
@@ -39,7 +38,7 @@ class VoteSubmitter(VoteSerializer, VoteValidator, Signer):
         self.store_audit_request(fingerprint, voter_key)
         self.store_votes((vote,))
 
-        return V_AUDIT_REQUEST, signature
+        return signature
 
 
     def submit_audit_vote(self, vote, voter_key, fingerprint,
@@ -82,7 +81,7 @@ class VoteSubmitter(VoteSerializer, VoteValidator, Signer):
         self.store_audit_publication(fingerprint)
         self.store_votes((vote,))
 
-        return V_PUBLIC_AUDIT, signature
+        return signature
 
 
     def submit_genuine_vote(self, fingerprint, voter_key, vote):
@@ -121,7 +120,7 @@ class VoteSubmitter(VoteSerializer, VoteValidator, Signer):
         ##################################################################
         # DANGER: commit all data to disk before giving a signature out! #
         ##################################################################
-        return V_CAST_VOTE, signature
+        return signature
 
 
     #  Voter fixation
@@ -132,13 +131,11 @@ class VoteSubmitter(VoteSerializer, VoteValidator, Signer):
         Abort election if key was detected but no audit-codes correspond to it
         Return voter and audit-codes otherwise
         """
-        # election = self.get_controller()
-        #
         voter = self.get_voter(voter_key)
         voter_audit_codes = self.get_voter_audit_codes(voter_key)
         if not voter:
             err = "Invalid voter key"
-            raise VoteRejectionError()
+            raise VoteRejectionError(err)
         elif not voter_audit_codes:
             err = "Invalid audit-codes inconsistency"
             raise VoteRejectionError(err)
@@ -154,8 +151,6 @@ class VoteSubmitter(VoteSerializer, VoteValidator, Signer):
         If not provided and skip-audit mode is disabled, vote is rejected
         (raises exception)
         """
-        # election = self.get_controller()
-        #
         if not voter_audit_code:
             skip_audit = self.get_option('skip_audit')
             if skip_audit or skip_audit is None:

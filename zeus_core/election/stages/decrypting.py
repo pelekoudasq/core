@@ -12,7 +12,7 @@ class Decrypting(Stage):
         super().__init__(controller, next_stage_cls=Finished)
 
     def run(self):
-        print(__class__.__name__)      # Remove this
+        print(__class__.__name__)       # Remove this
         election = self.get_controller()
         mixed_ballots = election.get_mixed_ballots()
 
@@ -43,13 +43,8 @@ class Decrypting(Stage):
         election = self.get_controller()
 
         updates = {}
-        #
-        # TODO: separate trustees from zeus and serialize
-        #
-        updates['trustee_factors'] = election.get_all_factors()
-        # print(type(all_factors[0][0]))
-        # print(all_factors[0][0])
-        # print(type(all_factors[0][0]['data']))
-        # print(type(all_factors[-1][-1]))
-        # print(all_factors[-1][-1])
+
+        all_factors = election.get_all_factors_serialized()
+        updates['decryption_factors'] = all_factors
+
         return updates

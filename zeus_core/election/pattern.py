@@ -61,12 +61,9 @@ class StageController(object, metaclass=ABCMeta):
         """
         """
         exports = self._get_exports()
-        #
-        # TODO: Implement to_canonical
-        #
         fingerprint = sha256(to_canonical(exports).encode('utf-8')).hexdigest()
         return fingerprint
-        
+
 
     def update_final_status(self):
         """

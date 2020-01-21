@@ -69,7 +69,6 @@ class TestMixing(StageTester, unittest.TestCase):
             messages.append('[+] Invalid mix successfully detected: Cryptosystem mismatch')
         mixed_ciphers['header']['modulus'] = corrupt # Restore for later use
 
-
         last_mix = deepcopy(election.do_get_last_mix())
         with self.subTest(last_mix=last_mix):
             mixed_ciphers = mixnet.mix_ciphers(last_mix)

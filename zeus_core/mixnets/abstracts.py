@@ -1,6 +1,8 @@
+"""
+"""
+
 from abc import ABCMeta, abstractmethod
 from copy import deepcopy
-
 from .exceptions import MixNotVerifiedError, InvalidMixError
 
 
@@ -10,6 +12,7 @@ class Mixnet(object, metaclass=ABCMeta):
     """
 
     __slots__ = ('__cryptosys', '__election_key', '__group', '__header')
+
 
     def __init__(self, cryptosys, election_key=None):
         """
@@ -155,6 +158,37 @@ class Mixnet(object, metaclass=ABCMeta):
         if get_secret:
             return alpha, beta, randomness
         return alpha, beta
+
+
+    # Serialization
+
+    def serialize_ciphers(self, ciphers):
+        """
+        """
+        serialized = [(cipher[0].to_int(), cipher[1].to_int())
+            for cipher in ciphers]
+        return serialized
+
+
+    @abstractmethod
+    def serialize_mix_proof(self, proof):
+        """
+        """
+        
+
+    def serialize(self, mixes):
+        """
+        """
+        original_ciphers = mixes['original_ciphers']
+        mixes['original_ciphers'] = self.serialize_ciphers(original_ciphers)
+
+        proof = mixes['proof']
+        mixes['proof'] = self.serialize_mix_proof(proof)
+
+        mixed_ciphers = mixes['mixed_ciphers']
+        mixes['mixed_ciphers'] = self.serialize_ciphers(mixed_ciphers)
+
+        return mixes
 
 
     # Testing

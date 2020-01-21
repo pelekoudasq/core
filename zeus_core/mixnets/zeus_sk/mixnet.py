@@ -7,7 +7,7 @@ from itertools import chain
 from hashlib import sha256
 
 from zeus_core.crypto.modprime import ModPrimeCrypto
-from zeus_core.utils import random_permutation, AsyncController, _teller, bit_iterator
+from zeus_core.utils import random_permutation, _teller, bit_iterator#, AsyncController
 from ..abstracts import Mixnet
 from ..exceptions import WrongMixnetError, MixNotVerifiedError, RoundNotVerifiedError
 
@@ -120,8 +120,8 @@ class Zeus_SK(Mixnet):
             _async = None
             if nr_parallel > 0:
                 Random.atfork()
-                _async = AsyncController(parallel=nr_parallel)
-                async_shuffle_ciphers = _async.make_async(shuffle_ciphers)
+                # _async = AsyncController(parallel=nr_parallel)
+                # async_shuffle_ciphers = _async.make_async(shuffle_ciphers)
 
             if _async:
                 channels = [async_shuffle_ciphers(original_ciphers, election_key, encrypt_func,
@@ -239,6 +239,23 @@ class Zeus_SK(Mixnet):
         return challenge
 
 
+    # Serialization
+
+    def serialize_mix_proof(self, proof):
+        """
+        """
+        serialize_ciphers = self.serialize_ciphers
+        cipher_collections = proof['cipher_collections']
+        proof['cipher_collections'] = [serialize_ciphers(collection)
+            for collection in cipher_collections]
+
+        random_collections = proof['random_collections']
+        proof['random_collections'] = [[int(num) for num in _]
+            for _ in random_collections]
+
+        return proof
+
+
     # Testing
 
     def verify_mix(self, cipher_mix, nr_parallel=0, min_rounds=None, teller=_teller):
@@ -285,7 +302,7 @@ class Zeus_SK(Mixnet):
         with teller.task('Verifying ciphers', total=total):
             _async = None
             if nr_parallel > 0:
-                _async = AsyncController(parallel=nr_parallel)
+                # _async = AsyncController(parallel=nr_parallel)
                 channels = []
                 append = channels.append
                 async_verify_mix_round = _async.make_async(verify_mix_round)

@@ -1,7 +1,9 @@
 """
+Tests election abortion cases
 """
 
 import unittest
+from copy import deepcopy
 
 from tests.election.makers import mk_election
 from zeus_core.election.exceptions import Abortion
@@ -139,7 +141,7 @@ class TestAbortions(unittest.TestCase):
                     'audit_requests': serialized_audit_requests,
                     'audit_publications': serialized_audit_publications,
                     'excluded_voters': election.get_excluded_voters(),
-                    'mixes': election.do_get_all_mixes()[1:],
+                    'mixes': election.get_mixes_serialized(),
                 }
 
 

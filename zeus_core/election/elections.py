@@ -361,59 +361,6 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         """
         """
 
-    def cast_vote(self, vote):
-        """
-        """
-        _vote = deepcopy(vote)
-        try:
-            vote = self.adapt_vote(vote)
-        except InvalidVoteError as err:
-            # (1) Wrong or extra or missing fields, or
-            # (2) Malformed encrypted ballot, or
-            # (3) Cryptosystem mismatch, or
-            # (4) Election key mismatch
-            raise VoteRejectionError(err)
-
-        (_, _, voter_key, _, fingerprint, voter_audit_code, voter_secret,
-            _, _, _, _) = self.extract_vote(vote)
-
-        try:
-            voter, voter_audit_codes = self.detect_voter(voter_key)
-        except VoteRejectionError:
-            # (1) Voter's key not detected, or
-            # (2) Not assigned any audit-codes
-            raise
-
-        if voter_secret:
-            try:
-                type, signature = self.submit_audit_vote(vote, voter_key, fingerprint,
-                    voter_audit_code, voter_audit_codes)
-            except VoteRejectionError:
-                # (1) No audit-code has been provided, or
-                # (2) Provided audit-code not among the assigned ones, or
-                # (3) No audit-request found for the provided fingerprint, or
-                # (4) Vote failed to be verified as audit
-                raise
-        else:
-            # ~ If no audit-code provided, choose one of the assigned ones (rejects
-            # ~ if no audit-code has been provided while skip-audit mode dispabled)
-            voter_audit_code = self.fix_audit_code(voter_audit_code, voter_audit_codes)
-            if voter_audit_code not in voter_audit_codes:
-                try:
-                    type, signature = self.submit_audit_request(fingerprint, voter_key, vote)
-                except VoteRejectionError:
-                    # Audit-request already submitted for the provided fingerprint
-                    raise
-            else:
-                try:
-                    type, signature = self.submit_genuine_vote(fingerprint, voter_key, vote)
-                except VoteRejectionError:
-                    # (1) Vote already cast, or
-                    # (2) Vote limit reached, or
-                    # (3) Vote failed to be validated
-                    raise
-        return _vote, type, signature
-
 
     # Mixing preparations
 
@@ -492,6 +439,15 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         return unmixed_votes, counted_list
 
 
+    def get_mixes_serialized(self):
+        """
+        """
+        mixnet = self.get_mixnet()
+        mixes = deepcopy(self.do_get_all_mixes()[1:][0])    # TODO: Make this beautiful
+        serialized_mixes = mixnet.serialize(mixes)
+        return serialized_mixes
+
+
     # Decryption
 
     @abstractmethod
@@ -527,8 +483,24 @@ class ZeusCoreElection(StageController, GenericAPI, KeyManager, VoteSubmitter,
         return decrypted_ballots
 
 
-    # Report generation
+    def serialize_factors(self, all_factors):
+        """
+        """
+        serialize_factor = self.serialize_factor
+        serialized = [[serialize_factor(factor) for factor in _]
+            for _ in all_factors]
+        return serialized
 
+
+    def get_all_factors_serialized(self):
+        """
+        """
+        all_factors = self.get_all_factors()
+        serialized = self.serialize_factors(deepcopy(all_factors))
+        return serialized
+
+
+    # Report generation
 
     def _generate_report(self):
         """
